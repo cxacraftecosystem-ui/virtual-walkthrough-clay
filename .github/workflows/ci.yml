@@ -1,0 +1,99 @@
+# Pull-request checks that need a running production build (deploy.yml handles typecheck/lint + deploys).
+#
+# visual regression: next build → next start → scripts/visual-regression.mjs (SwiftShader, headless
+# Chrome preinstalled on ubuntu-latest) against the committed baselines in tests/visual/baseline/.
+# Diffs are uploaded as the "visual-diff" artifact. Baselines are captured from the production
+# deployment: `npm run test:visual:update -- https://hand-block-museum.vercel.app` (tests/visual/README.md).
+#
+# query counts: the unit tests again with TEST_DATABASE_URL pointing at a throwaway Postgres 17 (the
+# major Supabase runs), so tests/unit/query-counts.test.ts checks its statement counts and SQL on
+# Postgres as well as on the SQLite they always run against.
+name: ci
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  query-counts:
+    name: query counts (postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: museum_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      # 127.0.0.1, not localhost: the test refuses anything but a local database, and a runner that
+      # resolves localhost to ::1 first would be refused by an IPv4-only Postgres.
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/museum_ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  visual:
+    name: visual regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: baselines
+        run: |
+          if ls tests/visual/baseline/*.png >/dev/null 2>&1; then echo "present=1" >> "$GITHUB_OUTPUT"
+          else echo "::warning::no visual baselines committed (tests/visual/baseline) — skipping"; echo "present=0" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.baselines.outputs.present == '1'
+        with:
+          node-version: 24
+          cache: npm
+      - if: steps.baselines.outputs.present == '1'
+        run: npm ci
+      # No DATABASE_URL / S3 env: the app falls back to SQLite + local disk; the test uses ?static content.
+      - if: steps.baselines.outputs.present == '1'
+        run: npm run build
+      - name: start production server
+        if: steps.baselines.outputs.present == '1'
+        run: |
+          nohup npm run start -- -p 3000 > next-start.log 2>&1 &
+          for i in $(seq 1 60); do curl -fsS http://localhost:3000/api/health >/dev/null && exit 0; sleep 2; done
+          cat next-start.log; exit 1
+      - name: npm run test:visual
+        if: steps.baselines.outputs.present == '1'
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          VR_TIMEOUT_MS: '600000'
+        run: npm run test:visual -- http://localhost:3000
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure() || steps.baselines.outputs.present == '1'
+        with:
+          name: visual-diff
+          path: |
+            tests/visual/diff/
+            next-start.log
+          if-no-files-found: ignore
+          retention-days: 14

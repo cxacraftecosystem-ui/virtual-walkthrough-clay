@@ -1,0 +1,33 @@
+node_modules
+dist
+scripts/out
+scripts/*.log
+*.local
+.DS_Store
+
+# local secrets / Vercel link
+.env
+.env*.local
+.vercel
+.next
+next-env.d.ts
+*.tsbuildinfo
+
+# backend local data (SQLite + uploaded media)
+.data/
+.next-dev.log
+.next-start.log
+
+
+# Google OAuth client secrets — never commit
+client_secret_*.json
+*.apps.googleusercontent.com.json
+
+# Supabase CLI local state
+supabase/.temp/
+
+# visual regression output (baselines ARE committed)
+tests/visual/diff/
+
+# Deep-zoom tiles are served from S3/CloudFront (aws s3 sync public/deepzoom s3://<bucket>/deepzoom/)
+public/deepzoom/
