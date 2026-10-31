@@ -1,234 +1,27 @@
 /**
- * VISITOR AMENITIES & WAYFINDING — content only.
+ * VISITOR AMENITIES & WAYFINDING — content only (rendering: amenities/Amenities.tsx).
  *
- *   Museum Shop (zone 'shop')              craft boutique: wall shelving, display tables, stole rail,
- *                                          counter, plinths with CC0 vessels (products are PLACEHOLDERS)
- *   Reading Room & Library ('library')      bookcases, long reading table with lamps, lounge chairs,
- *                                          pattern-book lectern, wall of framed block drawings, Resources board
- *   Credits / partners wall (reception)    "Presented by" / "In collaboration with" (generic wording)
- *   Signage                                 door plaques + directional totems (i18n zone names)
- *   Discovery trail                         8 hidden motif medallions ("Find the motifs")
+ * The pavilion is one round room with no shop, library or reception, so its amenities are few:
+ *
+ *   Signage           a totem in the entrance hall pointing round the ring, and one in Gallery C
+ *                     at the opening into the hallway
+ *   Discovery trail   eight small stamped medallions round the pavilion ("Find the motifs"),
+ *                     each on a wall face whose normal is close to a compass point
  *
  * Objects here are appended to SCENE_OBJECTS (objects.ts) — they get collision, culling,
- * click → info panel and deep links like every other scene object.
+ * click → info panel and deep links like every other scene object. The pavilion has none yet.
  * This module must only import TYPES from objects.ts (objects.ts imports it).
  */
 import type { MotifId } from './exhibits'
-import type { ZoneId } from './layout'
-import { MUSEUM, type Vec3 } from './museum'
+import { surfacePoint, ZONES, type SurfaceId, type ZoneId } from './layout'
+import { KEY, MUSEUM, polar, type Vec3 } from './museum'
 import type { SceneObjectConfig } from './objects'
 
-const RH = MUSEUM.reception.ceilingHeight
-const DIV = MUSEUM.walls.dividerThickness
-const T = MUSEUM.walls.exteriorThickness
-const rx = MUSEUM.reception.width / 2
-const D = MUSEUM.wings.doors
-const cc0 = (id: string) => `/models/opt/cc0/${id}.glb`
-const PH = (author: string, id: string) => ({ author, source: `https://polyhaven.com/a/${id}`, license: 'CC0' as const })
+const RH = MUSEUM.pavilion.ceilingHeight
 
-/** Placeholder artisan profile the shop products point to (src/museum/content/artisans.ts). */
-const MAKER = 'artisan-placeholder-01'
-const MAKER_2 = 'artisan-placeholder-02'
+export const PRODUCT_TEXT = ''
 
-export const PRODUCT_TEXT = 'Printed textiles on display in the museum shop.'
-
-/** "Visit the maker / Buy" — the maker profile supplies the URLs; a link without one is not shown. */
-const PRODUCT_LINKS: NonNullable<SceneObjectConfig['links']> = [{ label: 'Visit the maker' }, { label: 'Buy' }]
-
-const SHOP = { minX: rx + T, maxX: MUSEUM.gallery.width / 2, minZ: DIV, maxZ: DIV + MUSEUM.reception.length }
-const LIB = { minX: -MUSEUM.gallery.width / 2, maxX: -rx - T, minZ: DIV, maxZ: DIV + MUSEUM.reception.length }
-
-const product = (o: Omit<SceneObjectConfig, 'zone' | 'interactive' | 'placeholder' | 'description' | 'links'> & { description?: string }): SceneObjectConfig => ({
-  interactive: true,
-  placeholder: true,
-  description: PRODUCT_TEXT,
-  links: PRODUCT_LINKS,
-  zone: 'shop',
-  ...o,
-})
-
-export const AMENITY_OBJECTS: SceneObjectConfig[] = [
-  // ══ Museum Shop ══════════════════════════════════════════════════
-  // east wall: two runs of timber shelving holding folded printed lengths and cushion stacks
-  ...[2.8, 6.0].map<SceneObjectConfig>((z, i) =>
-    product({
-      id: `shop-shelf-${i + 1}`,
-      title: i === 0 ? 'Folded printed lengths' : 'Printed cushion covers & lengths',
-      kind: 'shop-shelf',
-      position: [SHOP.maxX - 0.225, 0, z],
-      rotationDeg: -90,
-      footprint: [3.0, 0.45],
-      height: 2.5,
-      props: { seed: i + 1, cushions: i === 1 },
-      artisanId: i === 0 ? MAKER : MAKER_2,
-      alt: 'A timber wall shelving unit with folded printed cloths stacked on its shelves.',
-    }),
-  ),
-  // centre: two low display tables either side of the route from the door to the shelves
-  ...[3.25, 5.75].map<SceneObjectConfig>((z, i) =>
-    product({
-      id: `shop-table-${i + 1}`,
-      title: i === 0 ? 'Printed table linen' : 'Printed stoles & cushions',
-      kind: 'shop-table',
-      position: [7.4, 0, z],
-      footprint: [1.6, 0.8],
-      height: 0.78,
-      props: { seed: 10 + i, cushions: i === 1 },
-      artisanId: i === 0 ? MAKER_2 : MAKER,
-      alt: 'A low timber display table with neat stacks of folded printed textiles.',
-    }),
-  ),
-  product({
-    id: 'shop-stole-rail',
-    title: 'Printed stoles',
-    kind: 'stole-rail',
-    position: [7.6, 0, SHOP.maxZ - 0.3],
-    rotationDeg: 180,
-    footprint: [2.6, 0.45],
-    height: 1.75,
-    props: { count: 7, seed: 21 },
-    artisanId: MAKER,
-    alt: 'A brass and timber rail with printed stoles draped over it.',
-  }),
-  {
-    id: 'shop-counter',
-    title: 'Shop Counter',
-    kind: 'shop-counter',
-    position: [6.9, 0, 1.25],
-    footprint: [2.2, 0.6],
-    height: 1.0,
-    interactive: true,
-    placeholder: true,
-    description: 'The museum shop counter.',
-    links: [
-      { label: 'Online shop' },
-      { label: 'Meet the makers', href: '/makers/artisan-placeholder-01' },
-    ],
-    zone: 'shop',
-    alt: 'A timber shop counter with a stone top, a folded cloth and a brass bell on it.',
-  },
-  // plinths with CC0 vessels (the vessel is a separate object on the plinth top)
-  ...(
-    [
-      ['shop-plinth-1', SHOP.minX + 0.45, SHOP.maxZ - 0.55, 0.95, 'ceramic_vase_01', 0.4, 'James Ray Cock', 'Ceramic vase'],
-      ['shop-plinth-2', SHOP.maxX - 0.45, 0.7, 0.85, 'brass_pot_01', 0.29, 'Rico Cilliers', 'Brass pot'],
-    ] as const
-  ).flatMap<SceneObjectConfig>(([id, x, z, h, model, mh, author, title]) => [
-    { id, title: 'Plinth', kind: 'pedestal', position: [x, 0, z], footprint: [0.45, 0.45], height: h, zone: 'shop' },
-    { id: `${id}-object`, title, kind: 'vessel', model: cc0(model), modelScale: 1, position: [x, h, z], height: mh, zone: 'shop', credit: PH(author, model) },
-  ]),
-  { id: 'shop-basket', title: 'Wicker basket', kind: 'vessel', model: cc0('wicker_basket_02'), modelScale: 1, position: [8.0, 0.78, 3.25], rotationDeg: 20, height: 0.22, zone: 'shop', credit: PH('Kuutti Siitonen', 'wicker_basket_02') },
-
-  // ══ Reading Room & Library ═══════════════════════════════════════
-  ...[2.35, 5.95].map<SceneObjectConfig>((z, i) => ({
-    id: `library-bookcase-${i + 1}`,
-    title: 'Library bookcase',
-    kind: 'bookcase',
-    position: [LIB.minX + 0.2, 0, z],
-    rotationDeg: 90,
-    footprint: [3.4, 0.4],
-    height: 2.9,
-    props: { seed: 31 + i },
-    zone: 'library',
-    alt: 'A tall timber bookcase filled with books of varied sizes and colours.',
-  })),
-  {
-    id: 'library-reading-table',
-    title: 'Reading Table',
-    kind: 'reading-table',
-    position: [-7.45, 0, 4.2],
-    rotationDeg: 90,
-    footprint: [2.6, 1.7],
-    height: 0.76,
-    props: { chairs: 3, lamps: 2 },
-    zone: 'library',
-    alt: 'A long timber reading table with six chairs and two brass reading lamps.',
-  },
-  {
-    id: 'library-lounge',
-    title: 'Lounge chairs',
-    kind: 'lounge-set',
-    position: [-8.0, 0, LIB.maxZ - 0.75],
-    rotationDeg: 180,
-    footprint: [2.6, 0.9],
-    height: 0.85,
-    zone: 'library',
-    alt: 'Two upholstered lounge chairs either side of a small table with a lamp.',
-  },
-  {
-    id: 'library-pattern-book',
-    title: 'The Pattern Book',
-    kind: 'pattern-lectern',
-    position: [-5.95, 0, 1.35],
-    footprint: [0.6, 0.5],
-    height: 1.12,
-    props: { seed: 41 },
-    interactive: true,
-    inspectable: true,
-    placeholder: true,
-    description:
-      'An open sample book on a lectern: pages of printed swatches, the way printers keep a record of their designs. The swatches use the motifs made for this museum.',
-    zone: 'library',
-    alt: 'A timber lectern holding an open book whose pages carry small printed cloth swatches.',
-  },
-  {
-    id: 'library-drawings',
-    title: 'Printing-Block Drawings',
-    kind: 'drawing-wall',
-    position: [-7.85, 0, LIB.minZ + 0.03],
-    footprint: [3.0, 0.06],
-    height: 2.6,
-    props: { cols: 3, rows: 2, bottom: 0.95 },
-    interactive: true,
-    placeholder: true,
-    description:
-      'A wall of framed design drawings for printing blocks, drawn from the motifs made for this museum.',
-    zone: 'library',
-    alt: 'Six framed ink drawings of block-print motifs on squared paper, hung in two rows.',
-  },
-  {
-    id: 'library-resources',
-    title: 'Resources',
-    kind: 'resource-board',
-    position: [LIB.maxX - 0.02, 0, 6.8],
-    rotationDeg: -90,
-    footprint: [0.97, 0.05],
-    height: 2.2,
-    props: { width: 0.9 },
-    interactive: true,
-    description: 'Further reading and tools for visitors, teachers and researchers.',
-    links: [
-      { label: 'Accessible text guide', href: '/guide', note: 'Every room and item as plain text — printable, screen-reader friendly' },
-      // shown (board and info panel) once they have an href
-      { label: 'Capture guide', note: 'How the artisans and blocks are recorded in 3D' },
-      { label: 'Publications', note: 'Catalogues and research papers from the workshop' },
-    ],
-    zone: 'library',
-    alt: 'A framed wall board titled Resources, listing the accessible text guide.',
-  },
-
-  // ══ Credits / partners wall — reception south wall, flanking the atrium portal (faces north) ══
-  ...(
-    [
-      ['credits-presented', 2.95, 'Presented by', '/brand/dc-handicrafts.png'],
-      ['credits-collaboration', -2.95, 'In collaboration with', '/brand/iit-kharagpur.svg'],
-    ] as const
-  ).map<SceneObjectConfig>(([id, x, kicker, logo]) => ({
-    id,
-    title: kicker,
-    kind: 'credits-panel',
-    position: [x, 0, DIV + MUSEUM.reception.length - 0.021],
-    rotationDeg: 180,
-    footprint: [2.1, 0.05],
-    height: 2.7,
-    props: { kicker, logo, width: 2.1, panelHeight: 1.4, center: 1.75 },
-    interactive: true,
-    placeholder: true,
-    description: 'The partners who present this exhibition.',
-    zone: 'reception',
-    alt: `A pale stone panel with brass fillets reading “${kicker}” above a partner logo.`,
-  })),
-]
+export const AMENITY_OBJECTS: SceneObjectConfig[] = []
 
 /* ------------------------------------------------------------------ */
 /* Wayfinding signage                                                  */
@@ -255,64 +48,59 @@ export interface SignConfig {
   zones: ZoneId[]
 }
 
-const PLQ = 1.52
-const doorZ = D.receptionToShop.z
-export const SIGNS: SignConfig[] = [
-  // reception ↔ shop / library (plaques north of each side door, both faces)
-  { id: 'plq-rec-shop', kind: 'plaque', position: [rx - 0.004, PLQ, doorZ - 1.4], facing: 'W', lines: [{ zone: 'shop' }], zones: ['reception'] },
-  { id: 'plq-rec-library', kind: 'plaque', position: [-rx + 0.004, PLQ, doorZ - 1.4], facing: 'E', lines: [{ zone: 'library' }], zones: ['reception'] },
-  { id: 'plq-shop-rec', kind: 'plaque', position: [rx + T + 0.004, PLQ, doorZ - 1.4], facing: 'E', lines: [{ zone: 'reception' }], zones: ['shop'] },
-  { id: 'plq-lib-rec', kind: 'plaque', position: [-rx - T - 0.004, PLQ, doorZ + 1.4], facing: 'W', lines: [{ zone: 'reception' }], zones: ['library'] },
-  // atrium ↔ theatre
-  { id: 'plq-atr-theatre', kind: 'plaque', position: [-10 + 0.004, PLQ, 19.4], facing: 'E', lines: [{ zone: 'theatre' }], zones: ['atrium'] },
-  { id: 'plq-theatre-atr', kind: 'plaque', position: [-10.3 - 0.09, PLQ, 19.3], facing: 'W', lines: [{ zone: 'atrium' }], zones: ['theatre'] },
-  // atrium ↔ workshop
-  { id: 'plq-atr-workshop', kind: 'plaque', position: [10 - 0.004, PLQ, 16.8], facing: 'W', lines: [{ zone: 'workshop' }], zones: ['atrium'] },
-  { id: 'plq-workshop-atr', kind: 'plaque', position: [10.3 + 0.004, PLQ, 16.65], facing: 'E', lines: [{ zone: 'atrium' }], zones: ['workshop'] },
-  // Gallery A ↔ Gallery D
-  { id: 'plq-ga-gd', kind: 'plaque', position: [-10 + 0.004, PLQ, -14.3], facing: 'E', lines: [{ zone: 'gallery-d' }], zones: ['gallery-a'] },
-  { id: 'plq-gd-ga', kind: 'plaque', position: [-10.3 - 0.004, PLQ, -14.35], facing: 'W', lines: [{ zone: 'gallery-a' }], zones: ['gallery-d'] },
-  // Gallery B ↔ courtyard
-  { id: 'plq-gb-court', kind: 'plaque', position: [10 - 0.004, PLQ, -14.3], facing: 'W', lines: [{ zone: 'courtyard' }], zones: ['gallery-b'] },
-  { id: 'plq-court-gb', kind: 'plaque', position: [10.3 + 0.004, PLQ, -14.1], facing: 'E', lines: [{ zone: 'gallery-b' }], zones: ['courtyard'] },
-  // workshop ↔ courtyard
-  { id: 'plq-ws-court', kind: 'plaque', position: [18.15, PLQ, -2 + 0.004], facing: 'S', lines: [{ zone: 'courtyard' }], zones: ['workshop'] },
-  { id: 'plq-court-ws', kind: 'plaque', position: [18.1, PLQ, -2.3 - 0.004], facing: 'N', lines: [{ zone: 'workshop' }], zones: ['courtyard'] },
-  // theatre ↔ Gallery D
-  { id: 'plq-th-gd', kind: 'plaque', position: [-16.1, PLQ, -2 + 0.08], facing: 'S', lines: [{ zone: 'gallery-d' }], zones: ['theatre'] },
-  { id: 'plq-gd-th', kind: 'plaque', position: [-16.2, PLQ, -2.3 - 0.004], facing: 'N', lines: [{ zone: 'theatre' }], zones: ['gallery-d'] },
+const COMPASS: Compass[] = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 
-  // directional totems at the key junctions
-  {
-    id: 'totem-atrium',
+/** Nearest compass point of the direction from (x, z) towards (tx, tz). */
+function compassTo(x: number, z: number, tx: number, tz: number): Compass {
+  const deg = (Math.atan2(tx - x, -(tz - z)) * 180) / Math.PI
+  return COMPASS[(Math.round(deg / 45) + 8) % 8]
+}
+
+const anchor = (id: ZoneId) => ZONES.find((z) => z.id === id)?.anchor ?? [0, 0]
+
+/** A totem at floor point [x, z] facing towards [fx, fz], with a line per destination (arrow towards its anchor or `via`). */
+function totem(id: string, x: number, z: number, faceTo: [number, number], dests: { zone: ZoneId; via?: [number, number] }[], zones: ZoneId[]): SignConfig {
+  return {
+    id,
     kind: 'totem',
-    position: [-4.3, 0, 17.3],
-    facing: 'S',
-    lines: [
-      { zone: 'reception', dir: 'N' },
-      { zone: 'gallery-a', dir: 'N' },
-      { zone: 'shop', dir: 'N' },
-      { zone: 'library', dir: 'N' },
-      { zone: 'theatre', dir: 'W' },
-      { zone: 'workshop', dir: 'E' },
+    position: [x, 0, z],
+    facing: compassTo(x, z, faceTo[0], faceTo[1]),
+    lines: dests.map((d) => {
+      const [tx, tz] = d.via ?? anchor(d.zone)
+      return { zone: d.zone, dir: compassTo(x, z, tx, tz) }
+    }),
+    zones,
+  }
+}
+
+/** Entrance hall totem: by the east wall just before the mouth, read by visitors walking in. */
+const HALL: [number, number] = [KEY.annexHalf - 0.45, KEY.annexMouthZ + 1.6]
+/** Gallery C totem: by the end of the hallway wall, where the hallway opens off the ring. */
+const C_TOTEM = polar(7.25, 206)
+
+export const SIGNS: SignConfig[] = [
+  totem(
+    'sign-hall',
+    HALL[0],
+    HALL[1],
+    [HALL[0], HALL[1] + 5],
+    [
+      // the galleries begin round the east end of the inner wall
+      { zone: 'ring-a', via: polar(7.0, 40) },
+      { zone: 'ring-b', via: polar(7.0, 40) },
+      { zone: 'ring-c', via: polar(7.0, 40) },
+      { zone: 'inner', via: polar(7.0, 40) },
     ],
-    zones: ['atrium'],
-  },
-  {
-    id: 'totem-court',
-    kind: 'totem',
-    position: [6.6, 0, -20.6],
-    facing: 'W',
-    lines: [
-      { zone: 'reveal', dir: 'N' },
-      { zone: 'gallery-b', dir: 'SE' },
-      { zone: 'courtyard', dir: 'SE' },
-      { zone: 'gallery-a', dir: 'SW' },
-      { zone: 'gallery-d', dir: 'SW' },
-      { zone: 'reception', dir: 'S' },
-    ],
-    zones: ['reveal', 'passage'],
-  },
+    ['annex', 'entry-e'],
+  ),
+  totem(
+    'sign-c',
+    C_TOTEM[0],
+    C_TOTEM[1],
+    polar(5.0, 245),
+    [{ zone: 'hallway-d', via: polar(9.2, 214) }, { zone: 'inner' }, { zone: 'annex', via: polar(9.2, 214) }],
+    ['ring-c', 'ring-b', 'hallway-d', 'inner'],
+  ),
 ]
 
 /* ------------------------------------------------------------------ */
@@ -332,15 +120,27 @@ export interface TrailMedallion {
 }
 
 export const TRAIL_SIZE = 0.15
+
+/** Clay inks: oxblood, terracotta, ochre, smoke black. */
+const INK = { oxblood: '#7a2e24', terracotta: '#b4553f', ochre: '#b97a3c', black: '#2b2622' }
+
+/** A medallion `at` metres along a surface, `y` above the floor; facing = nearest compass point of the wall normal. */
+function medallion(id: string, surface: SurfaceId, at: number, y: number, motif: MotifId, ink: string, zone: ZoneId, place: string): TrailMedallion {
+  const p = surfacePoint(surface, at, y, 0.006)
+  const [nx, , nz] = p.normal
+  return { id, motif, ink, position: p.position, facing: compassTo(0, 0, nx, nz), zone, place }
+}
+
+// Each surface below faces within ~10° of a compass point (the medallion is drawn on that point).
 export const TRAIL: TrailMedallion[] = [
-  { id: 'm1', motif: 'rosette', ink: '#8a3b2b', position: [-2.6, 1.05, 12.0 + 0.18 + 0.006], facing: 'S', zone: 'atrium', place: 'Grand Atrium' },
-  { id: 'm2', motif: 'teardrop', ink: '#2c3f6b', position: [-4.8, 0.95, DIV + 0.03], facing: 'S', zone: 'reception', place: 'Reception' },
-  { id: 'm3', motif: 'star-lattice', ink: '#b7862f', position: [9.35, 1.2, SHOP.maxZ - 0.006], facing: 'N', zone: 'shop', place: 'Museum Shop' },
-  { id: 'm4', motif: 'leaf-trail', ink: '#3b5a3a', position: [-9.45, 1.0, LIB.minZ + 0.006], facing: 'S', zone: 'library', place: 'Reading Room & Library' },
-  { id: 'm5', motif: 'diamond', ink: '#8a3b2b', position: [-MUSEUM.passage.clearWidth / 2 + 0.006, 0.72, -9.0], facing: 'E', zone: 'passage', place: 'Central Passage' },
-  { id: 'm6', motif: 'rosette', ink: '#c9a35a', position: [-12.6, 1.0, -2.3 - 0.006], facing: 'N', zone: 'gallery-d', place: 'Gallery D' },
-  { id: 'm7', motif: 'star-lattice', ink: '#2a2522', position: [MUSEUM.wings.workshop.maxX - 0.02, 1.2, 6.1], facing: 'W', zone: 'workshop', place: 'Craft Workshop Hall' },
-  { id: 'm8', motif: 'teardrop', ink: '#7c2419', position: [MUSEUM.wings.courtyard.maxX - 0.035, 1.3, -31.6], facing: 'W', zone: 'courtyard', place: 'Dye Garden Courtyard' },
+  medallion('m1', 'g-west', 1.2, 0.9, 'rosette', INK.terracotta, 'annex', 'Entrance Hall'),
+  medallion('m2', 'f-outer-3', 0.35, 1.25, 'teardrop', INK.oxblood, 'entry-e', 'Entry Ways'),
+  medallion('m3', 'a-outer-2', 0.3, 0.75, 'diamond', INK.ochre, 'ring-a', 'Gallery A'),
+  medallion('m4', 'b-outer-4', 2.2, 0.75, 'leaf-trail', INK.terracotta, 'ring-b', 'Gallery B'),
+  medallion('m5', 'c-south-2', 2.25, 0.65, 'star-lattice', INK.black, 'ring-c', 'Gallery C'),
+  medallion('m6', 'd-hallway-4', 0.25, 0.7, 'rosette', INK.oxblood, 'hallway-d', 'Hallway'),
+  medallion('m7', 'h-inner-3', 1.25, 1.0, 'diamond', INK.black, 'entry-e', 'Entry Ways'),
+  medallion('m8', 'f-inner-main', 0.25, 0.8, 'teardrop', INK.ochre, 'inner', 'Oculus Court'),
 ]
 
 /** Unit outward normal [x, z] of a compass facing. */

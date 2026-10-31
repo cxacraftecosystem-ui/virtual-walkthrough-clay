@@ -6,7 +6,7 @@
  * (→ every shader recompiles). A per-zone prefiltered environment instead reuses the scene's
  * existing env-map path (reflections + diffuse irradiance in every PBR material), so it costs no
  * shader variants and almost no frame time — each room simply gets its own bounce colour
- * (warm oak galleries, the dark theatre, indigo Gallery D, the sunlit courtyard).
+ * (the rose clay galleries, the oxblood-walled court under the oculus, the sunlit forecourt).
  *
  * How:
  *  1. After the scene's shaders are compiled, the render-to-target shader variants the probes need
@@ -48,7 +48,15 @@ export const probeState = {
 if (typeof window !== 'undefined') (window as unknown as { __probes?: typeof probeState }).__probes = probeState
 
 /** Per-zone gain on top of the captured radiance (artistic trims, 1 = physical capture). */
-const ZONE_GAIN: Partial<Record<ZoneId, number>> = { theatre: 0.6, courtyard: 1.1 }
+const ZONE_GAIN: Partial<Record<ZoneId, number>> = {
+  'entrance-court': 1.1,
+  // the oxblood inner wall and rose clay absorb a lot: lift the court and galleries a touch
+  inner: 1.12,
+  'ring-a': 1.05,
+  'ring-b': 1.05,
+  'ring-c': 1.05,
+  'hallway-d': 1.08,
+}
 
 const BLEND_S = 1.2
 const REFINE_AFTER_S = 1.8

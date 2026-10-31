@@ -16,8 +16,8 @@ import type { MuseumContent } from '../../src/museum/content/types'
 import { getContent } from '../../src/server/contentStore'
 import { services } from '../../src/server/services'
 
-/** Visiting order (entrance → galleries → court → wings). */
-export const ROOM_ORDER: ZoneId[] = ['atrium', 'reception', 'passage', 'gallery-a', 'gallery-b', 'gallery-c', 'reveal', 'gallery-d', 'theatre', 'workshop', 'courtyard']
+/** Visiting order, as the guided tour walks it (forecourt → entrance hall → entry ways → galleries A, B, C → oculus court → hallway). */
+export const ROOM_ORDER: ZoneId[] = ['entrance-court', 'annex', 'entry-e', 'ring-a', 'ring-b', 'ring-c', 'inner', 'hallway-d']
 
 export interface GuideArtisan {
   id: string

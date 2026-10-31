@@ -1,16 +1,16 @@
 /**
  * Physically based daylight: Preetham atmospheric-scattering sky (three.js Sky,
  * with sun disc + procedural clouds) and a shadow-casting sun aligned to it.
- * The roof and lantern cast shadows, so direct sun reaches the interior ONLY
- * through the skylight glazing.
+ * The roof slab, its oculus collar and the drum cast shadows, so direct sun reaches the
+ * interior ONLY through the open oculus (and, low in the south, a slice through the door).
  */
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Sky } from 'three/examples/jsm/objects/Sky.js'
 import { kelvinToHex, LIGHTING } from '../config/lighting'
-import { KEY } from '../config/museum'
-import { ZONES, zoneAt } from '../config/layout'
+import { KEY, MUSEUM } from '../config/museum'
+import { zoneAt } from '../config/layout'
 import { visitor } from '../state/visitor'
 import { QUALITY_PRESETS, withDevOverrides } from '../config/quality'
 import { useMuseum } from '../state/store'
@@ -28,7 +28,18 @@ export function sunDirection(elevationDeg: number = LIGHTING.sun.elevationDeg, a
   return new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).normalize()
 }
 
-const SUN_TARGET = new THREE.Vector3(0, 0, KEY.gzNorth / 2)
+/**
+ * Shadow frusta. Inside the drum only the drum matters (the sun patch from the oculus, the
+ * walls' shadows on the floor), so the map is spent on it: a frustum just round the roof.
+ * Outside and in the entrance hall the whole building, annex and forecourt edge included.
+ */
+const ROOF_R = KEY.lobeOuterR + MUSEUM.pavilion.roofOverhang
+const FRUSTA = {
+  drum: { target: new THREE.Vector3(0, 0, 0), half: ROOF_R + 1 },
+  site: { target: new THREE.Vector3(0, 0, (KEY.annexOuterZ - ROOF_R) / 2), half: (KEY.annexOuterZ + ROOF_R) / 2 + 3 },
+}
+const frustumFor = (zoneId: string) => (zoneId === 'entrance-court' || zoneId === 'annex' ? FRUSTA.site : FRUSTA.drum)
+const SUN_TARGET = FRUSTA.site.target
 
 function useSky() {
   return useMemo(() => {
@@ -74,16 +85,19 @@ export function SkyAndSun() {
     o.updateMatrixWorld()
     return o
   }, [])
+  const currentZone = useRef<string>('')
+  const currentFrustum = useRef<(typeof FRUSTA)[keyof typeof FRUSTA]>(FRUSTA.site)
 
   useEffect(() => {
     const l = light.current
     if (!l) return
     l.target = target
     const cam = l.shadow.camera
-    cam.left = -15
-    cam.right = 15
-    cam.top = 15
-    cam.bottom = -15
+    const half = currentFrustum.current.half
+    cam.left = -half
+    cam.right = half
+    cam.top = half
+    cam.bottom = -half
     cam.near = 1
     cam.far = 90
     cam.updateProjectionMatrix()
@@ -121,25 +135,24 @@ export function SkyAndSun() {
     requestShadowRefresh(4)
   }, [timeOfDay, dir, sky, target])
 
-  // The shadow frustum (30 m square) follows the wing the visitor is in, so every wing
-  // gets crisp sun shadows without an enormous shadow map. Re-rendered only on change.
-  const currentZone = useRef<string>('')
+  // The frustum follows the visitor between the drum and the outside (FRUSTA); it is
+  // (re)applied when that changes. Re-rendered only on change.
   useFrame((_, dt) => {
     if (!VR_MODE) (sky.material as THREE.ShaderMaterial).uniforms.time.value += dt
     const z = zoneAt(visitor.x, visitor.z)
     const id = z?.id ?? currentZone.current
     if (id && id !== currentZone.current) {
       currentZone.current = id
-      const zone = ZONES.find((zz) => zz.id === id)
-      const main = ['reception', 'passage', 'gallery-a', 'gallery-b', 'gallery-c', 'reveal'].includes(id)
-      const c = main || !zone ? SUN_TARGET : new THREE.Vector3((zone.rect.minX + zone.rect.maxX) / 2, 0, (zone.rect.minZ + zone.rect.maxZ) / 2)
+      const f = frustumFor(id)
+      if (f === currentFrustum.current) return
+      currentFrustum.current = f
+      const c = f.target
       target.position.copy(c)
       target.updateMatrixWorld()
       // Size the orthographic shadow frustum to the space (+ margin for the oblique sun).
       const l = light.current
       if (l) {
-        const rect = zone?.rect ?? { minX: -KEY.gx, maxX: KEY.gx, minZ: KEY.gzNorth, maxZ: 0 }
-        const half = main ? Math.max(KEY.gx, -KEY.gzNorth / 2) + 6 : Math.max(rect.maxX - rect.minX, rect.maxZ - rect.minZ) / 2 + 6
+        const half = f.half
         const cam = l.shadow.camera
         cam.left = -half
         cam.right = half

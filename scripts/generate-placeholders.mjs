@@ -1,56 +1,59 @@
 /**
- * PLACEHOLDER TEXTILE GENERATOR
+ * PLACEHOLDER STUDY GENERATOR — clay pavilion
  *
- *   run:  node scripts/generate-placeholders.mjs
+ *   run:  node scripts/generate-placeholders.mjs            (the artwork studies)
+ *         BRAND=1 node scripts/generate-placeholders.mjs    (also the share card and app icon)
  *
- * Starts a Vite dev server on port 5199 (or reuses one already running there),
- * opens scripts/placeholder-gen.html in headless Chrome via puppeteer-core, renders
- * each procedurally generated placeholder textile on a canvas and writes it as a
- * JPG to public/artworks/.
+ * Opens scripts/clay-placeholder-gen.html in headless Chrome via puppeteer-core, draws each
+ * procedural study on a canvas and writes it to public/artworks/ as <name>.jpg plus the
+ * responsive variants the museum loads (<name>.2048.webp, <name>.1024.webp — see
+ * src/museum/exhibits/artworkTexture.ts). With BRAND=1 it also writes public/brand/og-image.jpg
+ * and public/brand/icon-512.png.
  *
- * Options (env):  CHROME_PATH=<path to chrome.exe>   ONLY=hero-01.jpg,study-02.jpg
+ * Options (env):  CHROME_PATH=<path to chrome.exe>   ONLY=clay-a-01.jpg,clay-b-02.jpg
+ *                 FORCE=1  overwrite a file that already exists
  *
- * These images are generic stand-ins for layout / lighting calibration only; they make
- * no cultural or historical claim and are to be replaced by the workshop's textiles.
+ * These images are stand-ins for layout and lighting only: reliefs, plaques and pots drawn
+ * in the manner of each tradition, with no caption and no claim to depict a documented object.
+ * Existing files are never overwritten without FORCE=1, so the workshop's photographs, once
+ * dropped in under the same names, are safe from a re-run.
  */
-import { createServer } from 'vite'
 import puppeteer from 'puppeteer-core'
-import { mkdir, writeFile } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
+import { access, mkdir, writeFile } from 'node:fs/promises'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const OUT = path.join(ROOT, 'public', 'artworks')
-const PORT = 5199
+const PUBLIC = path.join(ROOT, 'public')
+const OUT = path.join(PUBLIC, 'artworks')
 const CHROME = process.env.CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-const PAGE = `http://localhost:${PORT}/scripts/placeholder-gen.html`
+const PAGE = pathToFileURL(path.join(ROOT, 'scripts', 'clay-placeholder-gen.html')).href
+const FORCE = !!process.env.FORCE
 
-async function serverAlreadyUp() {
-  try {
-    const r = await fetch(PAGE)
-    return r.ok
-  } catch {
-    return false
-  }
-}
-
-let server = null
-if (!(await serverAlreadyUp())) {
-  server = await createServer({
-    root: ROOT,
-    configFile: path.join(ROOT, 'vite.config.ts'),
-    server: { port: PORT, strictPort: true, host: 'localhost', open: false },
-    logLevel: 'warn',
-  })
-  await server.listen()
-}
+const exists = (f) =>
+  access(f).then(
+    () => true,
+    () => false,
+  )
 
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: true,
-  args: ['--no-sandbox', '--disable-gpu-sandbox'],
+  // the page loads its fonts from node_modules over file://
+  args: ['--no-sandbox', '--disable-gpu-sandbox', '--allow-file-access-from-files'],
   protocolTimeout: 600_000,
 })
+
+/** Decode a data URL and write it, unless the file exists (FORCE=1 overwrites). */
+async function save(file, dataUrl) {
+  if (!FORCE && (await exists(file))) {
+    console.log(`  skip ${path.relative(ROOT, file)} (exists; FORCE=1 to overwrite)`)
+    return
+  }
+  const buf = Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64')
+  await writeFile(file, buf)
+  console.log(`  ${path.relative(ROOT, file)}  ${(buf.length / 1024).toFixed(0)} KB`)
+}
 
 try {
   const page = await browser.newPage()
@@ -61,19 +64,21 @@ try {
 
   await mkdir(OUT, { recursive: true })
   let files = await page.evaluate(() => window.PLACEHOLDER_SPECS)
-  if (process.env.ONLY) {
-    const only = process.env.ONLY.split(',').map((s) => s.trim())
-    files = files.filter((f) => only.includes(f))
-  }
+  const only = process.env.ONLY ? process.env.ONLY.split(',').map((s) => s.trim()) : null
+  if (only) files = files.filter((f) => only.includes(f))
   for (const file of files) {
-    const t0 = Date.now()
-    const dataUrl = await page.evaluate((f) => window.renderPlaceholder(f, 0.9), file)
-    const buf = Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64')
-    await writeFile(path.join(OUT, file), buf)
-    console.log(`  ${file}  ${(buf.length / 1024).toFixed(0)} KB  (${Date.now() - t0} ms)`)
+    const stem = file.replace(/\.jpg$/, '')
+    await save(path.join(OUT, file), await page.evaluate((f) => window.renderPlaceholder(f, 0.9), file))
+    for (const edge of [2048, 1024]) {
+      await save(path.join(OUT, `${stem}.${edge}.webp`), await page.evaluate((f, e) => window.renderPlaceholder(f, 0.9, e, 'webp'), file, edge))
+    }
   }
-  console.log(`Wrote ${files.length} placeholder textiles to ${path.relative(ROOT, OUT)}`)
+  console.log(`Placeholder studies: ${files.length} in ${path.relative(ROOT, OUT)}`)
+
+  if (process.env.BRAND) {
+    const brand = await page.evaluate(() => window.BRAND_SPECS)
+    for (const file of brand) await save(path.join(PUBLIC, ...file.split('/')), await page.evaluate((f) => window.renderPlaceholder(f, 0.9), file))
+  }
 } finally {
   await browser.close()
-  if (server) await server.close()
 }

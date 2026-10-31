@@ -13,9 +13,10 @@
  * Indoor channels (built on demand, released a few seconds after they fade out):
  *   workshop   – irregular wooden block-thumps at each printing table (own rhythm each),
  *                occasional cloth rustle, low room tone + reverb
- *   galleries  – hushed brown-noise room tone + gentle reverb (galleries A–D, passage,
- *                reveal, reception and any unknown zone share it; a gallery-type zone gets
- *                its own channel only when /audio/ambience/<zoneId>.mp3 exists)
+ *   galleries  – hushed, warm brown-noise room tone + gentle reverb, with the faint low hum
+ *                of a turning potter's wheel placed at the 'potters-wheel' object. Every zone of
+ *                the clay pavilion (annex, entry ways, A/B/C, hallway, oculus court) shares it;
+ *                a zone gets its own channel only when /audio/ambience/<zoneId>.mp3 exists
  *   atrium     – airy high tone + long reverb + a very low, indistinct distant murmur
  *   shop       – soft room tone
  *   library    – very hushed room tone + faint, occasional paper-like rustles
@@ -60,22 +61,21 @@ type ChannelId = SynthChannel | ZoneId
 
 const OWN_CHANNEL: ReadonlySet<string> = new Set<SynthChannel>(['workshop', 'atrium', 'shop', 'library'])
 /** Zones without an indoor ambience channel. */
-const NO_CHANNEL: ReadonlySet<string> = new Set<ZoneId>(['theatre', 'courtyard'])
+const NO_CHANNEL: ReadonlySet<string> = new Set<ZoneId>(['entrance-court'])
 
+/**
+ * Footstep material per zone, after the pavilion's floors (architecture/Floor.tsx): sandstone
+ * paving outside; inside, one burnished earth floor — hard and dull, closest to 'concrete'.
+ */
 export const ZONE_MATERIAL: Record<ZoneId, FloorMaterial> = {
-  'gallery-a': 'oak',
-  'gallery-b': 'oak',
-  'gallery-c': 'oak',
-  'gallery-d': 'oak',
-  passage: 'oak',
-  reveal: 'oak',
-  reception: 'oak',
-  shop: 'oak',
-  library: 'oak',
-  atrium: 'stone',
-  courtyard: 'stone',
-  workshop: 'concrete',
-  theatre: 'carpet',
+  'entrance-court': 'stone',
+  annex: 'concrete',
+  'entry-e': 'concrete',
+  'ring-a': 'concrete',
+  'ring-b': 'concrete',
+  'ring-c': 'concrete',
+  'hallway-d': 'concrete',
+  inner: 'concrete',
 }
 /** Floor material for a zone; unknown ids fall back to oak. */
 export function materialFor(z: string | null | undefined): FloorMaterial {
@@ -83,7 +83,7 @@ export function materialFor(z: string | null | undefined): FloorMaterial {
 }
 
 /** Footstep room-reverb send per zone (the atrium is the big stone hall). */
-const STEP_REVERB: Partial<Record<string, number>> = { atrium: 0.32, courtyard: 0.04, workshop: 0.14, theatre: 0, 'gallery-d': 0.12, library: 0.05, shop: 0.07 }
+const STEP_REVERB: Partial<Record<string, number>> = { 'entrance-court': 0.04, inner: 0.2, annex: 0.16 }
 const STEP_REVERB_DEFAULT = 0.1
 
 const TICK_ACTIVE_MS = 40
@@ -186,7 +186,19 @@ function roomTone(k: Kit, dest: AudioNode, level: number, cutoff: number, reverb
 
 function buildGalleries(ctx: AudioContext, dest: AudioNode): Part {
   const k = new Kit(ctx)
-  roomTone(k, dest, 0.04, 340, { seconds: 1.8, wet: 0.25 })
+  // The pavilion: a warm, slightly darker room tone than the textile galleries, under a round,
+  // plastered drum (a little more reverb).
+  roomTone(k, dest, 0.036, 300, { seconds: 2.2, wet: 0.28 })
+  // A potter's wheel turning somewhere across the ring: a soft, low friction hum that swells
+  // once a revolution. Positional, so it is only heard faintly beyond its own gallery.
+  for (const w of objs('potters-wheel').slice(0, 1)) {
+    const p = k.panner([w.position[0], 0.6, w.position[2]], 1.4, 1.6, 22)
+    p.connect(dest)
+    const body = k.filter('bandpass', 118, 2.2)
+    const swell = k.gain(0.55)
+    k.lfo(0.85, 0.35, swell.gain)
+    k.loop(noise(ctx).brown).connect(body).connect(swell).connect(k.gain(0.05)).connect(p)
+  }
   return { kit: k }
 }
 
@@ -200,7 +212,7 @@ function buildLibrary(ctx: AudioContext, dest: AudioNode): Part {
   const k = new Kit(ctx)
   roomTone(k, dest, 0.02, 260, { seconds: 0.8, wet: 0.1 })
   // Faint paper-like rustles from a few spots in the room.
-  const rect = ZONES.find((zn) => zn.id === 'library')?.rect
+  const rect = ZONES.find((zn) => (zn.id as string) === 'library')?.rect
   const pts: Vec3[] = rect
     ? [0.25, 0.5, 0.75].map((f, i) => [rect.minX + (rect.maxX - rect.minX) * (i % 2 ? 0.7 : 0.3), 0.9, rect.minZ + (rect.maxZ - rect.minZ) * f] as Vec3)
     : []

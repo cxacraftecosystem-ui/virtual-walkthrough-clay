@@ -27,7 +27,7 @@
   pointer-events: none;
 }
 
-/* faint block-printed motif field */
+/* faint field of thrown rings */
 .ui-entry__motif {
   position: absolute;
   inset: 0;
@@ -63,10 +63,10 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Hand-block stamping motif: a carved block prints a four-repeat row  */
+/* Throwing motif: a pot rises on a turning wheel head                 */
 /* ------------------------------------------------------------------ */
 
-.ui-stamp {
+.ui-throw {
   display: block;
   width: 132px;
   height: auto;
@@ -74,76 +74,57 @@
   overflow: visible;
 }
 
-.ui-stamp__cloth {
-  fill: #f8f2e6;
-  stroke: rgba(43, 38, 33, 0.14);
-  stroke-width: 0.75;
-}
-
-.ui-stamp__hem {
-  stroke: rgba(138, 90, 59, 0.28);
-  stroke-width: 0.75;
-  stroke-dasharray: 2 2.5;
-}
-
-.ui-stamp__print {
-  opacity: 0;
-  animation: 6s var(--ease) infinite both;
-}
-.ui-stamp__print--0 { animation-name: ui-stamp-p0; }
-.ui-stamp__print--1 { animation-name: ui-stamp-p1; }
-.ui-stamp__print--2 { animation-name: ui-stamp-p2; }
-.ui-stamp__print--3 { animation-name: ui-stamp-p3; }
-
-.ui-stamp__madder { fill: #a34a33; }
-.ui-stamp__indigo { fill: #34506e; }
-
-.ui-stamp__block {
-  transform: translate(38px, 48px);
-  animation: ui-stamp-block 6s infinite both;
-}
-
-.ui-stamp__wood { fill: #9b6a45; }
-.ui-stamp__wood-dark { fill: #6e472c; }
-.ui-stamp__grain {
+.ui-throw__shadow { fill: rgba(43, 38, 33, 0.08); }
+.ui-throw__stand { fill: #6e472c; }
+.ui-throw__head { fill: #9b6a45; }
+.ui-throw__spin {
   fill: none;
-  stroke: rgba(60, 36, 20, 0.35);
-  stroke-width: 0.6;
-}
-@keyframes ui-stamp-block {
-  0% { transform: translate(38px, 48px); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.4); }
-  7% { transform: translate(38px, 82px); }
-  11% { transform: translate(38px, 82px); animation-timing-function: cubic-bezier(0.2, 0.6, 0.35, 1); }
-  17% { transform: translate(38px, 48px); animation-timing-function: var(--ease); }
-  22% { transform: translate(86px, 48px); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.4); }
-  29% { transform: translate(86px, 82px); }
-  33% { transform: translate(86px, 82px); animation-timing-function: cubic-bezier(0.2, 0.6, 0.35, 1); }
-  39% { transform: translate(86px, 48px); animation-timing-function: var(--ease); }
-  44% { transform: translate(134px, 48px); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.4); }
-  51% { transform: translate(134px, 82px); }
-  55% { transform: translate(134px, 82px); animation-timing-function: cubic-bezier(0.2, 0.6, 0.35, 1); }
-  61% { transform: translate(134px, 48px); animation-timing-function: var(--ease); }
-  66% { transform: translate(182px, 48px); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.4); }
-  73% { transform: translate(182px, 82px); }
-  77% { transform: translate(182px, 82px); animation-timing-function: cubic-bezier(0.2, 0.6, 0.35, 1); }
-  83% { transform: translate(182px, 48px); animation-timing-function: var(--ease); }
-  96%, 100% { transform: translate(38px, 48px); }
+  stroke: rgba(248, 242, 230, 0.55);
+  stroke-width: 1;
+  stroke-dasharray: 6 19;
+  animation: ui-throw-spin 1.4s linear infinite;
 }
 
-@keyframes ui-stamp-p0 { 0%, 7.9% { opacity: 0; } 8.5%, 86% { opacity: 1; } 94%, 100% { opacity: 0; } }
-@keyframes ui-stamp-p1 { 0%, 29.9% { opacity: 0; } 30.5%, 87% { opacity: 1; } 95%, 100% { opacity: 0; } }
-@keyframes ui-stamp-p2 { 0%, 51.9% { opacity: 0; } 52.5%, 88% { opacity: 1; } 96%, 100% { opacity: 0; } }
-@keyframes ui-stamp-p3 { 0%, 73.9% { opacity: 0; } 74.5%, 89% { opacity: 1; } 97%, 100% { opacity: 0; } }
-
-/* Ready: the row is complete and the block rests beside it. */
-.ui-entry.is-ready .ui-stamp__print { animation: none; opacity: 1; }
-.ui-entry.is-ready .ui-stamp__block,
-.ui-entry.is-still .ui-stamp__block {
-  animation: none;
-  transform: translate(234px, 82px);
-  transition: transform 0.9s var(--ease);
+.ui-throw__pot {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ui-throw-rise 6s var(--ease) infinite both;
 }
-.ui-entry.is-still .ui-stamp__print { animation: none; opacity: 1; }
+.ui-throw__clay { fill: #c96a58; }
+.ui-throw__rim {
+  fill: none;
+  stroke: #a34a33;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.ui-throw__line {
+  fill: none;
+  stroke: rgba(110, 52, 38, 0.38);
+  stroke-width: 0.8;
+  stroke-dasharray: 14 11;
+  animation: ui-throw-spin 1.4s linear infinite;
+}
+
+@keyframes ui-throw-spin {
+  to { stroke-dashoffset: -25; }
+}
+
+/* Rise from a low lump to the full pot, hold, then settle back for the next one. */
+@keyframes ui-throw-rise {
+  0% { transform: scale(1.25, 0.18); opacity: 0; }
+  8% { transform: scale(1.25, 0.18); opacity: 1; }
+  55% { transform: scale(1, 1); opacity: 1; }
+  88% { transform: scale(1, 1); opacity: 1; }
+  100% { transform: scale(1, 1); opacity: 0; }
+}
+
+/* Ready: the pot stands finished and the wheel slows to a stop. */
+.ui-entry.is-ready .ui-throw__pot,
+.ui-entry.is-still .ui-throw__pot { animation: none; transform: none; opacity: 1; }
+.ui-entry.is-ready .ui-throw__spin,
+.ui-entry.is-ready .ui-throw__line,
+.ui-entry.is-still .ui-throw__spin,
+.ui-entry.is-still .ui-throw__line { animation: none; }
 
 /* ------------------------------------------------------------------ */
 /* Titles                                                              */
@@ -454,7 +435,7 @@
   }
   .ui-entry__logo--dc { height: 36px; }
   .ui-entry__logo--iit { height: 44px; }
-  .ui-stamp { width: 112px; margin-bottom: 16px; }
+  .ui-throw { width: 112px; margin-bottom: 16px; }
   .ui-entry__tip { font-size: 12.5px; }
 }
 
@@ -471,20 +452,20 @@
   .ui-entry__brand { top: calc(12px + var(--safe-t)); }
   .ui-entry__logo--dc { height: 30px; }
   .ui-entry__logo--iit { height: 36px; }
-  .ui-stamp { display: none; }
+  .ui-throw { display: none; }
   .ui-entry__rule { margin: 18px auto 16px; }
   .ui-entry__note { margin-top: 12px; }
   .ui-entry__footer { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ui-stamp__block,
-  .ui-stamp__print,
+  .ui-throw__pot,
+  .ui-throw__spin,
+  .ui-throw__line,
   .ui-progress__bar::after {
     animation: none !important;
   }
-  .ui-stamp__print { opacity: 1; }
-  .ui-stamp__block { transform: translate(234px, 82px); }
+  .ui-throw__pot { transform: none; opacity: 1; }
 }
 
 .ui-entry.is-still .ui-progress__bar::after,

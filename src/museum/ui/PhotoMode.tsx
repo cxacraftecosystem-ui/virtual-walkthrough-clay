@@ -11,8 +11,9 @@ import { IconCamera, IconClose } from './icons'
 import { isCoarsePointer } from './HelpOverlay'
 import { awaitRayTraceForCapture, useRayTrace } from '../effects/rayTraceStore'
 import { QUALITY_PRESETS } from '../config/quality'
+import { SITE } from '../../site'
 
-export const CAPTION = 'Hand Block Printing — Virtual Exhibition'
+export const CAPTION = SITE.name
 
 export const usePhoto = create<{ on: boolean; flash: number }>(() => ({ on: false, flash: 0 }))
 
@@ -140,7 +141,7 @@ export async function capturePhoto(): Promise<boolean> {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `hand-block-printing-${stamp()}.png`
+    a.download = `${SITE.fileStem}-${stamp()}.png`
     document.body.appendChild(a)
     a.click()
     a.remove()

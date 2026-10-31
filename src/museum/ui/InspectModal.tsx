@@ -1,5 +1,5 @@
 /**
- * Full-screen 3D inspection viewer for a hand-block exhibit — or, with
+ * Full-screen 3D inspection viewer for an exhibit — or, with
  * `inspect('object:<id>')`, for an inspectable scene object (procedural model or GLB).
  * Has its own <Canvas> (independent of the museum canvas) with a soft studio setup.
  */

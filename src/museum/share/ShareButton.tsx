@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Selection } from '../state/store'
 import { copyText, deepLinkUrl, qrLabelPath } from './deepLink'
 import { QRCode } from './QRCode'
+import { SITE } from '../../site'
 import '../amenities/amenities.css'
 
 function IconShare() {
@@ -56,7 +57,7 @@ export function ShareButton({ selection, title, tabIndex }: { selection: Selecti
     const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> }
     if (nav.share && matchMedia('(pointer: coarse)').matches) {
       try {
-        await nav.share({ title: title ?? 'Hand Block Printing', url })
+        await nav.share({ title: title ?? SITE.defaultExhibitionTitle, url })
         return
       } catch {
         /* cancelled — fall back to the popover */

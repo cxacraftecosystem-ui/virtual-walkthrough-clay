@@ -32,7 +32,7 @@ const placeholder = (id: string, n: number): Artisan => ({
   id,
   name: `Maker profile ${n}`,
   cluster: '',
-  craft: 'Hand block printing',
+  craft: 'Clay',
   bio: '',
   portrait: '',
   contact: '',
@@ -44,13 +44,22 @@ const placeholder = (id: string, n: number): Artisan => ({
   sort: n,
 })
 
-/** Mutable runtime list (replaced in place by the content API). */
-export const ARTISANS: Artisan[] = [placeholder('artisan-placeholder-01', 1), placeholder('artisan-placeholder-02', 2)]
+/**
+ * Mutable runtime list (replaced in place by the content API). One stand-in per tradition; the ids are
+ * the pavilion's own (maker ids are global in the database the two sites share).
+ */
+export const ARTISANS: Artisan[] = [placeholder('clay-maker-placeholder-a', 1), placeholder('clay-maker-placeholder-b', 2), placeholder('clay-maker-placeholder-c', 3)]
 
-/** Seed links: which bundled items point to which placeholder profile. */
+/** Seed links: which bundled items point to which placeholder profile (the hero works of each tradition). */
 export const SEED_ARTISAN_LINKS: Record<string, Record<string, string>> = {
-  artworks: { 'hero-01': 'artisan-placeholder-01', 'hero-02': 'artisan-placeholder-01', 'hero-03': 'artisan-placeholder-02', 'hero-04': 'artisan-placeholder-02', 'hero-05': 'artisan-placeholder-02' },
-  exhibits: { 'block-01': 'artisan-placeholder-01', 'block-02': 'artisan-placeholder-01', 'block-03': 'artisan-placeholder-02', 'block-04': 'artisan-placeholder-02', 'block-05': 'artisan-placeholder-02' },
+  artworks: {
+    'clay-a-01': 'clay-maker-placeholder-a',
+    'clay-a-02': 'clay-maker-placeholder-a',
+    'clay-b-01': 'clay-maker-placeholder-b',
+    'clay-b-02': 'clay-maker-placeholder-b',
+    'clay-c-01': 'clay-maker-placeholder-c',
+    'clay-c-02': 'clay-maker-placeholder-c',
+  },
 }
 
 export const findArtisan = (id: string | undefined) => (id ? ARTISANS.find((a) => a.id === id) : undefined)

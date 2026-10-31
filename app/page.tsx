@@ -9,14 +9,14 @@ import { LandingNav, type NavLink } from './landing/LandingNav'
 import './landing/landing.css'
 
 export const metadata: Metadata = {
-  title: 'Hand Block Printing — A Virtual Exhibition',
+  title: 'Clay Traditions — A Virtual Pavilion',
 }
 
 /** Query params that belong to the 3D gallery (legacy links used to point at `/`). */
 const GALLERY_PARAMS = ['autostart', 'quality', 'static', 'debug', 'tour', 'lang', 'renderer', 'exhibition', 'vr', 'noanalytics', 'decor', 'fx', 'shadows', 'area', 'ao', 'bloom', 'dpr']
 
 /*
- * Every picture on this page is a real frame of the museum, captured by
+ * Every picture on this page is a real frame of the pavilion, captured by
  * `node scripts/capture-landing.mjs` into public/brand/landing/. That script also rewrites
  * ./landing/captured.json (bundled, so it works on serverless hosts where /public isn't on
  * disk); anything not listed renders as a quiet placeholder instead of a broken image.
@@ -34,14 +34,14 @@ const NAV: NavLink[] = [
 ]
 
 const SPACES: { id: string; name: string; line: string; image: string; wide?: boolean }[] = [
-  { id: 'atrium', name: 'Grand Atrium', line: 'A nine-metre arrival hall under six roof lights, hung with printed lengths.', image: 'atrium.jpg', wide: true },
-  { id: 'reveal', name: 'Craft Court', line: 'A rotating carved-block centrepiece, craft infographics and a printed runner.', image: 'court.jpg', wide: true },
-  { id: 'passage', name: 'The Passage', line: 'A daylit corridor that holds the view — until the reveal wall opens the galleries.', image: 'passage.jpg' },
-  { id: 'gallery-a', name: 'Galleries A · B · C', line: 'Hero textiles beside the carved blocks that printed them.', image: 'gallery.jpg' },
-  { id: 'gallery-d', name: 'Gallery D', line: 'The regional gallery — an eight-metre map of India and an avenue of drapes.', image: 'gallery-d.jpg' },
-  { id: 'theatre', name: 'Immersive Theatre', line: 'A curved screen and surround sound for films of the craft.', image: 'theatre.jpg' },
-  { id: 'workshop', name: 'Craft Workshop', line: 'Printing tables, dye vats and a studio where you print your own design.', image: 'workshop.jpg', wide: true },
-  { id: 'courtyard', name: 'Dye Garden Courtyard', line: 'Cloth drying in the sun, dye-plant beds and a rinsing channel — open to the sky.', image: 'courtyard.jpg', wide: true },
+  { id: 'annex', name: 'Entrance Hall', line: 'A straight hall from the door to the curved description wall, where the exhibition begins.', image: 'annex.jpg', wide: true },
+  { id: 'entry-e', name: 'Entry Ways', line: 'Two curved ways round the description wall; a taller wall beyond keeps the centre out of sight.', image: 'entry.jpg' },
+  { id: 'ring-a', name: 'Gallery A — Bankura', line: 'Terracotta horses and reliefs, on podiums along the drum wall.', image: 'gallery-a.jpg' },
+  { id: 'ring-b', name: 'Gallery B — Molela', line: 'Clay plaques modelled in relief, on the podiums and above them.', image: 'gallery-b.jpg' },
+  { id: 'ring-c', name: 'Gallery C — Longpi', line: 'Black pots of stone and clay, polished to a soft shine.', image: 'gallery-c.jpg' },
+  { id: 'inner', name: 'Oculus Court', line: 'A circle open to the sky above a round plinth — daylight moves across it through the day.', image: 'oculus.jpg', wide: true },
+  { id: 'hallway-d', name: 'Hallway', line: 'The making of a clay object in five panels, from raw earth to finished piece.', image: 'hallway.jpg' },
+  { id: 'entrance-court', name: 'Forecourt', line: 'The round pavilion on its landscaped plinth, with the entrance hall reaching out to meet you.', image: 'forecourt.jpg' },
 ]
 
 interface Feature {
@@ -58,50 +58,50 @@ interface Feature {
 const FEATURES: Feature[] = [
   {
     id: 'tour',
-    title: 'A guided tour, room by room',
-    body: 'A narrated walk through every space. The caption card tells you what you are looking at — pause, skip or step off the route whenever you like. Curators can also lead live tours for groups.',
+    title: 'A guided tour, space by space',
+    body: 'A narrated walk round the whole pavilion. The caption card tells you what you are looking at — pause, skip or step off the route whenever you like. Curators can also lead live tours for groups.',
     image: 'f-tour.jpg',
     large: true,
     link: { href: '/gallery?autostart&tour', label: 'Start the guided tour' },
   },
   {
     id: 'studio',
-    title: 'Print a cloth of your own',
-    body: 'At the studio table in the Craft Workshop, choose a carved block and a natural dye, press it onto cloth, and hang your print on the Visitors’ Wall.',
+    title: 'Shape a pot of your own',
+    body: 'At the potter’s wheel in Gallery B, raise a pot from a lump of clay, finish its surface, and set it out for other visitors to see.',
     image: 'f-studio.jpg',
     large: true,
-    link: { href: '/gallery#object=print-studio', label: 'Go to the studio' },
+    link: { href: '/gallery#object=potters-wheel', label: 'Go to the wheel' },
   },
   {
     id: 'info',
-    title: 'Every object, explained',
-    body: 'Select a textile, a block or a film for its story, the technique behind it and the workshop that made it.',
+    title: 'Every piece, explained',
+    body: 'Select a work, a pot or a panel for the tradition it comes from and how it was made.',
     image: 'f-info.jpg',
   },
   {
     id: 'examine',
     title: 'Examine closely',
-    body: 'Deep-zoom into the hero textiles to see the weave, the ink and the hand of the printer.',
+    body: 'Zoom into the works on the walls to see the clay itself — its tool marks, its finish and the grain of the fired surface.',
     image: 'f-examine.jpg',
   },
   {
     id: 'inspect',
-    title: 'Blocks in three dimensions',
-    body: 'Lift a carved block from its plinth and turn it in your hands to read the carving.',
+    title: 'Pieces in three dimensions',
+    body: 'Lift a piece from its podium and turn it in your hands to see it from every side.',
     image: 'f-inspect.jpg',
   },
   {
     id: 'light',
     title: 'Light that changes',
-    body: 'Morning, midday, golden hour, dusk and night — the roof lights follow the sun across the galleries.',
+    body: 'Morning, midday, golden hour, dusk and night — the circle of daylight from the oculus moves across the court.',
     image: 'f-golden.jpg',
     pair: { image: 'f-night.jpg', labels: ['Golden hour', 'Night'] },
   },
   {
-    id: 'theatre',
-    title: 'An immersive theatre',
-    body: 'Films of the craft on a curved screen, with surround sound through your headphones.',
-    image: 'f-theatre.jpg',
+    id: 'making',
+    title: 'From earth to fire',
+    body: 'In the hallway, five panels follow a piece from raw clay through shaping, drying and firing to its finished surface.',
+    image: 'f-making.jpg',
   },
   {
     id: 'photo',
@@ -114,12 +114,12 @@ const FEATURES: Feature[] = [
 const STEPS: { title: string; body: string }[] = [
   { title: 'Open the gallery', body: 'It runs in any modern browser — Chrome, Edge, Safari or Firefox. Nothing to install.' },
   { title: 'Walk at eye level', body: 'Drag to look and use W A S D or the arrow keys to walk — or click the floor to stroll there. On a phone, use the on-screen joystick.' },
-  { title: 'Find your way', body: 'The floor plan (M) takes you to any room in one step, and H shows every control.' },
-  { title: 'Bring a headset', body: 'On a VR headset the whole museum opens in immersive mode, at true scale.' },
+  { title: 'Find your way', body: 'The floor plan (M) takes you to any space in one step, and H shows every control.' },
+  { title: 'Bring a headset', body: 'On a VR headset the whole pavilion opens in immersive mode, at true scale.' },
 ]
 
 const ACCESS: string[] = [
-  'An accessible text-only guide to every room and work',
+  'An accessible text-only guide to every space and work',
   'Reduced motion, high contrast and large text settings',
   'Full keyboard control and screen-reader labels',
   'Narrated tour captions, read aloud in your language',
@@ -159,10 +159,10 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
 
   const t = EXHIBITION_TITLE
   const heroVideo = img('hero.webm')
-  // Poster: the film's first frame, else the hero still, else any captured room (never the
+  // Poster: the film's first frame, else the hero still, else any captured space (never the
   // share card — it has the title baked in). Nothing captured → a quiet dark gradient.
-  const heroPoster = (heroVideo && img('hero-film.jpg')) || img('hero.jpg') || img('court.jpg') || img('atrium.jpg')
-  const closing = img('courtyard.jpg') ?? img('hero.jpg') ?? img('court.jpg')
+  const heroPoster = (heroVideo && img('hero-film.jpg')) || img('hero.jpg') || img('oculus.jpg') || img('annex.jpg')
+  const closing = img('forecourt.jpg') ?? img('hero.jpg') ?? img('oculus.jpg')
   const year = new Date().getFullYear()
 
   return (
@@ -175,7 +175,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
       <main id="main">
         {/* ─────────────────────────────── Hero */}
         <section className="lp-hero" aria-labelledby="lp-title">
-          <HeroMedia poster={heroPoster} video={heroVideo} alt="Inside the virtual museum: the Craft Court, with carved blocks in a vitrine before a madder-red wall" />
+          <HeroMedia poster={heroPoster} video={heroVideo} alt="Inside the virtual pavilion: the oculus court, with daylight falling on the round plinth" />
           <div className="lp-hero__scrim" aria-hidden="true" />
           <div className="lp-hero__inner lp-wrap">
             <div className="lp-hero__text">
@@ -183,10 +183,10 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
               <h1 id="lp-title" className="lp-hero__title">
                 {t.title}
               </h1>
-              <p className="lp-hero__sub">Carved wood, natural dye and cloth — walk through the craft of printing by hand, in your browser.</p>
+              <p className="lp-hero__sub">Earth, water, hand and fire — walk through three traditions of working clay, in your browser.</p>
               <div className="lp-cta">
                 <a className="lp-btn lp-btn--primary lp-btn--lg" href="/gallery">
-                  Enter the virtual gallery
+                  Enter the virtual pavilion
                   <svg className="lp-btn__arrow" viewBox="0 0 20 20" aria-hidden="true">
                     <path d="M4 10h11M11 5.5 15.5 10 11 14.5" />
                   </svg>
@@ -231,14 +231,14 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
                 <span>01</span>The exhibition
               </p>
               <h2 id="about" className="lp-h2 lp-intro__title">
-                Every pattern begins as a block of carved wood.
+                Every piece begins as a handful of earth.
               </h2>
             </div>
             <div className="lp-intro__body" data-reveal>
               <p className="lp-intro__lead">{t.intro}</p>
               <p>
-                In hand block printing a design is cut in relief into seasoned wood, inked with natural dye and pressed onto cloth, one impression at a time, until the repeat covers the length. This virtual exhibition gathers the textiles, the blocks and
-                the workshop together in one walkable museum.
+                Clay is dug, cleaned and kneaded, shaped on the wheel, by hand or in a mould, dried in the shade and fired. This virtual pavilion brings together three traditions that work it in different ways — the terracotta of Bankura in
+                West Bengal, the votive plaques of Molela in Rajasthan and the black pottery of Longpi in Manipur — in one round room you can walk through.
               </p>
               <ul className="lp-intro__facts">
                 <li>
@@ -263,7 +263,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
         {/* ─────────────────────────────── 02 Spaces */}
         <section className="lp-section lp-spaces" aria-labelledby="spaces">
           <div className="lp-wrap">
-            <SectionHead id="spaces" num="02" eyebrow="Explore the spaces" title="A museum you can walk through" lede="From the daylit atrium to the dye-garden courtyard, each room holds a part of the story. Choose one to begin there." />
+            <SectionHead id="spaces" num="02" eyebrow="Explore the spaces" title="A pavilion you can walk through" lede="From the entrance hall to the open court under the oculus, each space holds a part of the story. Choose one to begin there." />
             <ul className="lp-spaces__grid">
               {SPACES.map((s, i) => (
                 <li key={s.id} className={s.wide ? 'is-wide' : undefined} data-reveal>
@@ -284,7 +284,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
         {/* ─────────────────────────────── 03 Experience */}
         <section className="lp-section lp-exp" aria-labelledby="experience">
           <div className="lp-wrap">
-            <SectionHead id="experience" num="03" eyebrow="The experience" title="More than looking" lede="Every screenshot below is the museum itself — the tours, tools and rooms you will find inside." />
+            <SectionHead id="experience" num="03" eyebrow="The experience" title="More than looking" lede="Every picture below is the pavilion itself — the tours, tools and spaces you will find inside." />
             <ul className="lp-exp__grid">
               {FEATURES.map((f) => {
                 const a = img(f.image)
@@ -299,7 +299,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
                         <span className="lp-pair__label lp-pair__label--b">{f.pair.labels[1]}</span>
                       </span>
                     ) : (
-                      <Shot src={a} alt={`${f.title} — in the virtual museum`} label={f.title} className="lp-feature__img" />
+                      <Shot src={a} alt={`${f.title} — in the virtual pavilion`} label={f.title} className="lp-feature__img" />
                     )}
                     <div className="lp-feature__text">
                       <h3>{f.title}</h3>
@@ -350,7 +350,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
         <section className="lp-section lp-access" aria-labelledby="access">
           <div className="lp-wrap lp-split lp-split--flip">
             <div className="lp-split__media" data-reveal>
-              <Shot src={img('f-hindi.jpg')} alt="The museum interface in Hindi, with a textile’s information panel open" label="The museum in Hindi" className="lp-split__img" />
+              <Shot src={img('f-hindi.jpg')} alt="The pavilion interface in Hindi, with a work’s information panel open" label="The pavilion in Hindi" className="lp-split__img" />
             </div>
             <div className="lp-split__text" data-reveal>
               <p className="lp-eyebrow">
@@ -364,7 +364,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
                 <span lang="hi">हिन्दी</span>
                 <span lang="bn">বাংলা</span>
               </p>
-              <p className="lp-body">The whole museum — labels, captions, tour narration and controls — switches language at any time, from the entry screen or the toolbar.</p>
+              <p className="lp-body">The whole pavilion — labels, captions, tour narration and controls — switches language at any time, from the entry screen or the toolbar.</p>
               <ul className="lp-checks">
                 {ACCESS.map((a) => (
                   <li key={a}>{a}</li>
@@ -405,13 +405,13 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
           {closing && <img className="lp-closing__img" src={closing} alt="" loading="lazy" decoding="async" />}
           <div className="lp-closing__scrim" aria-hidden="true" />
           <div className="lp-wrap lp-closing__inner" data-reveal>
-            <p className="lp-hero__kicker">The galleries are open</p>
+            <p className="lp-hero__kicker">The pavilion is open</p>
             <h2 id="lp-closing" className="lp-closing__title">
               Step inside
             </h2>
             <div className="lp-cta lp-cta--center">
               <a className="lp-btn lp-btn--primary lp-btn--lg" href="/gallery">
-                Enter the virtual gallery
+                Enter the virtual pavilion
                 <svg className="lp-btn__arrow" viewBox="0 0 20 20" aria-hidden="true">
                   <path d="M4 10h11M11 5.5 15.5 10 11 14.5" />
                 </svg>
@@ -427,12 +427,12 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
       <footer className="lp-foot">
         <div className="lp-wrap lp-foot__grid">
           <div className="lp-foot__brand">
-            <p className="lp-foot__title">Hand Block Printing</p>
-            <p>A virtual exhibition, presented by DC Handicrafts and IIT Kharagpur.</p>
+            <p className="lp-foot__title">Clay Traditions</p>
+            <p>A virtual pavilion, presented by DC Handicrafts and IIT Kharagpur.</p>
           </div>
           <nav className="lp-foot__col" aria-label="Visit">
             <p className="lp-foot__label">Visit</p>
-            <a href="/gallery">Virtual gallery</a>
+            <a href="/gallery">Virtual pavilion</a>
             <a href="/gallery?autostart&tour">Guided tour</a>
             <a href="/guide">Accessible text guide</a>
           </nav>
@@ -444,7 +444,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
           </nav>
         </div>
         <div className="lp-wrap lp-foot__base">
-          <span>© {year} Hand Block Printing — A Virtual Exhibition</span>
+          <span>© {year} Clay Traditions — A Virtual Pavilion</span>
           <a href="#top">Back to top ↑</a>
         </div>
       </footer>

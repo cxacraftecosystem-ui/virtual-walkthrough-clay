@@ -1,4 +1,4 @@
-/* Text-only museum guide (/guide). Scoped under .guide-root.
+/* Text-only pavilion guide (/guide). Scoped under .guide-root.
  * The global stylesheet locks html/body (overflow hidden) for the 3D app, so the guide is its
  * own full-viewport scroll container (like .adm-root); print makes it static again. */
 

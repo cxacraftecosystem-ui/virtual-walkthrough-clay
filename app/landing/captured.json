@@ -1,27 +1,4 @@
 {
-  "note": "Written by scripts/capture-landing.mjs — the landing-page images that exist in public/brand/landing/.",
-  "files": [
-    "atrium.jpg",
-    "court.jpg",
-    "courtyard.jpg",
-    "f-examine.jpg",
-    "f-golden.jpg",
-    "f-hindi.jpg",
-    "f-info.jpg",
-    "f-inspect.jpg",
-    "f-night.jpg",
-    "f-photo.jpg",
-    "f-studio.jpg",
-    "f-theatre.jpg",
-    "f-tour.jpg",
-    "f-walk.jpg",
-    "gallery-d.jpg",
-    "gallery.jpg",
-    "hero-film.jpg",
-    "hero.jpg",
-    "hero.webm",
-    "passage.jpg",
-    "theatre.jpg",
-    "workshop.jpg"
-  ]
+  "note": "Written by scripts/capture-landing.mjs — the landing-page images that exist in public/brand/landing/. Empty until the pavilion's frames are captured (the hand block museum's frames are not shown here).",
+  "files": []
 }

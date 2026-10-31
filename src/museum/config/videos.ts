@@ -5,10 +5,9 @@
  * Multichannel (5.1) files are routed channel-by-channel to the virtual speakers in
  * `audio.speakers`; stereo files are up-mixed (L→FL+SL, R→FR+SR, L+R→C).
  *
- * STAND-IN STATUS: every clip below is a generated film (see
- * scripts/generate-placeholder-videos.mjs) until the workshop supplies footage.
+ * STAND-IN STATUS: none yet (see the note above VIDEOS).
  */
-import { MUSEUM, type Vec3 } from './museum'
+import type { Vec3 } from './museum'
 import type { SurfaceId } from './layout'
 import type { ContentI18n } from '../i18n/core'
 
@@ -68,143 +67,10 @@ export interface VideoConfig {
   i18n?: ContentI18n<'title' | 'description' | 'alt'>
 }
 
-const PORTRAIT_NOTE = 'A short portrait film of the craft.'
-const FILM_NOTE = 'A short film made for this exhibition.'
-
-/* ------------------------------------------------------------------ */
-/* Immersive theatre — screen + 7.1 layout derived from the room        */
-/* ------------------------------------------------------------------ */
-const TH = MUSEUM.wings.theatre
-/** Screen centre along the screen (west) wall. */
-const thZ = (TH.minZ + TH.maxZ) / 2
-/** 16:9 film: the widest screen whose masked height fits the room (≈ 0.45 m sill, 0.4 m head room). */
-const thWidth = Math.min(13.5, ((TH.height - 0.45 - 0.4) * 16) / 9)
-const thCentre = 0.45 + ((thWidth * 9) / 16) / 2
-/** Audience centre (x) for the side surrounds: middle of the seating block (objects.ts rows). */
-const audX = TH.minX + (TH.maxX - TH.minX) * 0.36
 /**
- * Point in screen-local terms → world. `lx` = the seated visitor's right (+) / left (−) when
- * facing the screen (which faces +x, so the visitor's right is −z), `d` = distance from the screen wall.
+ * The pavilion has no screen yet. The generated films in public/videos are the hand block museum's (their
+ * titles and imagery are printing), so none is reused here. When the workshop supplies a film of the making,
+ * a flat screen fits the hallway (`placement: { surface: 'd-hallway-6', at: 1.16, centerHeight: 1.7 }`,
+ * `width: 1.9`, spatial audio, `playback: 'proximity'`, `zone: 'hallway-d'`) or the entrance hall's west wall.
  */
-const thPos = (lx: number, y: number, d: number): Vec3 => [TH.minX + d, y, thZ - lx]
-
-export const VIDEOS: VideoConfig[] = [
-  {
-    id: 'welcome-film',
-    title: 'Welcome Film',
-    description: FILM_NOTE,
-    src: '/videos/welcome-film.webm',
-    poster: '/videos/welcome-film.jpg',
-    placement: { surface: 'atrium-north-west', at: -5.6, centerHeight: 3.1 },
-    width: 6.4,
-    screen: 'led-wall',
-    audio: { mode: 'spatial', volume: 0.55, refDistance: 3, rolloff: 1.4, maxDistance: 30 },
-    playback: 'proximity',
-    zone: 'atrium',
-    loop: true,
-    placeholder: true,
-  },
-  {
-    id: 'theatre-film',
-    title: 'Immersive Theatre — Feature Film',
-    description: FILM_NOTE,
-    src: '/videos/theatre-film.webm',
-    poster: '/videos/theatre-film.jpg',
-    placement: { surface: 'theatre-screen', at: thZ, centerHeight: thCentre },
-    width: thWidth,
-    screen: 'curved',
-    curveDeg: 40,
-    audio: {
-      mode: 'surround',
-      volume: 0.8,
-      refDistance: 5,
-      rolloff: 1,
-      maxDistance: 48,
-      speakers: [
-        // screen channels sit behind the acoustically transparent screen
-        { channel: 'FL', position: thPos(-thWidth * 0.32, thCentre, 0.55) },
-        { channel: 'FR', position: thPos(thWidth * 0.32, thCentre, 0.55) },
-        { channel: 'C', position: thPos(0, thCentre - 0.4, 0.45) },
-        { channel: 'LFE', position: thPos(-thWidth * 0.2, 0.45, 0.5) },
-        // side surrounds on the long walls, level with the middle of the audience
-        { channel: 'SL', position: [audX, 3.4, TH.maxZ - 0.35] },
-        { channel: 'SR', position: [audX, 3.4, TH.minZ + 0.35] },
-        // rear surrounds on the back (east) wall
-        { channel: 'BL', position: [TH.maxX - 0.4, 3.4, thZ + 4.6] },
-        { channel: 'BR', position: [TH.maxX - 0.4, 3.4, thZ - 4.6] },
-      ],
-    },
-    playback: 'proximity',
-    zone: 'theatre',
-    loop: true,
-    placeholder: true,
-  },
-  {
-    id: 'process-film-1',
-    title: 'Process Film — Printing',
-    description: FILM_NOTE,
-    src: '/videos/process-film-1.webm',
-    poster: '/videos/process-film-1.jpg',
-    placement: { surface: 'workshop-west', at: 3.0, centerHeight: 2.3 },
-    width: 3.2,
-    screen: 'flat',
-    audio: { mode: 'spatial', volume: 0.45, refDistance: 2, rolloff: 1.8, maxDistance: 18 },
-    playback: 'proximity',
-    activationDistance: 9,
-    loop: true,
-    placeholder: true,
-  },
-  {
-    id: 'process-film-2',
-    title: 'Process Film — Dyeing',
-    description: FILM_NOTE,
-    src: '/videos/process-film-2.webm',
-    poster: '/videos/process-film-2.jpg',
-    placement: { surface: 'workshop-south', at: 20.3, centerHeight: 2.4 },
-    width: 3.2,
-    screen: 'flat',
-    audio: { mode: 'spatial', volume: 0.45, refDistance: 2, rolloff: 1.8, maxDistance: 18 },
-    playback: 'proximity',
-    activationDistance: 9,
-    loop: true,
-    placeholder: true,
-  },
-  // ── "Meet the maker" portrait screens at the east end of the workshop aisle, beside
-  //    printing tables II and IV (placeholder: centre crops of the process films)
-  {
-    id: 'maker-portrait-1',
-    title: 'Meet the Maker — Portrait I',
-    description: PORTRAIT_NOTE,
-    src: '/videos/process-film-1.webm',
-    placement: { surface: 'workshop-east', at: 12.15, centerHeight: 1.45 },
-    kind: 'portrait',
-    stand: { x: 27.75, z: 12.15, rotationDeg: -70 },
-    cropAspect: 9 / 16,
-    width: 0.54,
-    screen: 'flat',
-    audio: { mode: 'spatial', volume: 0.38, refDistance: 1.2, rolloff: 2.2, maxDistance: 9 },
-    lightSpill: false,
-    playback: 'proximity',
-    activationDistance: 4.5,
-    loop: true,
-    placeholder: true,
-  },
-  {
-    id: 'maker-portrait-2',
-    title: 'Meet the Maker — Portrait II',
-    description: PORTRAIT_NOTE,
-    src: '/videos/process-film-2.webm',
-    placement: { surface: 'workshop-east', at: 16.45, centerHeight: 1.45 },
-    kind: 'portrait',
-    stand: { x: 27.75, z: 16.45, rotationDeg: -110 },
-    cropAspect: 9 / 16,
-    width: 0.54,
-    screen: 'flat',
-    audio: { mode: 'spatial', volume: 0.38, refDistance: 1.2, rolloff: 2.2, maxDistance: 9 },
-    lightSpill: false,
-    playback: 'proximity',
-    activationDistance: 4.5,
-    loop: true,
-    placeholder: true,
-  },
-]
+export const VIDEOS: VideoConfig[] = []

@@ -23,7 +23,7 @@ const langOf = (v: string | string[] | undefined): Lang => {
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
   const lang = langOf((await searchParams).lang)
   return {
-    title: `${translate(lang, 'guide.title')} — Hand Block Printing`,
+    title: `${translate(lang, 'guide.title')} — Clay Traditions`,
     description: translate(lang, 'guide.lede'),
     alternates: { languages: Object.fromEntries(LANGS.map((l) => [l.bcp47, `/guide?lang=${l.value}`])) },
   }
@@ -278,7 +278,7 @@ export default async function GuidePage({ searchParams }: { searchParams: Search
   const { t } = ctx
   const rooms = groupByRoom(content)
   const ex = content.exhibition
-  const title = str(loc(ex, 'title', lang)) ?? 'Hand Block Printing'
+  const title = str(loc(ex, 'title', lang)) ?? 'Clay Traditions'
   const kicker = str(loc(ex, 'kicker', lang))
   const subtitle = str(loc(ex, 'subtitle', lang))
   const intro = str(loc(ex, 'intro', lang))

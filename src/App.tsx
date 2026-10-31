@@ -17,6 +17,7 @@ import { ErrorBoundary } from './museum/utils/ErrorBoundary'
 import { tr } from './museum/i18n'
 import { reportError } from './museum/utils/errorReporter'
 import { webgpuGL, webgpuRequested } from './museum/utils/renderer'
+import { SITE } from './site'
 
 // Small automation/debug handle (used by scripts/screenshots.mjs and handy in the console).
 declare global {
@@ -85,7 +86,7 @@ function SceneError() {
     <div className="ui-nogl" role="alert">
       <div className="ui-nogl__inner">
         <div className="ui-kicker">A Virtual Exhibition</div>
-        <h1 className="ui-nogl__title">Hand Block Printing</h1>
+        <h1 className="ui-nogl__title">{SITE.defaultExhibitionTitle}</h1>
         <p>Something went wrong while loading the gallery. Reloading usually fixes it.</p>
         <p>
           <button type="button" className="ui-btn ui-btn--ghost" onClick={() => window.location.reload()}>

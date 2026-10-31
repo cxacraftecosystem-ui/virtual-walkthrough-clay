@@ -1,5 +1,5 @@
 /**
- * TrackRail + TrackSpot: visible 3000K track fixtures with a real SpotLight.
+ * TrackRail + TrackSpot: visible warm-white track fixtures with a real SpotLight.
  * The fixture head is oriented at its target; the light has no shadow map
  * (cones are tight and aimed at walls, so leakage is negligible and cheap).
  */
@@ -9,7 +9,7 @@ import type { Vec3 } from '../config/museum'
 import { kelvinToHex, LIGHTING } from '../config/lighting'
 import { useMaterials } from '../materials/materials'
 import type { Rail } from './tracks'
-import { RAIL_Y } from './tracks'
+import { RAIL_Y, railPoints } from './tracks'
 import { registerSpot } from './SpotPool'
 
 const headGeo = new THREE.CylinderGeometry(0.032, 0.036, 0.13, 20, 1, false)
@@ -18,7 +18,12 @@ const lensGeo = new THREE.CircleGeometry(0.027, 20)
 const stemGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.09, 8)
 const adapterGeo = new THREE.BoxGeometry(0.05, 0.03, 0.05)
 
-export const TRACK_COLOR = kelvinToHex(LIGHTING.track.colorK, LIGHTING.track.chromaticAdaptation)
+/**
+ * The pavilion's accent colour: 3300 K warm white, partly adapted (PDF "warm white to neutral");
+ * it sits between the 3000 K of the config's track default and the 3500 K cove and keeps the
+ * red clays from going orange.
+ */
+export const TRACK_COLOR = kelvinToHex(Math.max(LIGHTING.track.colorK, 3300), LIGHTING.track.chromaticAdaptation * 0.9)
 
 const lensMat = new THREE.MeshStandardMaterial({
   color: '#fff6e8',
@@ -28,19 +33,26 @@ const lensMat = new THREE.MeshStandardMaterial({
   toneMapped: true,
 })
 
+/** The rail itself: a straight run, or an arc drawn as short straight segments. */
 export function TrackRail({ rail }: { rail: Rail }) {
   const m = useMaterials()
-  const { position, length, rotY } = useMemo(() => {
-    const a = new THREE.Vector3(...rail.from)
-    const b = new THREE.Vector3(...rail.to)
-    const mid = a.clone().add(b).multiplyScalar(0.5)
-    const d = b.clone().sub(a)
-    return { position: mid.toArray() as Vec3, length: d.length(), rotY: Math.atan2(d.x, d.z) }
+  const segments = useMemo(() => {
+    const pts = railPoints(rail, 0.6)
+    return pts.slice(1).map((b, i) => {
+      const a = new THREE.Vector3(...pts[i])
+      const d = new THREE.Vector3(...b).sub(a)
+      const mid = a.clone().addScaledVector(d, 0.5)
+      return { position: mid.toArray() as Vec3, length: d.length(), rotY: Math.atan2(d.x, d.z) }
+    })
   }, [rail])
   return (
-    <mesh position={position} rotation={[0, rotY, 0]} material={m.trackBlack}>
-      <boxGeometry args={[0.035, 0.022, length]} />
-    </mesh>
+    <group>
+      {segments.map((sg, i) => (
+        <mesh key={i} position={sg.position} rotation={[0, sg.rotY, 0]} material={m.trackBlack}>
+          <boxGeometry args={[0.035, 0.022, sg.length + 0.01]} />
+        </mesh>
+      ))}
+    </group>
   )
 }
 

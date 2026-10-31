@@ -43,6 +43,33 @@ export type MaterialKey =
   | 'brick'
   | 'flutedTimber'
   | 'brass'
+  // ── clay pavilion (architecture/Pavilion.tsx, palette from the design PDF) ──
+  /** Rose clay plaster: drum interior below the duplex band. */
+  | 'clayRose'
+  /** Paler rose clay: drum interior above the band, the oculus light well. */
+  | 'clayBlush'
+  /** Terracotta clay plaster: hallway wall D, annex interior, niche linings. */
+  | 'clayTerracotta'
+  /** Ochre clay plaster: entry-way accents, the band ledge. */
+  | 'clayOchre'
+  /** Pale buff clay: the description wall H (carries the title). */
+  | 'clayBuff'
+  /** Deep oxblood red clay: the inner main wall F, fins, podiums. */
+  | 'oxblood'
+  /** Oxblood lacquer: door reveal, plinth curb top (low sheen). */
+  | 'oxbloodLacquer'
+  /** Raw sun-dried clay: feature patches, the plinth basin. */
+  | 'rawClay'
+  /** Rammed earth: the pavilion's exterior walls. */
+  | 'rammedEarth'
+  /** Burnished earth floor (interior). */
+  | 'earthFloor'
+  /** Oxblood inlay rings in the earth floor. */
+  | 'earthInlay'
+  /** Ceiling / roof soffit: pale clay. */
+  | 'clayCeiling'
+  /** Exterior paving: warm sandstone slabs (forecourt, landscape plinth). */
+  | 'sandPaving'
 
 export type MuseumMaterials = Record<MaterialKey, THREE.Material>
 
@@ -82,7 +109,7 @@ export function finishTextureSize(tier: QualityTier, base: number): number {
   const s = QUALITY_PRESETS[tier].textureSize / 1024
   return Math.max(128, Math.min(2048, Math.round(base * s)))
 }
-const FINISH_BASE = { limewash: 512, stained: 512, ashlar: 512, brick: 384 } as const
+const FINISH_BASE = { limewash: 512, stained: 512, ashlar: 512, brick: 384, clayPlaster: 1024, rawClay: 512, rammedEarth: 512, earthFloor: 1024 } as const
 
 /** Every procedural texture size a tier uses (kept alive when switching tiers). */
 function tierTextureSizes(tier: QualityTier): number[] {
@@ -142,6 +169,13 @@ function buildMaterials(tier: QualityTier): MuseumMaterials {
   const stained = finish('limewashStained', FINISH_BASE.stained)
   const ashlar = finish('ashlar', FINISH_BASE.ashlar)
   const brick = finish('brick', FINISH_BASE.brick)
+  const clay = finish('clayPlaster', FINISH_BASE.clayPlaster)
+  const raw = finish('rawClay', FINISH_BASE.rawClay)
+  const rammed = finish('rammedEarth', FINISH_BASE.rammedEarth)
+  const earth = finish('earthFloor', FINISH_BASE.earthFloor)
+  /** Clay plaster tinted by `color`; keeps the set's roughness map (raw patches are matte). */
+  const clayFinish = (name: string, color: string, normalScale = 0.8, roughness = 1, envMapIntensity = 0.5) =>
+    textured(clay, { name, color, normalScale, roughness, envMapIntensity })
   const flute = getFluteNormalMap()
   flute.repeat.set(1 / 0.045, 1) // 45 mm reeds
 
@@ -230,6 +264,28 @@ function buildMaterials(tier: QualityTier): MuseumMaterials {
       envMapIntensity: 0.8,
     }),
     brass: solid('brass', '#b8955a', 0.32, 1, 1.1),
+
+    clayRose: clayFinish('clayRose', '#d4978a'),
+    clayBlush: clayFinish('clayBlush', '#e3b9ab', 0.7),
+    clayTerracotta: clayFinish('clayTerracotta', '#bd8371'),
+    clayOchre: clayFinish('clayOchre', '#cba486'),
+    clayBuff: clayFinish('clayBuff', '#e9d7c3', 0.6),
+    oxblood: clayFinish('oxblood', '#7a2c27', 0.9, 0.95, 0.45),
+    oxbloodLacquer: new THREE.MeshStandardMaterial({
+      name: 'oxbloodLacquer',
+      color: new THREE.Color('#6d211c'),
+      map: clay.map,
+      normalMap: clay.normalMap,
+      normalScale: new THREE.Vector2(0.15, 0.15),
+      roughness: 0.38,
+      envMapIntensity: 0.8,
+    }),
+    rawClay: textured(raw, { name: 'rawClay', color: '#c27d5f', normalScale: 1.1, envMapIntensity: 0.35 }),
+    rammedEarth: textured(rammed, { name: 'rammedEarth', color: '#ffffff', normalScale: 1, envMapIntensity: 0.45 }),
+    earthFloor: textured(earth, { name: 'earthFloor', color: '#d8b39b', normalScale: 0.45, envMapIntensity: 0.75 }),
+    earthInlay: textured(earth, { name: 'earthInlay', color: '#8c3a2f', normalScale: 0.45, roughness: 0.85, envMapIntensity: 0.7 }),
+    clayCeiling: limeFinish(lime, 'clayCeiling', '#f1ddd2', 0.4, 0.95),
+    sandPaving: textured(stone, { name: 'sandPaving', color: '#ead8c4', normalScale: 0.6, envMapIntensity: 0.6 }),
   }
   return mats
 }

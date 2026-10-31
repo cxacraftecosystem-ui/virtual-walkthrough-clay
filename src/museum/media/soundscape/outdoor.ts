@@ -19,8 +19,8 @@
  * Recordings: /audio/ambience/<site>-<timeOfDay>.mp3, then /audio/ambience/<site>.mp3,
  * replace every synthesised part of that site for that time of day (incl. the water).
  */
-import type { ZoneId } from '../../config/layout'
-import { MUSEUM } from '../../config/museum'
+import { ZONES, zoneAt, type ZoneId } from '../../config/layout'
+import { KEY, MUSEUM } from '../../config/museum'
 import { SCENE_OBJECTS } from '../../config/objects'
 import type { TimeOfDay } from '../../state/store'
 import { debug } from './debug'
@@ -54,11 +54,13 @@ function defs(): Record<SiteId, SiteDef> {
   const trees = of('tree').map((t) => [t.position[0], (t.height ?? 5) * 0.7, t.position[2]] as Vec3)
   const beds = of('plant-bed').map((o) => [o.position[0], 0.35, o.position[2]] as Vec3)
   const planters = of('planter')
-    .filter((o) => o.zone === 'courtyard')
+    .filter((o) => o.zone === 'entrance-court')
     .map((o) => [o.position[0], 0.6, o.position[2]] as Vec3)
   const wc = of('water-channel')[0]
-  const cy = MUSEUM.wings.courtyard
-  const z0 = MUSEUM.wings.atrium.maxZ + MUSEUM.walls.exteriorThickness
+  // The pavilion has no courtyard; its site is kept (silent, see audibility) for the shared
+  // engine, centred on the oculus so a sky-lit court can reuse it.
+  const cy = { minX: -MUSEUM.oculus.r, maxX: MUSEUM.oculus.r, minZ: -MUSEUM.oculus.r, maxZ: MUSEUM.oculus.r }
+  const z0 = KEY.annexOuterZ
   return {
     courtyard: {
       id: 'courtyard',
@@ -98,29 +100,18 @@ function defs(): Record<SiteId, SiteDef> {
 
 /** How much of a site is heard from where the visitor stands: level and muffling cut-off. */
 function audibility(site: SiteId, zone: ZoneId | null, x: number, z: number): { gain: number; lp: number } {
-  const outside = z > MUSEUM.wings.shell.maxZ + 0.3 || x < MUSEUM.wings.shell.minX || x > MUSEUM.wings.shell.maxX || z < MUSEUM.wings.shell.minZ
-  if (site === 'courtyard') {
-    if (outside) return { gain: 0, lp: 1500 }
-    switch (zone) {
-      case 'courtyard':
-        return { gain: 1, lp: 18000 }
-      case 'workshop':
-        return { gain: 0.16, lp: 2400 }
-      case 'gallery-b':
-      case 'gallery-c':
-        return { gain: 0.1, lp: 2000 }
-      case 'reveal':
-        return { gain: 0.05, lp: 1500 }
-      default:
-        return { gain: 0, lp: 1500 }
-    }
-  }
+  const outside = zone ? !!ZONES.find((zz) => zz.id === zone)?.outdoor : (zoneAt(x, z)?.outdoor ?? true)
+  if (site === 'courtyard') return { gain: 0, lp: 1500 }
   if (outside) return { gain: 1, lp: 18000 }
   switch (zone) {
-    case 'atrium':
-      return { gain: 0.5, lp: 4200 }
-    case 'reception':
-      return { gain: 0.1, lp: 1800 }
+    case 'annex':
+      return { gain: 0.4, lp: 3600 }
+    case 'inner':
+      // open to the sky through the oculus
+      return { gain: 0.12, lp: 2600 }
+    case 'entry-e':
+    case 'hallway-d':
+      return { gain: 0.06, lp: 1800 }
     default:
       return { gain: 0, lp: 1500 }
   }

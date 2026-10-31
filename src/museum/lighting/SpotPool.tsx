@@ -11,7 +11,7 @@ import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Vec3 } from '../config/museum'
-import { segmentBlocked } from '../navigation/collision'
+import { ignoreLow, segmentBlocked } from '../navigation/collision'
 import { visitor } from '../state/visitor'
 
 export interface SpotRequest {
@@ -50,7 +50,8 @@ function score(req: SpotRequest) {
   // Probe point slightly off the lit surface, toward the fixture.
   const px = tx + (req.position[0] - tx) * 0.25
   const pz = tz + (req.position[2] - tz) * 0.25
-  const blocked = segmentBlocked(visitor.x, visitor.z, px, pz, (c) => c.id.startsWith('table-') || c.id.startsWith('bench'))
+  // low colliders (podiums, the plinth, benches, tables) never hide a light's target
+  const blocked = segmentBlocked(visitor.x, visitor.z, px, pz, ignoreLow)
   const fx = -Math.sin(visitor.yaw)
   const fz = -Math.cos(visitor.yaw)
   const behind = d > 1.5 && (dx * fx + dz * fz) / d < -0.2

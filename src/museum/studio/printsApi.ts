@@ -1,4 +1,4 @@
-/** Client for the Visitors' Wall API (docs/API.md → "Visitor prints"). */
+/** Client for the Visitors' Shelf (the visitor prints API, docs/API.md → "Visitor prints": a pot's turntable shot is a print). */
 import { getSessionId } from '../analytics/tracker'
 
 export interface WallPrint {
@@ -31,7 +31,7 @@ const blobToDataUrl = (b: Blob) =>
   })
 
 export async function submitPrint(png: Blob, displayName: string, summary: { motif: string; meta: Record<string, unknown> }) {
-  if (png.size > PRINT_MAX_BYTES) throw new Error('The print is larger than 2 MB')
+  if (png.size > PRINT_MAX_BYTES) throw new Error('The picture is larger than 2 MB')
   const res = await fetch('/api/prints', {
     method: 'POST',
     credentials: 'include',
@@ -39,7 +39,7 @@ export async function submitPrint(png: Blob, displayName: string, summary: { mot
     body: JSON.stringify({ image: await blobToDataUrl(png), sessionId: getSessionId(), displayName, motif: summary.motif, meta: summary.meta }),
   })
   const data = (await res.json().catch(() => null)) as { error?: string; id?: string } | null
-  if (!res.ok) throw new Error(data?.error ?? 'The Visitors’ Wall couldn’t take your print just now. Please try again.')
+  if (!res.ok) throw new Error(data?.error ?? 'The Visitors’ Shelf couldn’t take your pot just now. Please try again.')
   return data as { id: string; status: 'pending'; createdAt: string }
 }
 

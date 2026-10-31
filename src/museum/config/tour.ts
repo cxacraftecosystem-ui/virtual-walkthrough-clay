@@ -1,5 +1,5 @@
 /**
- * GUIDED TOUR — data-driven stops across the whole museum.
+ * GUIDED TOUR — data-driven stops round the clay pavilion.
  *
  * Each stop is a standing point + view direction (`view`, compass yaw: 0 = north,
  * 90 = east, 180 = south, 270 = west) and an optional `item` that the caption card can
@@ -7,12 +7,15 @@
  * in the museum — they deliberately make no historical or cultural claims.
  *
  * Walking between stops is planned over NAV_WAYPOINTS (see src/museum/tour/pathing.ts),
- * so routes always pass through doorways; hops longer than `teleportBeyond` metres use the
- * soft fade instead of a long walk.
+ * so routes always go round the curved walls and through the door; hops longer than
+ * `teleportBeyond` metres use the soft fade instead of a long walk.
+ *
+ * Route: forecourt → entrance hall (description wall H) → inner main wall F → entry ways E →
+ * Galleries A, B, C round the ring → oculus court (and the statement on F's court face) →
+ * hallway D. Hindi / Bengali captions: src/museum/i18n/tourText.ts (same stop ids).
  */
-import { ARTWORKS } from './artworks'
-import { COURT_CENTER, SURFACES, surfacePoint } from './layout'
-import { MUSEUM } from './museum'
+import { BENCHES, BENCH_SIZE, PODIUM_SLOTS, SURFACES, surfacePoint, type SurfaceId } from './layout'
+import { KEY, MUSEUM, polar } from './museum'
 import { TOUR_OVERRIDE } from '../content/exhibition'
 import type { SelectionKind } from '../state/store'
 import type { ContentI18n, Lang } from '../i18n/core'
@@ -52,361 +55,166 @@ export const TOUR = {
   narrationRate: 0.95,
 }
 
-/** Standing point `dist` metres in front of an artwork, facing it (follows its config placement). */
-function artworkView(id: string, dist: number, fallback: TourView, pitchDeg = 2): TourView {
-  const a = ARTWORKS.find((x) => x.id === id)
-  if (!a) return fallback
-  const s = SURFACES[a.placement.surface]
-  const p = surfacePoint(a.placement.surface, a.placement.at, 0, dist)
+/** Standing point `dist` metres in front of a point on a display surface, facing it. */
+export function surfaceView(surface: SurfaceId, at: number, dist: number, pitchDeg = 2): TourView {
+  const s = SURFACES[surface]
+  const p = surfacePoint(surface, at, 0, dist)
   const [nx, nz] = s.normal
   // face opposite the wall normal
   const yawDeg = ((Math.atan2(-nx, nz) * 180) / Math.PI + 360) % 360
   return { x: p.position[0], z: p.position[2], yawDeg, pitchDeg }
 }
 
+/** Standing point `dist` metres in front of the middle of a display surface. */
+const midView = (surface: SurfaceId, dist: number, pitchDeg = 2) => surfaceView(surface, (SURFACES[surface].range[0] + SURFACES[surface].range[1]) / 2, dist, pitchDeg)
+
 /** Standing point (x, z) facing a target point (compass yaw). */
-function lookAt(x: number, z: number, tx: number, tz: number, pitchDeg = 2): TourView {
+export function lookAt(x: number, z: number, tx: number, tz: number, pitchDeg = 2): TourView {
   return { x, z, yawDeg: ((Math.atan2(tx - x, -(tz - z)) * 180) / Math.PI + 360) % 360, pitchDeg }
 }
-const CZ = COURT_CENTER.z
-const GD = MUSEUM.wings.galleryD
-const GDX = (GD.minX + GD.maxX) / 2
-const TH = MUSEUM.wings.theatre
-const DR = MUSEUM.wings.doors
+
+/** Standing point on the drum's polar grid (radius, plan angle) facing a target point. */
+const polarLook = (r: number, aDeg: number, tx: number, tz: number, pitchDeg = 2) => {
+  const [x, z] = polar(r, aDeg)
+  return lookAt(x, z, tx, tz, pitchDeg)
+}
+
+/** Standing in front of a podium slot, facing it. */
+function podiumView(slotId: string, dist = 1.5, pitchDeg = -8): TourView {
+  const p = PODIUM_SLOTS.find((s) => s.id === slotId) ?? PODIUM_SLOTS[0]
+  const [x, z] = polar(MUSEUM.podium.ringR - dist, p.angleDeg)
+  return lookAt(x, z, p.x, p.z, pitchDeg)
+}
 
 export const TOUR_STOPS: TourStop[] = [
   {
-    id: 'atrium',
-    place: 'Grand Atrium',
-    title: 'Welcome to the museum',
-    text: 'You are standing in the Grand Atrium, just inside the main entrance. Printed textile lengths hang high overhead, and the doorway ahead, between the timber columns, leads to the reception and the galleries.',
-    view: { x: 0, z: 17.8, yawDeg: 0, pitchDeg: 9 },
-    item: { kind: 'object', id: 'banner-3' },
-    dwellSec: 10,
-  },
-  {
-    id: 'welcome-film',
-    place: 'Grand Atrium',
-    title: 'The welcome film',
-    text: 'A large screen on the atrium’s north wall plays the welcome film, with a bench in front of it. Its sound follows the screen, so it grows louder as you approach.',
-    view: lookAt(-3.7, 14.0, -5.6, 8.5, 8),
-    item: { kind: 'video', id: 'welcome-film' },
-  },
-  {
-    id: 'atrium-textile',
-    place: 'Grand Atrium',
-    title: 'The monumental textile',
-    text: 'On the west wall of the hall hangs a six-metre printed textile; the exhibition title is across the hall above the information desk.',
-    view: lookAt(-2.6, 13.2, -10, 12.0, 12),
-    item: { kind: 'artwork', id: 'feature-13' },
+    id: 'arrival',
+    place: 'Entrance Forecourt',
+    title: 'Welcome to the clay pavilion',
+    text: 'A round, double-height pavilion stands on a low landscaped plinth. The doorway ahead opens into a straight entrance hall that leads into the drum.',
+    view: { x: MUSEUM.visitor.start.x, z: MUSEUM.visitor.start.z, yawDeg: 0, pitchDeg: 6 },
     dwellSec: 9,
   },
   {
-    id: 'reception',
-    place: 'Reception',
-    title: 'The reception',
-    text: 'A lower, quieter room between the atrium and the galleries. Small studies hang on either side, and the welcome text is on the north wall, beside the passage.',
-    view: artworkView('study-12', 2.4, { x: 2.6, z: 1.5, yawDeg: 90 }),
-    item: { kind: 'artwork', id: 'study-12' },
-    dwellSec: 9,
-  },
-  {
-    id: 'credits',
-    place: 'Reception',
-    title: 'The partners wall',
-    text: 'Turning back towards the atrium, two stone panels either side of the doorway acknowledge the partners who present the exhibition.',
-    view: lookAt(0, 4.9, 0, 8.2, 3),
-    item: { kind: 'object', id: 'credits-presented' },
-    dwellSec: 8,
-  },
-  {
-    id: 'shop',
-    place: 'Museum Shop',
-    title: 'The museum shop',
-    text: 'Through the east doorway of the reception is the museum shop: timber shelves and low tables of folded printed cloth, cushions and stoles.',
-    view: lookAt(5.9, 4.5, 9.6, 4.4, -6),
-    item: { kind: 'object', id: 'shop-table-1' },
-    dwellSec: 10,
-  },
-  {
-    id: 'library',
-    place: 'Reading Room & Library',
-    title: 'The reading room',
-    text: 'Across the reception is a quiet reading room: bookcases along the west wall, a long reading table with lamps, framed drawings for printing blocks, and a lectern holding an open sample book. The Resources board by the door lists the text guide and other material.',
-    view: lookAt(-5.95, 6.0, -8.4, 2.2, -5),
-    item: { kind: 'object', id: 'library-pattern-book' },
+    id: 'description-wall',
+    place: 'Entrance Hall',
+    title: 'The description wall',
+    text: 'At the end of the entrance hall a curved wall carries the title and introduction of the exhibition. On the way in, the panel on the right-hand wall names the three traditions and the way round.',
+    view: { x: 0, z: KEY.annexMouthZ + 2.2, yawDeg: 0, pitchDeg: 3 },
+    item: { kind: 'infographic', id: 'traditions' },
     dwellSec: 11,
   },
   {
-    id: 'passage',
-    place: 'Central Passage',
-    title: 'The central passage',
-    text: 'A long, narrow passage runs up the middle of the gallery beneath the skylight. The display bays open on either side of it.',
-    view: { x: 0, z: -2.6, yawDeg: 0, pitchDeg: 4 },
+    id: 'inner-main-wall',
+    place: 'Entry Ways',
+    title: 'The inner main wall',
+    text: 'Behind the description wall, a second, taller curved wall keeps the centre of the pavilion out of sight. The galleries begin round its right-hand end.',
+    // From the left of the entry way between H and F (1.8 m wide), looking along F's curve to its
+    // right-hand end and the first gallery beyond (a square-on view of F shows only blank wall).
+    view: polarLook(MUSEUM.descriptionWall.r - 0.55, 100, ...polar(MUSEUM.innerMainWall.r + 0.95, 42), 4),
     dwellSec: 9,
   },
   {
-    id: 'reveal',
-    place: 'Reveal Wall',
-    title: 'The reveal wall',
-    text: 'At the end of the passage a free-standing wall interrupts the view. It carries the exhibition title and a large framed feature painting. Step around it on either side to reach the craft court.',
-    view: { x: 0.4, z: -15.4, yawDeg: 0, pitchDeg: 6 },
-    item: { kind: 'artwork', id: 'feature-01' },
-    dwellSec: 10,
+    id: 'entry-ways',
+    place: 'Entry Ways',
+    title: 'Into the galleries',
+    text: 'The entry ways curve round both ends of the description wall. On the drum wall ahead, a panel introduces the first tradition: the terracotta of Bankura, in West Bengal.',
+    view: midView('e-north-3', 1.7, 3),
+    item: { kind: 'infographic', id: 'tradition-a' },
   },
   {
-    id: 'hero-01',
+    id: 'gallery-a',
     place: 'Gallery A',
-    title: 'Hero Textile I',
-    text: 'The first of the five hero works hangs on the perimeter wall of Gallery A. Beside it, a display table holds the printing block associated with it.',
-    view: artworkView('hero-01', 2.8, { x: -7.2, z: -4.5, yawDeg: 270 }),
-    item: { kind: 'artwork', id: 'hero-01' },
-  },
-  {
-    id: 'salon',
-    place: 'Gallery A',
-    title: 'A salon hang',
-    text: 'On the passage partition, seven small studies are hung together as one cluster. A key panel beside them carries their captions.',
-    view: { x: -4.5, z: -4.5, yawDeg: 90, pitchDeg: 3 },
-    item: { kind: 'infographic', id: 'info-salon' },
-    dwellSec: 9,
-  },
-  {
-    id: 'hero-02',
-    place: 'Gallery A',
-    title: 'Hero Textile II',
-    text: 'In the north bay of Gallery A, the second hero work. The doorway beyond it leads west into Gallery D.',
-    view: artworkView('hero-02', 2.9, { x: -7.1, z: -11, yawDeg: 270 }),
-    item: { kind: 'artwork', id: 'hero-02' },
-  },
-  {
-    id: 'map-wall',
-    place: 'Gallery D',
-    title: 'The map wall',
-    text: 'Through the doorway, an avenue of suspended printed drapes leads to a large relief map of India on the far wall.',
-    view: { x: GD.minX + 7.6, z: DR.galleryToGalleryD.z, yawDeg: 270, pitchDeg: 6 },
-    item: { kind: 'object', id: 'india-map-wall' },
-    dwellSec: 13,
-  },
-  {
-    id: 'gallery-d-centrepiece',
-    place: 'Gallery D',
-    title: 'A block under glass',
-    text: 'At the north end of Gallery D a carved block turns slowly under a glass dome, in front of a triptych of tall printed panels.',
-    view: lookAt(GDX + 0.4, -23.2, GDX, -26.4, -6),
-    item: { kind: 'object', id: 'centrepiece-gallery-d' },
-    dwellSec: 10,
-  },
-  {
-    id: 'centrepiece',
-    place: 'Craft Court',
-    title: 'The master block',
-    text: 'Back in the craft court, beneath the skylight, a large carved printing block turns slowly on a tall round table. Open it to inspect the block in 3D.',
-    view: lookAt(0.6, CZ + 3.2, 0, CZ, -7),
-    item: { kind: 'object', id: 'centrepiece-court' },
+    title: 'Bankura terracotta',
+    text: 'A row of slender podiums follows the drum wall, each piece lit from above. Here a terracotta horse stands with its neck held high; reliefs hang on the wall above the row.',
+    view: podiumView('pod-a-1', 1.6),
+    item: { kind: 'object', id: 'clay-a-horse' },
     dwellSec: 12,
   },
   {
-    id: 'product-wall',
-    place: 'Craft Court',
-    title: 'The product wall',
-    text: 'The north wall of the craft court carries four panels about the craft, flanked by two tall printed panels.',
-    view: { x: 0, z: -29.4, yawDeg: 0, pitchDeg: 3 },
-    item: { kind: 'infographic', id: 'info-technique' },
-  },
-  {
-    id: 'runner',
-    place: 'Craft Court',
-    title: 'The printed runner',
-    text: 'Along the east wall of the court runs a seven-metre printed runner, with a table of blocks at its end.',
-    view: artworkView('runner-01', 3.1, { x: 6.9, z: CZ, yawDeg: 90 }),
-    item: { kind: 'artwork', id: 'runner-01' },
-    dwellSec: 9,
-  },
-  {
-    id: 'hero-03',
+    id: 'gallery-b',
     place: 'Gallery B',
-    title: 'Hero Textile III',
-    text: 'Gallery B opens off the court. The third hero work is on its perimeter wall, lit by its own track spotlight.',
-    view: artworkView('hero-03', 2.8, { x: 7.2, z: -11.4, yawDeg: 90 }),
-    item: { kind: 'artwork', id: 'hero-03' },
+    title: 'The votive plaques of Molela',
+    text: 'On the far side of the ring, the podiums carry flat clay plaques modelled in relief, with cups and a lamp between them. Larger plaques hang above.',
+    view: podiumView('pod-b-3', 1.7),
+    item: { kind: 'object', id: 'clay-b-plaque-deity' },
+    dwellSec: 12,
   },
   {
-    id: 'hero-05',
-    place: 'Gallery B',
-    title: 'Hero Textile V',
-    text: 'On the partition side of the bay hangs the fifth hero work, the widest of the five, with its printing block on the table nearby.',
-    view: artworkView('hero-05', 2.8, { x: 4.7, z: -13.5, yawDeg: 270 }),
-    item: { kind: 'artwork', id: 'hero-05' },
-    dwellSec: 9,
-  },
-  {
-    id: 'hero-04',
+    id: 'gallery-c',
     place: 'Gallery C',
-    title: 'Hero Textile IV',
-    text: 'Past the short return wall lies Gallery C, where the fourth hero work completes the set on the perimeter wall.',
-    view: artworkView('hero-04', 2.8, { x: 7.2, z: -4.5, yawDeg: 90 }),
-    item: { kind: 'artwork', id: 'hero-04' },
+    title: 'Longpi black pottery',
+    text: 'The last of the three galleries. The black pots on the podiums are polished to a soft shine; on the curved wall nearby hang three more works.',
+    view: podiumView('pod-c-1', 1.6),
+    item: { kind: 'object', id: 'clay-c-kettle' },
+    dwellSec: 12,
   },
   {
-    id: 'courtyard',
-    place: 'Dye Garden Courtyard',
-    title: 'The dye garden',
-    text: 'Through the doorway in Gallery B is an open-air courtyard. Printed cloths hang on drying lines between planting beds, with a rinsing channel along the far wall.',
-    view: { x: 20.6, z: -15.2, yawDeg: 0, pitchDeg: 5 },
-    item: { kind: 'object', id: 'drying-line-3' },
+    id: 'oculus',
+    place: 'Oculus Court',
+    title: 'The oculus court',
+    text: 'At the centre of the pavilion the roof opens to the sky. Daylight falls through the oculus onto the round plinth below, and its circle of light moves across the rings through the day.',
+    view: polarLook(4.3, 62, 0, 0, 10),
+    item: { kind: 'object', id: 'oculus-plinth' },
+    dwellSec: 12,
   },
   {
-    id: 'dye-vats',
-    place: 'Craft Workshop Hall',
-    title: 'The dye vats',
-    text: 'South of the courtyard lies the workshop hall. Just inside, four dye vats stand along the north wall beside a wash tank.',
-    view: lookAt(22.0, 2.0, 25.6, 0.2, -12),
-    item: { kind: 'object', id: 'dye-vat-indigo' },
+    id: 'statement',
+    place: 'Oculus Court',
+    title: 'Earth, water, hand and fire',
+    text: 'The court side of the inner main wall carries the statement of the exhibition: every piece here began as earth, and water, hands and fire made it what it is.',
+    view: midView('f-inner-main', 1.95, 7),
+    item: { kind: 'infographic', id: 'statement' },
+    dwellSec: 10,
   },
   {
-    id: 'workshop',
-    place: 'Craft Workshop Hall',
-    title: 'The printing tables',
-    text: 'The hall is laid out as a working studio: four long printing tables either side of a central aisle, archive shelves of carved blocks along the east wall and a carving bench in the corner.',
-    view: lookAt(21.2, 14.3, 16.4, 11.0, -10),
-    item: { kind: 'object', id: 'printing-table-1' },
-  },
-  {
-    id: 'artisan-capture',
-    place: 'Craft Workshop Hall',
-    title: 'The printer’s place',
-    text: 'Across the second printing table, a softly glowing seated figure marks the place where a printer sits at work.',
-    view: lookAt(23.0, 13.4, 23.4, 9.9, -6),
-    item: { kind: 'object', id: 'artisan-capture-2' },
-  },
-  {
-    id: 'meet-the-maker',
-    place: 'Craft Workshop Hall',
-    title: 'Meet the maker',
-    text: 'At the end of the aisle stand two small portrait screens. Step close to one to hear it, or click a screen to pause it.',
-    view: lookAt(24.8, 14.3, 27.75, 14.3, 0),
-    item: { kind: 'video', id: 'maker-portrait-1' },
-  },
-  {
-    id: 'print-studio',
-    place: 'Craft Workshop Hall',
-    title: 'Print it yourself',
-    text: 'Now it is your turn. Click the small printing table to open the studio: choose a block and a dye, then click or tap the cloth to print. Hold longer for a firmer impression, use the repeat guides to line up a pattern, and download your cloth or send it to the Visitors’ Wall.',
-    view: lookAt(15.4, 8.5, 13.0, 8.5, -16),
-    item: { kind: 'object', id: 'print-studio' },
-    dwellSec: 13,
-  },
-  {
-    id: 'visitors-wall',
-    place: 'Craft Workshop Hall',
-    title: 'The Visitors’ Wall',
-    text: 'Behind the studio table hang prints made by visitors, framed like small textiles. Each one appears after a member of the museum team has reviewed it; the empty frames are waiting for the next prints.',
-    view: lookAt(14.6, 8.6, 10.3, 8.6, 6),
-    item: { kind: 'object', id: 'visitors-wall' },
-  },
-  {
-    id: 'theatre',
-    place: 'Immersive Theatre',
-    title: 'The immersive theatre',
-    text: 'The tour ends in the theatre on the west side of the atrium. A curved screen fills the far wall and surround sound plays from speakers around the room. Take a seat and stay as long as you like.',
-    view: { x: TH.minX + 14.0, z: (TH.minZ + TH.maxZ) / 2, yawDeg: 270, pitchDeg: 4 },
-    item: { kind: 'video', id: 'theatre-film' },
-    dwellSec: 14,
+    id: 'hallway',
+    place: 'Hallway',
+    title: 'From clay to finished piece',
+    text: 'A curved hallway leads back towards the entrance. Five panels along the drum wall follow a piece from raw clay to finished object, and shelves opposite hold pots before and after firing.',
+    view: surfaceView('d-hallway-1', (SURFACES['d-hallway-1'].range[0] + SURFACES['d-hallway-1'].range[1]) / 2, 1.7, 2),
+    item: { kind: 'infographic', id: 'process-prepare' },
+    dwellSec: 12,
   },
 ]
-
 /** Bundled stops (the admin uses them as the template for a per-exhibition tour override). */
 export const BUNDLED_TOUR_STOPS: readonly TourStop[] = TOUR_STOPS.slice()
 // Per-exhibition tour override from the content API (src/museum/content/exhibition.ts).
 if (TOUR_OVERRIDE.stops?.length) TOUR_STOPS.splice(0, TOUR_STOPS.length, ...TOUR_OVERRIDE.stops)
 
+/** Waypoints at radius r for each plan angle (deg). */
+const ringOf = (r: number, angles: number[]) => angles.map((a) => polar(r, a))
+
 /**
- * Navigation waypoints [x, z] — room centres, aisles and both sides of each doorway.
+ * Navigation waypoints [x, z] — round the ring, through the entry ways and the hallway, down
+ * the annex and both sides of the door, and round the pavilion outside.
  * Only positions matter; edges are computed from the collision geometry.
  */
 export const NAV_WAYPOINTS: [number, number][] = [
-  // Grand Atrium
-  [0, 18.0],
-  [0, 14.2],
-  [-5.2, 14.2],
-  [5.4, 13.4],
-  [-9.0, DR.atriumToTheatre.z],
-  [9.0, DR.atriumToWorkshop.z],
-  [0, 9.3],
-  // reception + passage
-  [0, 7.4],
-  [0, 4.2],
-  // reception side doors → shop (east) / library (west)
-  [3.7, DR.receptionToShop.z],
-  [6.3, DR.receptionToShop.z],
-  [-3.7, DR.receptionToLibrary.z],
-  [-5.95, DR.receptionToLibrary.z],
-  [0, 0.9],
-  [0, -0.8],
-  [0, -6.0],
-  [0, -12.0],
-  [0, -17.2],
-  [0, -19.1],
-  // craft court around the reveal wall
-  [-5.2, -19.0],
-  [5.2, -19.0],
-  [-5.2, -22.2],
-  [5.2, -22.2],
-  [0, -23.2],
-  [-7.6, CZ],
-  [7.6, CZ],
-  [-3.2, -29.6],
-  [3.2, -29.6],
-  [0, -29.6],
-  // Gallery A (inner aisle x −3.85, outer aisle x −7.7) + cross-overs at the island ends
-  [-3.85, -1.0],
-  [-3.85, -9.0],
-  [-3.85, -17.2],
-  [-7.7, -1.0],
-  [-7.4, -9.0],
-  [-7.7, -17.2],
-  [-5.95, -9.0],
-  [-5.95, -17.7],
-  [-8.9, DR.galleryToGalleryD.z],
-  // Galleries B / C
-  [3.85, -1.0],
-  [3.85, -9.0],
-  [3.85, -17.2],
-  [7.7, -1.0],
-  [7.4, -9.0],
-  [7.7, -17.2],
-  [5.95, -9.0],
-  [5.95, -17.7],
-  [8.9, DR.galleryToCourtyard.z],
-  // Gallery D
-  [-11.5, DR.galleryToGalleryD.z],
-  [-16.0, DR.galleryToGalleryD.z],
-  [GD.minX + 7.6, DR.galleryToGalleryD.z],
-  [GDX, -22.8],
-  [-14.5, -10.5],
-  [-22.0, -10.5],
-  [DR.theatreToGalleryD.x, GD.maxZ - 1.1],
-  // Theatre
-  [DR.theatreToGalleryD.x, TH.minZ + 1.1],
-  [-13.6, (TH.minZ + TH.maxZ) / 2],
-  [TH.minX + 14.0, (TH.minZ + TH.maxZ) / 2],
-  [-13.0, DR.atriumToTheatre.z],
-  [-11.4, DR.atriumToTheatre.z],
-  // Craft Workshop Hall
-  [11.4, DR.atriumToWorkshop.z],
-  [20.3, DR.atriumToWorkshop.z],
-  [20.3, 8.6],
-  [15.6, 8.6], // in front of the studio table / Visitors' Wall
-  [25.0, 14.3], // east end of the aisle ("Meet the maker" screens)
-  [20.3, 5.4],
-  [21.0, 2.0],
-  [DR.workshopToCourtyard.x, MUSEUM.wings.workshop.minZ + 1.2],
-  // Dye Garden Courtyard
-  [DR.workshopToCourtyard.x, MUSEUM.wings.courtyard.maxZ - 1.2],
-  [DR.workshopToCourtyard.x, -8.0],
-  [DR.workshopToCourtyard.x, DR.galleryToCourtyard.z],
-  [11.5, DR.galleryToCourtyard.z],
-  [14.0, DR.galleryToCourtyard.z],
-  [DR.workshopToCourtyard.x, -26.0],
+  // forecourt and the door
+  [0, MUSEUM.visitor.start.z],
+  [-4.6, 24.0],
+  [4.6, 24.0],
+  [-5.4, 17.0],
+  [5.4, 17.0],
+  [0, KEY.annexOuterZ + 1.1],
+  [0, MUSEUM.annex.endZ - 1.0],
+  // annex and its mouth in front of H
+  [0, 15.0],
+  [0, KEY.annexMouthZ + 0.6],
+  ...ringOf(9.35, [45, 60, 75, 105, 120, 135]),
+  // between H and F (the entry corridor)
+  ...ringOf(7.0, [40, 60, 90, 120, 140]),
+  // round F's ends into the ring
+  ...ringOf(6.95, [27, 153]),
+  // the ring of galleries, inside the podiums
+  ...ringOf(5.0, [20, 5, -15, -35, -60, -85, -105, -125, -145, -165, 175, 160]),
+  // the oculus court (inside F), either side of the bench and between it and the plinth
+  ...ringOf(4.5, [45, 135]),
+  [0, (MUSEUM.oculus.rings[0] + (BENCHES[0]?.z ?? 4.5) - BENCH_SIZE.depth / 2) / 2],
+  // C → hallway opening, and the hallway
+  ...ringOf(7.6, [214]),
+  ...ringOf(9.4, [218, 200, 180, 160, 148]),
+  // round the pavilion outside, on the landscape plinth
+  ...ringOf(13.2, [60, 30, 0, -30, -60, -90, -120, -150, 180, 150, 120]),
 ]

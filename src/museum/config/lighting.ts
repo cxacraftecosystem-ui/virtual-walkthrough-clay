@@ -100,7 +100,7 @@ export const LIGHTING = {
     chromaticAdaptation: 0.45,
     /** Default accent spotlight intensity (candela) per artwork. */
     artworkIntensity: 22,
-    /** Hand-block table spot intensity (candela). */
+    /** Exhibit display-table spot intensity (candela). */
     tableIntensity: 12,
     penumbra: 0.85,
     /** Height of the track rail below the ceiling. */

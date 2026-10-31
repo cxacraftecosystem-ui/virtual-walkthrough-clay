@@ -12,10 +12,11 @@ import { Centrepiece } from './centrepiece'
 import { Pedestal, Vitrine } from './display'
 import { MapWall } from './mapWall'
 import { ArtisanCapture } from './artisan'
-import { PrintStudioTable, VisitorsWall } from './printStudio'
+import { PottersWheel, PrintStudioTable, VisitorsWall } from './printStudio'
 import { ShopCounter, ShopShelf, ShopTable, StoleRail } from './shop'
 import { Bookcase, DrawingWall, LoungeSet, PatternLectern, ReadingTable, ResourceBoard } from './library'
 import { CreditsPanel } from './credits'
+import { ClayShelf, ClayVessel, OculusPlinth, Podium, TerracottaHorse, VotivePlaque } from './clay'
 import { BlockShelf, CarvingBench, DyeVat, FabricRolls, PigmentStation, PrintingTable, WashTank } from './workshop'
 
 export type { ModelProps } from './types'
@@ -60,4 +61,11 @@ export const PROCEDURAL_MODELS: Record<ProceduralModelId, ComponentType<ModelPro
   'drawing-wall': DrawingWall,
   'resource-board': ResourceBoard,
   'credits-panel': CreditsPanel,
+  podium: Podium,
+  'clay-vessel': ClayVessel,
+  'terracotta-horse': TerracottaHorse,
+  'votive-plaque': VotivePlaque,
+  'oculus-plinth': OculusPlinth,
+  'clay-shelf': ClayShelf,
+  'potters-wheel': PottersWheel,
 }

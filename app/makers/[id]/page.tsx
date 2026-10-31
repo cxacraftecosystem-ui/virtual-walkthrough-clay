@@ -31,7 +31,7 @@ async function load(id: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = await load((await params).id)
-  if (!data) return { title: 'Maker not found — Virtual Museum' }
+  if (!data) return { title: 'Maker not found — Clay Pavilion' }
   const m = data.maker
   return {
     title: `${m.name} — Meet the maker`,
@@ -59,8 +59,8 @@ export default async function MakerPage({ params }: Props) {
   return (
     <main className="sp-root">
       <article className="sp-wrap" aria-labelledby="maker-name">
-        <nav className="sp-nav" aria-label="Museum">
-          <a href="/gallery">← Back to the museum</a>
+        <nav className="sp-nav" aria-label="Pavilion">
+          <a href="/gallery">← Back to the pavilion</a>
         </nav>
 
         <div className="sp-head">
@@ -107,13 +107,13 @@ export default async function MakerPage({ params }: Props) {
 
         {works.length > 0 && (
           <section aria-labelledby="maker-works">
-            <h2 id="maker-works" className="sp-kicker" style={{ marginTop: 32 }}>In the museum</h2>
+            <h2 id="maker-works" className="sp-kicker" style={{ marginTop: 32 }}>In the pavilion</h2>
             <ul className="sp-list">
               {works.map((w) => (
                 <li key={`${w.exhibition.slug}/${w.collection}/${w.id}`}>
                   {w.title}{' '}
                   <span style={{ color: 'var(--muted)' }}>
-                    — {w.collection === 'exhibits' ? 'hand block' : 'textile'} in{' '}
+                    — {w.collection === 'artworks' ? 'work' : 'piece'} in{' '}
                     <a className="sp-link" href={w.exhibition.isDefault ? '/gallery' : `/gallery/${encodeURIComponent(w.exhibition.slug)}`}>{w.exhibition.title}</a>
                   </span>
                 </li>
@@ -123,7 +123,7 @@ export default async function MakerPage({ params }: Props) {
         )}
 
         <p className="sp-note">
-          Purchases and commissions happen directly with the maker or their cooperative; the museum takes no commission.
+          Purchases and commissions happen directly with the maker or their cooperative; the pavilion takes no commission.
           Profiles are supplied and approved by the workshop.
         </p>
       </article>

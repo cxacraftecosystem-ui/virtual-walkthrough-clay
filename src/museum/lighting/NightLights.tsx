@@ -3,16 +3,20 @@
  *
  *  • <TimeOfDayController> eases `ambience` (timeOfDayState.ts) toward the selected preset and
  *    applies it: renderer exposure (the eye adapts at night), sky dusk/night uniforms, cloud cover.
- *  • <CourtyardLanterns> — bronze wall lanterns around the Dye Garden Courtyard. Their glass glows
+ *  • <CourtyardLanterns> — bronze wall lanterns beside the entrance door. Their glass glows
  *    and their downlights come on at dusk/night. The downlights are SpotPool REQUESTS (the pool
  *    has a fixed number of real lights), switched off by day (intensity 0 → never ranked), so
  *    switching time of day never changes the light count or recompiles a shader.
+ *  • <FacadeUplights> — small in-ground uplights round the foot of the drum and the annex,
+ *    grazing the rammed earth with scalloped pools of warm light at dusk and night. Glow
+ *    only (an additive film on the walls + emissive lenses): no real lights.
  */
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { kelvinToHex, LIGHTING } from '../config/lighting'
-import { MUSEUM } from '../config/museum'
+import { zoneAt } from '../config/layout'
+import { KEY, MUSEUM } from '../config/museum'
 import { ZoneGroup } from '../navigation/zoneCulling'
 import { useMuseum } from '../state/store'
 import { ambience, ambienceTarget, snapAmbience, type AmbienceKey } from './timeOfDayState'
@@ -63,8 +67,7 @@ export function TimeOfDayController() {
       })
     }
     const c = camera.position
-    const S = MUSEUM.wings.shell
-    const outside = c.y > S.height + 0.4 || c.x < S.minX - 0.5 || c.x > S.maxX + 0.5 || c.z > S.maxZ + 0.4 || c.z < S.minZ - 0.5
+    const outside = c.y > MUSEUM.pavilion.height + 0.4 || (zoneAt(c.x, c.z)?.outdoor ?? true)
     const glow = ambience.night * (outside ? 1 : 0)
     glassScan.k += (glow - glassScan.k) * (1 - Math.exp(-4 * dt))
     for (const m of glassScan.mats) {
@@ -73,30 +76,24 @@ export function TimeOfDayController() {
     }
   })
 
-  return <CourtyardLanterns />
+  return (
+    <>
+      <CourtyardLanterns />
+      <FacadeUplights />
+    </>
+  )
 }
 
 /* ------------------------------------------------------------------ */
 /* Courtyard wall lanterns                                             */
 /* ------------------------------------------------------------------ */
 
-const CY = MUSEUM.wings.courtyard
 const MOUNT_Y = 2.55
 
-/** Wall-mounted positions: [x, z, facing yaw] — clear of doors, beds, drapes and the drying lines. */
+/** Wall-mounted positions: [x, z] + outward normal — a pair either side of the annex door. */
 const LANTERNS: { x: number; z: number; nx: number; nz: number }[] = [
-  // west wall (Gallery B side), flanking the gallery door at z ≈ −16.2
-  { x: CY.minX, z: -13.6, nx: 1, nz: 0 },
-  { x: CY.minX, z: -18.8, nx: 1, nz: 0 },
-  // east wall, below the hanging cloths
-  { x: CY.maxX, z: -8.6, nx: -1, nz: 0 },
-  { x: CY.maxX, z: -23.8, nx: -1, nz: 0 },
-  // north wall, above the garden benches
-  { x: 17.4, z: CY.minZ, nx: 0, nz: 1 },
-  { x: 23.8, z: CY.minZ, nx: 0, nz: 1 },
-  // south wall, flanking the workshop door (x ≈ 20.6)
-  { x: 17.9, z: CY.maxZ, nx: 0, nz: -1 },
-  { x: 23.3, z: CY.maxZ, nx: 0, nz: -1 },
+  { x: -(KEY.doorHalf + 0.75), z: KEY.annexOuterZ, nx: 0, nz: 1 },
+  { x: KEY.doorHalf + 0.75, z: KEY.annexOuterZ, nx: 0, nz: 1 },
 ]
 
 const bronze = new THREE.MeshStandardMaterial({ color: '#3a2c20', roughness: 0.45, metalness: 0.85 })
@@ -135,7 +132,7 @@ function CourtyardLanterns() {
   })
 
   return (
-    <ZoneGroup zones={['courtyard']}>
+    <ZoneGroup zones={['entrance-court', 'annex']}>
       {LANTERNS.map((l, i) => {
         const yaw = Math.atan2(l.nx, l.nz)
         return (
@@ -161,6 +158,137 @@ function CourtyardLanterns() {
           </group>
         )
       })}
+    </ZoneGroup>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Facade uplights                                                     */
+/* ------------------------------------------------------------------ */
+
+/** Spacing of the uplights along the walls (m), their pool height, setback and film offset. */
+const UP = { pitch: 2.6, height: 4.2, setback: 0.32, off: 0.012 }
+
+/** Scalloped pool: bright at the foot, a widening cone fading up the wall; u repeats per light. */
+function scallopTexture() {
+  const W = 64
+  const H = 64
+  const data = new Uint8Array(W * H * 4)
+  for (let y = 0; y < H; y++) {
+    const v = y / (H - 1)
+    for (let x = 0; x < W; x++) {
+      const u = (x + 0.5) / W - 0.5
+      const spread = 0.13 + 0.2 * v
+      const a = Math.exp(-((u / spread) ** 2)) * Math.pow(1 - v, 1.7) * Math.min(1, v * 25 + 0.4)
+      // alphaMap reads the green channel
+      const g = Math.round(Math.min(1, a) * 255)
+      data.set([g, g, g, 255], (y * W + x) * 4)
+    }
+  }
+  const t = new THREE.DataTexture(data, W, H, THREE.RGBAFormat)
+  t.wrapS = THREE.RepeatWrapping
+  t.magFilter = THREE.LinearFilter
+  t.minFilter = THREE.LinearFilter
+  t.needsUpdate = true
+  return t
+}
+
+/**
+ * The washed exterior faces — drum lobe, gallery ring, both annex sides — as quads facing out
+ * (counter-clockwise seen from outside; u counts lights, v runs up the wall), and the lights'
+ * ground positions.
+ */
+function exteriorRuns() {
+  const pos: number[] = []
+  const uv: number[] = []
+  const lights: [number, number][] = []
+  const y0 = 0.02
+  const y1 = UP.height
+  const quad = (p: number[][], u: number[]) => {
+    p.forEach((q, i) => {
+      pos.push(q[0], q[1], q[2])
+      uv.push(u[i], q[1] > y0 ? 1 : 0)
+    })
+  }
+  const arc = (r: number, a0: number, a1: number) => {
+    const len = (a1 - a0) * r
+    const n = Math.max(1, Math.round(len / UP.pitch))
+    const steps = Math.max(8, Math.ceil(len / 0.4))
+    const R = r + UP.off
+    const P = (t: number, y: number) => [R * Math.cos(t), y, R * Math.sin(t)]
+    for (let i = 0; i < steps; i++) {
+      const t0 = a0 + ((a1 - a0) * i) / steps
+      const t1 = a0 + ((a1 - a0) * (i + 1)) / steps
+      const u0 = ((t0 - a0) / (a1 - a0)) * n
+      const u1 = ((t1 - a0) / (a1 - a0)) * n
+      quad([P(t0, y0), P(t0, y1), P(t1, y1), P(t1, y0)], [u0, u0, u1, u1])
+    }
+    for (let k = 0; k < n; k++) {
+      const a = a0 + ((k + 0.5) / n) * (a1 - a0)
+      lights.push([(r + UP.setback) * Math.cos(a), (r + UP.setback) * Math.sin(a)])
+    }
+  }
+  const DEGR = Math.PI / 180
+  const gap = Math.acos(KEY.annexOuterHalf / KEY.lobeOuterR)
+  arc(KEY.lobeOuterR, MUSEUM.drum.neNotchDeg * DEGR, gap - 0.04)
+  arc(KEY.lobeOuterR, Math.PI - gap + 0.04, MUSEUM.drum.dNotchDeg * DEGR)
+  arc(KEY.ringOuterR, MUSEUM.drum.dNotchDeg * DEGR, (MUSEUM.drum.neNotchDeg + 360) * DEGR)
+  // annex sides, from the lobe to the entrance front
+  const za = Math.sqrt(KEY.lobeOuterR ** 2 - KEY.annexOuterHalf ** 2) + 0.3
+  const zb = KEY.annexOuterZ - 0.4
+  const n = Math.max(1, Math.round((zb - za) / UP.pitch))
+  for (const side of [1, -1]) {
+    const x = side * (KEY.annexOuterHalf + UP.off)
+    // east face: +z is on the viewer's left; west face: on the right
+    if (side > 0) quad([[x, y0, zb], [x, y0, za], [x, y1, za], [x, y1, zb]], [0, n, n, 0])
+    else quad([[x, y0, za], [x, y0, zb], [x, y1, zb], [x, y1, za]], [0, n, n, 0])
+    for (let k = 0; k < n; k++) lights.push([side * (KEY.annexOuterHalf + UP.setback), za + ((k + 0.5) / n) * (zb - za)])
+  }
+  const idx: number[] = []
+  for (let b = 0; b < pos.length / 3; b += 4) idx.push(b, b + 1, b + 2, b, b + 2, b + 3)
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+  g.setIndex(idx)
+  g.computeBoundingSphere()
+  return { geo: g, lights }
+}
+
+function FacadeUplights() {
+  const { geo, mat, disc, lens, inst } = useMemo(() => {
+    const { geo, lights } = exteriorRuns()
+    const color = new THREE.Color(kelvinToHex(2700))
+    const mat = new THREE.MeshBasicMaterial({ name: 'facadeUplight', color, alphaMap: scallopTexture(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+    const disc = new THREE.CircleGeometry(0.07, 16).rotateX(-Math.PI / 2)
+    const lens = new THREE.MeshStandardMaterial({ color: '#2a2622', emissive: color, emissiveIntensity: 0, roughness: 0.4 })
+    const inst = new THREE.InstancedMesh(disc, lens, lights.length)
+    const m4 = new THREE.Matrix4()
+    lights.forEach(([x, z], i) => inst.setMatrixAt(i, m4.makeTranslation(x, 0.006, z)))
+    inst.instanceMatrix.needsUpdate = true
+    inst.raycast = () => null
+    return { geo, mat, disc, lens, inst }
+  }, [])
+  useEffect(
+    () => () => {
+      geo.dispose()
+      mat.alphaMap?.dispose()
+      mat.dispose()
+      disc.dispose()
+      lens.dispose()
+      inst.dispose()
+    },
+    [geo, mat, disc, lens, inst],
+  )
+  useFrame(() => {
+    const n = ambience.night
+    mat.opacity = 0.85 * n
+    mat.visible = n > 0.01
+    lens.emissiveIntensity = 2.5 * n
+  })
+  return (
+    <ZoneGroup zones={['entrance-court', 'annex']}>
+      <mesh geometry={geo} material={mat} renderOrder={1} raycast={() => null} />
+      <primitive object={inst} />
     </ZoneGroup>
   )
 }

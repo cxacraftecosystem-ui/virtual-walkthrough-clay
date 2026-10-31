@@ -1,9 +1,10 @@
 /**
- * Visual validation harness: opens the museum in Chrome (GPU), walks the demo path
- * by teleporting to key viewpoints, saves screenshots and reports console errors.
+ * Visual validation harness for the clay pavilion: opens /gallery in Chrome (GPU), walks the
+ * demo path by teleporting to key viewpoints, saves screenshots and reports console errors.
  *
- *   node scripts/screenshots.mjs [baseUrl] [quality] [only=name1,name2]
+ *   node scripts/screenshots.mjs [baseUrl] [quality] [only=name1,name2] [time=night]
  *   (default baseUrl http://localhost:3000, quality high) → scripts/out/*.png
+ *   OUT_DIR / PREFIX (env) change the output folder and add a file-name prefix.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -12,45 +13,47 @@ import puppeteer from 'puppeteer-core'
 const base = process.argv[2] ?? 'http://localhost:3000'
 const quality = process.argv[3] ?? 'high'
 const only = (process.argv.find((a) => a.startsWith('only=')) ?? '').slice(5).split(',').filter(Boolean)
+const time = (process.argv.find((a) => a.startsWith('time=')) ?? '').slice(5)
 const width = Number(process.env.W ?? 1600)
 const height = Number(process.env.H ?? 900)
-const outDir = path.resolve('scripts/out')
+const outDir = path.resolve(process.env.OUT_DIR ?? 'scripts/out')
+const prefix = process.env.PREFIX ? `${process.env.PREFIX}-` : ''
 fs.mkdirSync(outDir, { recursive: true })
 
 const CHROME = process.env.CHROME ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 
-// name, x, z, compass heading (0 = north), pitch (deg)
-const SHOTS = [
-  // v3 layout (62 × 53 m compound)
-  ['01-atrium-arrival', 0, 19.4, 0, 7],
-  ['02-atrium-west-textile', -2.6, 13.2, 279, 12],
-  ['03-atrium-look-back', 0, 9.6, 180, 8],
-  ['04-reception', 0, 6.8, 0, 2],
-  ['05-passage-mid', 0, -5.5, 0, 2],
-  ['06-reveal-wall', 0.4, -15.4, 0, 6],
-  ['07-around-reveal', -5.2, -19.4, 150, 3],
-  ['08-court-centrepiece', 0.6, -23.65, 350, -8],
-  ['09-court-product-wall', 0, -29.4, 0, 3],
-  ['10-court-runner', 6.9, -26.85, 90, 2],
-  ['11-court-west', 4, -27, 270, 4],
-  ['12-gallery-a-south', -7.4, -9.5, 180, 3],
-  ['13-salon-hang', -4.5, -4.5, 90, 3],
-  ['14-hero-01', -7.2, -4.5, 270, 2],
-  ['15-gallery-a-north', -3.9, -17, 180, 2],
-  ['16-gallery-b', 3.9, -17, 180, 2],
-  ['17-gallery-c', 7.4, -8.6, 160, 2],
-  ['18-skylight', 0, -8, 0, 50],
-  ['20-gallery-d-map-avenue', -12, -16.2, 270, 4],
-  ['21-gallery-d-map', -25.8, -16.2, 270, 4],
-  ['22-gallery-d-centrepiece', -20.2, -19, 0, 2],
-  ['23-gallery-d-south', -20.6, -12, 180, 2],
-  ['30-theatre', -12.5, 9.1, 270, 4],
-  ['31-workshop', 11.6, 14.3, 95, -4],
-  ['32-workshop-vats', 20.5, 6, 60, -8],
-  ['33-courtyard', 20.6, -4.5, 0, 4],
-  ['34-courtyard-back', 20.6, -30, 180, 6],
-]
+// Plan angle a = atan2(z, x) (0° east, 90° the entrance side); compass yaw 0 = north (−z), 90 = east.
+const DEG = Math.PI / 180
+const polar = (r, a) => [r * Math.cos(a * DEG), r * Math.sin(a * DEG)]
+const yawTo = (x, z, tx, tz) => ((Math.atan2(tx - x, -(tz - z)) / DEG) % 360 + 360) % 360
+/** Stand at polar(r, a), look at polar(tr, ta). */
+const at = (r, a, tr, ta, pitch = 0) => {
+  const [x, z] = polar(r, a)
+  const [tx, tz] = polar(tr, ta)
+  return [x, z, yawTo(x, z, tx, tz), pitch]
+}
 
+// name, x, z, compass heading (0 = north), pitch (deg) — drum Ø 21.3 m centred on the origin,
+// annex G toward +z (door at z 19.5), spawn at (0, 26.5).
+const SHOTS = [
+  ['01-spawn', 0, 26.5, 0, 6],
+  ['02-forecourt-side', 13.2, 14.5, 300, 4],
+  ['03-annex', 0, 17.6, 0, 3],
+  ['04-description-wall', 0, 13.6, 0, 6],
+  ['05-entry-way', ...at(7.45, 100, 6.9, 42, 4)],
+  ['06-entry-east', ...at(9.2, 64, 7.0, 105, 2)],
+  ['07-gallery-a', ...at(3.4, 30, 7.85, 8, 6)],
+  ['08-podiums-a', ...at(5.2, -18, 6.9, -62, -2)],
+  ['09-gallery-b', ...at(3.4, -40, 7.85, -55, 6)],
+  ['10-potters-wheel', ...at(3.2, -55, 4.2, -72.5, -12)],
+  ['11-gallery-c', ...at(3.6, 205, 7.85, 238, 6)],
+  ['12-hallway', ...at(9.3, 212, 9.3, 170, 3)],
+  ['13-hallway-shelves', ...at(9.6, 180, 8.1, 200, -4)],
+  ['14-court', ...at(4.6, -110, 0, 0, 2)],
+  ['15-oculus-up', 0.4, 4.2, 0, 52],
+  ['16-statement', 0, 3.75, 180, 7],
+  ['17-visitors-shelf', 0.6, 15.6, 270, 0],
+]
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: 'new',
@@ -66,8 +69,11 @@ page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`))
 page.on('requestfailed', (r) => logs.push(`[requestfailed] ${r.url()} ${r.failure()?.errorText}`))
 
 const t0 = Date.now()
-await page.goto(`${base}/?autostart&quality=${quality}`, { waitUntil: 'networkidle0', timeout: 120000 })
-await page.waitForFunction(() => window.__museum?.store.getState().phase === 'entered', { timeout: 120000 })
+await page.goto(`${base}/gallery?autostart&quality=${quality}${time ? `&time=${time}` : ''}`, { waitUntil: 'networkidle0', timeout: 240000 })
+await page.waitForFunction(() => window.__museum?.store.getState().phase === 'entered', { timeout: 240000 })
+if (time) await page.evaluate((t) => window.__museum.store.getState().setTimeOfDay(t), time)
+// CLEAN=1 hides the interface for architecture checks.
+if (process.env.CLEAN) await page.addStyleTag({ content: '.ui-hud, .ui-map, .ui-live-invite, [class*="ui-live"], .ui-prompt, .ui-title, nextjs-portal { visibility: hidden !important; }' })
 console.log(`entered after ${((Date.now() - t0) / 1000).toFixed(1)} s`)
 const renderer = await page.evaluate(() => {
   const gl = document.createElement('canvas').getContext('webgl2')
@@ -90,11 +96,11 @@ for (const [name, x, z, yaw, pitch] of SHOTS) {
         requestAnimationFrame(f)
       }),
   )
-  await page.screenshot({ path: path.join(outDir, `${name}.png`) })
+  await page.screenshot({ path: path.join(outDir, `${prefix}${name}${time ? `-${time}` : ''}.png`) })
   console.log(`${name}  ~${fps} fps`)
 }
 
 fs.writeFileSync(path.join(outDir, 'console.log'), logs.join('\n'))
-console.log(`console issues: ${logs.length} (see scripts/out/console.log)`)
+console.log(`console issues: ${logs.length} (see ${path.join(outDir, 'console.log')})`)
 for (const l of logs.slice(0, 25)) console.log('  ', l.slice(0, 300))
 await browser.close()

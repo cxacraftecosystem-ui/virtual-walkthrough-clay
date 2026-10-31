@@ -1,30 +1,26 @@
 # Content still needed from the workshop
 
-The museum no longer tells visitors that anything is missing. Where the workshop's own material has
-not arrived, an item shows a neutral, shorter version of itself, or is hidden. This list is what is
-still needed to replace those stand-ins. In the admin, untick **Needs content from the workshop** on
-each item once its real material is in. For makers, untick **Hidden from visitors**.
+The pavilion never tells visitors that anything is missing. Where the workshop's own material has not
+arrived, an item shows a neutral stand-in of itself, or is hidden. This list is what is still needed to
+replace those stand-ins. In the admin, untick **Needs content from the workshop** on each item once its real
+material is in. For makers, untick **Hidden from visitors**.
 
-| What | Where in the museum | What is shown meanwhile |
+| What | Where in the pavilion | What is shown meanwhile |
 |---|---|---|
-| Photographs and details (artisan, region, material, technique, year) of the 5 hero textiles and the ~35 other works | Galleries A–D, craft court, atrium, reception | Generated designs, described as "made for this exhibition" |
-| 3D scans of the 9 printing blocks (`block-01 … block-09`) and of the two centrepiece blocks | Hand-block tables, craft court, Gallery D | Modelled blocks |
-| Curatorial text for the 6 craft panels (Regional History, Natural Dyes, Technique, Process, the salon key panel, Gallery D introduction) | Product wall, Gallery A, Gallery D | Title and illustration only |
-| Interpretive text for the workshop and courtyard installations: printing tables, dye vats, block archives, wash tank, pigment station, drying lines, cloth rolls, carving bench, rinsing channel | Craft Workshop Hall, Dye Garden Courtyard | Title only |
-| Species list for the dye-plant beds | Courtyard | "A planting bed for dye plants." |
-| Craft-cluster locations for the India map | Gallery D map wall | Map without pins. Pins are drawn only once the map item's *Needs content* box is unticked. |
-| Films: welcome, theatre feature, two process films, two "Meet the maker" portraits | Atrium, theatre, workshop | Generated films. **They carry a burned-in "Placeholder" caption and end card** (and the theatre film a speaker test), so they should be replaced, or regenerated without the caption, before launch. |
-| Volumetric (Gaussian splat) recordings of a printer at work | Workshop, beside printing tables II and IV | A glowing seated figure with the card "The printer's place" |
-| Maker profiles (name, cluster, biography, portrait, links), with the maker's consent | "Meet the maker" cards, `/makers/<id>`, shop links | Nothing: stand-in profiles are hidden from visitors |
-| Shop: real products, makers, "Visit the maker" / "Buy" / "Online shop" links | Museum Shop | Folded textiles, no links |
-| Sample book and design drawings | Reading Room | Generated from the museum's own motifs |
-| Capture guide and publications (links) | Reading Room, Resources board | Only the text guide is listed |
-| Final partner credit wording | Reception partners wall | Logos with "Presented by" / "In collaboration with" |
+| Confirmation of the three traditions and their names (working titles: Bankura terracotta, Molela votive plaques, Longpi black pottery) | Galleries A, B, C; zone names; landing page; tour | The working titles |
+| Photographs and details (maker, region, material, technique, year) of the 9 hung works (`clay-a-01 … clay-c-03`, six of them hero works) | Galleries A, B (upper register), C (curved wall) | Generated studies, described as "made for this exhibition, in the manner of …" |
+| The 11 podium pieces — 3D scans or photographs and details (`clay-a-horse`, `clay-a-horse-small`, `clay-a-pot`, `clay-b-plaque-rider`, `clay-b-cups`, `clay-b-plaque-deity`, `clay-b-lamp`, `clay-b-plaque-serpent`, `clay-c-kettle`, `clay-c-bowl`, `clay-c-pot`) | The podium row, A → B → C | Modelled pieces |
+| Review of the wall-panel text: *Three traditions of clay*, the three tradition panels, the five making panels (prepare, form, dry, fire, finish) and the statement on the inner main wall | Entrance hall, A / B / C, hallway, oculus court | The panels as written from general sources (modest, factual) |
+| Review of the exhibition title and introduction on the description wall | Entrance hall | "Clay Traditions — Earth, water, hand and fire" with a short introduction |
+| Pieces for the two drying shelves (unfired and fired) | Hallway | Modelled pots |
+| Films of the making, if any | — (no screen is installed yet; a screen can go in the hallway or the entrance hall) | Nothing |
+| Maker profiles (name, cluster, biography, portrait, links), with the maker's consent | "Meet the maker" cards, `/makers/<id>` | Nothing: the three stand-in profiles are hidden from visitors |
+| Final partner credit wording and any additional partners | Landing page, entry screen | DC Handicrafts and IIT Kharagpur, "Presented by" |
+| Screenshots of the finished pavilion for the landing page (`scripts/capture-landing.mjs`, re-authored for the pavilion's spaces) | Landing page | Quiet clay-ring panels with each picture's label |
 
-## After this change is deployed
+## Before launch
 
-The live database holds a seeded copy of the old wording (content version 4 on 2026-10-10, identical
-to the bundled defaults, so it carries no curator edits). Visitors keep seeing the old item
-descriptions until an admin opens **Content → Reset to defaults…** for the default exhibition, which
-replaces them with the new defaults. The two maker profiles are not part of that reset. Rename them
-or fill them in on **Makers**. Visitors cannot see them in the meantime.
+- Replace the stand-in images by name (`public/artworks/clay-*.jpg`) or, better, through the admin, so curators can
+  see what changed in the item's history.
+- Hindi and Bengali: every visitor-facing text has a translation; have a native speaker read the panels, the tour
+  captions and the tradition names before launch.

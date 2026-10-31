@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 /**
- * A captured museum frame. Missing or failing to load → a neutral block-print panel with the
+ * A captured pavilion frame. Missing or failing to load → a quiet clay-ring panel with the
  * picture's label, never a broken-image icon.
  */
 export function Shot({ src, alt, label, className = '' }: { src: string | null; alt: string; label: string; className?: string }) {

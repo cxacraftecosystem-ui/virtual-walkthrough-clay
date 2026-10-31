@@ -23,8 +23,9 @@ import { initSocial } from '../api/social'
 import { startAnalytics } from '../analytics/tracker'
 import { isCoarsePointer } from './HelpOverlay'
 import { A11yLayer } from '../a11y/A11yLayer'
-import { PrintStudio } from '../studio/PrintStudio'
+import { ClayStudio } from '../studio/ClayStudio'
 import { ErrorBoundary } from '../utils/ErrorBoundary'
+import { StaffLayer } from '../staff/StaffGate'
 
 function isTypingTarget(t: EventTarget | null) {
   if (!(t instanceof HTMLElement)) return false
@@ -155,6 +156,9 @@ export function UIOverlay() {
         <InfoPanel />
       </ErrorBoundary>
       <ErrorBoundary fallback={null}>
+        <StaffLayer />
+      </ErrorBoundary>
+      <ErrorBoundary fallback={null}>
         <SocialDrawer />
       </ErrorBoundary>
       <ErrorBoundary fallback={null}>
@@ -176,7 +180,7 @@ export function UIOverlay() {
         <PhotoMode />
       </ErrorBoundary>
       <ErrorBoundary fallback={null}>
-        <PrintStudio />
+        <ClayStudio />
       </ErrorBoundary>
       <ErrorBoundary fallback={null}>
         <TravelFade />

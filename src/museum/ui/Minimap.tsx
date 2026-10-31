@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMuseum } from '../state/store'
 import { teleport, visitor } from '../state/visitor'
-import { BENCHES, BENCH_SIZE, WALLS, ZONES, zoneAt, type Zone, type ZoneId } from '../config/layout'
+import { BENCHES, BENCH_SIZE, PODIUM, PODIUM_SLOTS, ZONES, zoneAt, type Zone, type ZoneId } from '../config/layout'
+import { FLOOR_PLAN } from '../config/plan'
+import { MUSEUM } from '../config/museum'
 import { SCENE_OBJECTS } from '../config/objects'
 import { IconMap, IconMinus } from './icons'
 import { translate, useLang, useT, type Lang } from '../i18n'
@@ -50,53 +52,49 @@ export function TravelFade() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Map geometry                                                        */
+/* Map geometry (from FLOOR_PLAN: the same paths the admin heatmap draws) */
 /* ------------------------------------------------------------------ */
 
-const PAD = 1.1
-const bounds = (() => {
-  let minX = Infinity
-  let maxX = -Infinity
-  let minZ = Infinity
-  let maxZ = -Infinity
-  for (const w of WALLS) {
-    minX = Math.min(minX, w.min[0])
-    maxX = Math.max(maxX, w.max[0])
-    minZ = Math.min(minZ, w.min[2])
-    maxZ = Math.max(maxZ, w.max[2])
-  }
-  return { minX: minX - PAD, maxX: maxX + PAD, minZ: minZ - PAD, maxZ: maxZ + PAD }
-})()
+const B = FLOOR_PLAN.bounds
 
 /** Plan aspect (width / height) — the SVG sizes itself from this. */
-export const MAP_ASPECT = (bounds.maxX - bounds.minX) / (bounds.maxZ - bounds.minZ)
+export const MAP_ASPECT = (B.maxX - B.minX) / (B.maxZ - B.minZ)
 
-const VIEWBOX = `${bounds.minX} ${bounds.minZ} ${bounds.maxX - bounds.minX} ${bounds.maxZ - bounds.minZ}`
+const VIEWBOX = `${B.minX} ${B.minZ} ${B.maxX - B.minX} ${B.maxZ - B.minZ}`
 
 interface ZoneLabel {
   small: string
   big?: string
-  vertical?: boolean
   /** Font size in metres (plan units). */
   size: number
-  /** Label anchor (defaults to the rect centre). */
-  at?: [number, number]
 }
 
-/** Label shown in the plan, sized to the room; galleries use a big letter. */
-function zoneLabel(z: Zone, lang: Lang = 'en'): ZoneLabel {
-  const r = z.rect
-  const short = zoneName(z.id, lang, true)
-  const cx = (r.minX + r.maxX) / 2
-  if (z.id.startsWith('gallery-')) return { small: translate(lang, 'map.gallery'), big: z.id.slice(-1).toUpperCase(), size: 0.72, at: [cx, r.minZ + 2.6] }
-  if (z.id === 'passage') return { small: short, vertical: true, size: 0.85 }
-  if (z.id === 'reception') return { small: short, vertical: true, size: 0.7 }
-  if (z.id === 'reveal') return { small: short, size: 0.8, at: [cx, r.minZ + 1.05] }
-  return { small: short, size: 1.3 }
+/** Label shown in the plan; the three galleries use a big letter. */
+function zoneLabel(id: ZoneId, lang: Lang = 'en'): ZoneLabel {
+  const short = zoneName(id, lang, true)
+  if (id.startsWith('ring-')) return { small: translate(lang, 'map.gallery'), big: id.slice(-1).toUpperCase(), size: 0.72 }
+  if (id === 'entrance-court') return { small: short, size: 1.05 }
+  return { small: short, size: 0.7 }
 }
 
 /** Furniture & installations drawn faintly for orientation (skip foliage/props). */
 const PLAN_OBJECTS = SCENE_OBJECTS.filter((o) => o.footprint && !['tree', 'planter'].includes(o.kind))
+
+/** Polygon points of an oriented footprint (rotation about +y, three.js convention). */
+function footprintPoints(x: number, z: number, rotationY: number, w: number, d: number) {
+  const ux = Math.cos(rotationY)
+  const uz = -Math.sin(rotationY)
+  const hx = w / 2
+  const hz = d / 2
+  return [
+    [-hx, -hz],
+    [hx, -hz],
+    [hx, hz],
+    [-hx, hz],
+  ]
+    .map(([u, v]) => `${(x + u * ux - v * uz).toFixed(3)},${(z + u * uz + v * ux).toFixed(3)}`)
+    .join(' ')
+}
 
 const CONE_LEN = 4.6
 const CONE_HALF = (34 * Math.PI) / 180
@@ -147,36 +145,21 @@ export function Minimap() {
     return () => cancelAnimationFrame(raf)
   }, [mapOpen, phase])
 
-  const walls = useMemo(
-    () =>
-      WALLS.filter((w) => w.collide !== false).map((w) => (
-        <rect
-          key={w.id}
-          className={`ui-map__wall ui-map__wall--${w.kind}`}
-          x={w.min[0]}
-          y={w.min[2]}
-          width={w.max[0] - w.min[0]}
-          height={w.max[2] - w.min[2]}
+  const walls = useMemo(() => FLOOR_PLAN.walls.map((w) => <path key={w.id} className={`ui-map__wall ui-map__wall--${w.kind}`} d={w.d} />), [])
+
+  const items = useMemo(
+    () => [
+      ...BENCHES.map((b) => (
+        <polygon key={b.id} className="ui-map__bench" points={footprintPoints(b.x, b.z, b.along === 'x' ? 0 : Math.PI / 2, BENCH_SIZE.length, BENCH_SIZE.depth)} />
+      )),
+      ...PODIUM_SLOTS.map((p) => <polygon key={p.id} className="ui-map__podium" points={footprintPoints(p.x, p.z, p.rotationY, PODIUM.size * 1.6, PODIUM.size * 1.6)} />),
+      ...PLAN_OBJECTS.map((o) => (
+        <polygon
+          key={o.id}
+          className="ui-map__bench ui-map__object"
+          points={footprintPoints(o.position[0], o.position[2], ((o.rotationDeg ?? 0) * Math.PI) / 180, o.footprint![0], o.footprint![1])}
         />
       )),
-    [],
-  )
-
-  const benches = useMemo(
-    () => [
-      ...BENCHES.map((b) => {
-        const w = b.along === 'x' ? BENCH_SIZE.length : BENCH_SIZE.depth
-        const h = b.along === 'x' ? BENCH_SIZE.depth : BENCH_SIZE.length
-        return <rect key={b.id} className="ui-map__bench" x={b.x - w / 2} y={b.z - h / 2} width={w} height={h} rx={0.06} />
-      }),
-      ...PLAN_OBJECTS.map((o) => {
-        const rot = ((((o.rotationDeg ?? 0) % 180) + 180) % 180)
-        const swap = Math.abs(rot - 90) < 45
-        const [fx, fz] = o.footprint!
-        const w = swap ? fz : fx
-        const h = swap ? fx : fz
-        return <rect key={o.id} className="ui-map__bench ui-map__object" x={o.position[0] - w / 2} y={o.position[2] - h / 2} width={w} height={h} rx={0.08} />
-      }),
     ],
     [],
   )
@@ -201,7 +184,7 @@ export function Minimap() {
               <IconMinus />
             </button>
           </div>
-          <svg className="ui-map__svg" viewBox={VIEWBOX} style={{ aspectRatio: String(MAP_ASPECT) }} role="group" aria-label={t('map.group')}>
+          <svg className="ui-map__svg" viewBox={VIEWBOX} style={{ aspectRatio: String(MAP_ASPECT), ['--map-aspect' as string]: String(MAP_ASPECT) }} role="group" aria-label={t('map.group')}>
             <defs>
               <radialGradient id="ui-map-cone" cx="0" cy="0" r={CONE_LEN} gradientUnits="userSpaceOnUse">
                 <stop offset="0" stopColor="#8a5a3b" stopOpacity="0.42" />
@@ -209,32 +192,25 @@ export function Minimap() {
               </radialGradient>
             </defs>
 
-            {ZONES.map((z) => (
-              <rect
-                key={`f-${z.id}`}
-                className={`ui-map__floor ui-map__floor--${z.id}`}
-                x={z.rect.minX}
-                y={z.rect.minZ}
-                width={z.rect.maxX - z.rect.minX}
-                height={z.rect.maxZ - z.rect.minZ}
-              />
+            {FLOOR_PLAN.zones.map((z) => (
+              <path key={`f-${z.id}`} className={`ui-map__floor ui-map__floor--${z.id}`} d={z.d} />
             ))}
+            <circle className="ui-map__oculus" cx={0} cy={0} r={MUSEUM.oculus.r} />
 
-            {benches}
+            {items}
             {walls}
 
-            {ZONES.map((z) => {
-              const l = zoneLabel(z, lang)
-              const [cx, cy] = l.at ?? [(z.rect.minX + z.rect.maxX) / 2, (z.rect.minZ + z.rect.maxZ) / 2]
+            {FLOOR_PLAN.zones.map((pz) => {
+              const z = ZONES.find((zz) => zz.id === pz.id)!
+              const l = zoneLabel(z.id, lang)
+              const cx = pz.cx
+              const cy = pz.cz
               const isCur = current === z.id
               return (
                 <g key={z.id} className={`ui-map__zone-g${isCur ? ' is-current' : ''}`}>
-                  <rect
+                  <path
                     className={`ui-map__zone${isCur ? ' is-current' : ''}`}
-                    x={z.rect.minX}
-                    y={z.rect.minZ}
-                    width={z.rect.maxX - z.rect.minX}
-                    height={z.rect.maxZ - z.rect.minZ}
+                    d={pz.d}
                     role="button"
                     tabIndex={0}
                     aria-label={t('map.goTo', { room: zoneName(z.id, lang) })}
@@ -248,7 +224,7 @@ export function Minimap() {
                     }}
                   >
                     <title>{t('map.goTo', { room: zoneName(z.id, lang) })}</title>
-                  </rect>
+                  </path>
                   {l.big ? (
                     <>
                       <text className="ui-map__label" x={cx} y={cy - 1.75} style={{ fontSize: l.size }}>
@@ -259,14 +235,7 @@ export function Minimap() {
                       </text>
                     </>
                   ) : (
-                    <text
-                      className={`ui-map__label${l.size >= 1.2 ? ' ui-map__label--room' : ''}`}
-                      x={cx}
-                      y={cy}
-                      dominantBaseline="middle"
-                      style={{ fontSize: l.size }}
-                      transform={l.vertical ? `rotate(-90 ${cx} ${cy})` : undefined}
-                    >
+                    <text className={`ui-map__label${l.size >= 1 ? ' ui-map__label--room' : ''}`} x={cx} y={cy} dominantBaseline="middle" style={{ fontSize: l.size }}>
                       {l.small}
                     </text>
                   )}
@@ -279,7 +248,7 @@ export function Minimap() {
               <circle className="ui-map__dot" r={0.5} />
             </g>
 
-            <g transform={`translate(${bounds.minX + 1.3} ${bounds.minZ + 1.5}) scale(1.9)`} aria-hidden="true">
+            <g transform={`translate(${B.minX + 1.6} ${B.minZ + 1.8}) scale(2.2)`} aria-hidden="true">
               <path d="M0 -0.42 L0.2 0.18 L0 0.06 L-0.2 0.18 Z" fill="#6f665c" />
               <text className="ui-map__north" y={0.78}>
                 N

@@ -22,7 +22,7 @@ export function cardInfo(kind: SelectionKind, id: string): CardInfo | null {
       const a = ARTWORKS.find((x) => x.id === id)
       if (!a) return null
       return {
-        kicker: 'Textile',
+        kicker: 'Work',
         title: a.title,
         facts: [...f('Tradition', a.tradition), ...f('Artisan', a.artisan), ...f('Region', a.region), ...f('Material', a.material), ...f('Technique', a.technique)],
         text: [a.description, a.context].filter(Boolean).join('\n\n'),
@@ -32,7 +32,7 @@ export function cardInfo(kind: SelectionKind, id: string): CardInfo | null {
       const e = EXHIBITS.find((x) => x.id === id)
       if (!e) return null
       return {
-        kicker: 'Hand block',
+        kicker: 'Object',
         title: e.title,
         facts: [...f('Tradition', e.tradition), ...f('Artisan', e.artisan), ...f('Region', e.region), ...f('Material', e.material), ...f('Technique', e.technique)],
         text: e.description ?? '',

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * Full-bleed hero picture. The still (a real captured frame of the museum) renders first;
+ * Full-bleed hero picture. The still (a real captured frame of the pavilion) renders first;
  * a short muted loop recorded from the museum fades in over it once it is actually playing —
  * but only on wider screens, with motion allowed and no data-saver.
  */

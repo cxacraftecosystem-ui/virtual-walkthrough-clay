@@ -36,32 +36,29 @@ const TIPS_TOUCH: DictKey[] = ['entry.tip1Touch', 'entry.tip3', 'entry.tip2Touch
 type Step = 0 | 1 | 2
 const STEPS: DictKey[] = ['entry.stepTextiles', 'entry.stepLight', 'entry.stepReady']
 
-/** A carved block stamps a four-repeat row of butis onto a strip of cloth (pure SVG + CSS). */
-function StampMotif() {
-  const prints = [38, 86, 134, 182]
+/** A pot rises on a turning wheel head, its throwing lines running round (pure SVG + CSS). */
+function ThrowMotif() {
+  // A round-bellied pot, base on the wheel head at y = 80 (outline, then the shoulder and rim).
+  const pot = 'M88 80c-7-6-11-15-11-24 0-11 7-20 15-25 3-2 4-4 3-6h30c-1 2 0 4 3 6 8 5 15 14 15 25 0 9-4 18-11 24z'
   return (
-    <svg className="ui-stamp" viewBox="-30 0 280 96" aria-hidden="true" focusable="false">
-      <rect className="ui-stamp__cloth" x="6" y="58" width="208" height="28" rx="1.5" />
-      <line className="ui-stamp__hem" x1="10" y1="62" x2="210" y2="62" />
-      <line className="ui-stamp__hem" x1="10" y1="82" x2="210" y2="82" />
-      {prints.map((x, i) => (
-        <g key={x} className={`ui-stamp__print ui-stamp__print--${i}`} transform={`translate(${x} 72)`}>
-          <g className={i % 2 ? 'ui-stamp__indigo' : 'ui-stamp__madder'}>
-            {[0, 60, 120, 180, 240, 300].map((a) => (
-              <ellipse key={a} cx="0" cy="-5.2" rx="2.3" ry="4.4" transform={`rotate(${a})`} />
-            ))}
-          </g>
-          <circle r="2.1" fill="#f8f2e6" />
-          <circle r="1.1" className={i % 2 ? 'ui-stamp__madder' : 'ui-stamp__indigo'} />
+    <svg className="ui-throw" viewBox="0 0 220 100" aria-hidden="true" focusable="false">
+      <defs>
+        <clipPath id="ui-throw-clip">
+          <path d={pot} />
+        </clipPath>
+      </defs>
+      <ellipse className="ui-throw__shadow" cx="110" cy="92" rx="70" ry="6" />
+      <path className="ui-throw__stand" d="M96 84h28l4 8H92z" />
+      <ellipse className="ui-throw__head" cx="110" cy="82" rx="54" ry="7" />
+      <ellipse className="ui-throw__spin" cx="110" cy="82" rx="44" ry="5" pathLength="100" />
+      <g className="ui-throw__pot">
+        <path className="ui-throw__clay" d={pot} />
+        <g clipPath="url(#ui-throw-clip)">
+          {[34, 46, 58, 70].map((y) => (
+            <path key={y} className="ui-throw__line" d={`M60 ${y}h100`} pathLength="100" />
+          ))}
         </g>
-      ))}
-      {/* the block: carved face at local y = 0, body above, turned handle on top */}
-      <g className="ui-stamp__block">
-        <rect className="ui-stamp__wood" x="-15" y="-24" width="30" height="24" rx="2" />
-        <rect className="ui-stamp__wood-dark" x="-15" y="-3" width="30" height="3" rx="1" />
-        <path className="ui-stamp__grain" d="M-11 -20c6 2 14 -2 22 0M-11 -14c7 2 15 -2 22 0M-11 -8c6 1.5 14 -1.5 22 0" />
-        <rect className="ui-stamp__wood-dark" x="-4" y="-33" width="8" height="10" rx="1.5" />
-        <circle className="ui-stamp__wood" cx="0" cy="-37" r="5.5" />
+        <path className="ui-throw__rim" d="M95 25h30" />
       </g>
     </svg>
   )
@@ -203,8 +200,9 @@ export function EntryScreen() {
           <defs>
             <pattern id="ui-entry-pattern" width="72" height="72" patternUnits="userSpaceOnUse">
               <g fill="none" stroke="currentColor" strokeWidth="1">
-                <circle cx="36" cy="36" r="10" />
-                <path d="M36 18c5 6 5 12 0 18-5-6-5-12 0-18zM36 54c5-6 5-12 0-18-5 6-5 12 0 18zM18 36c6-5 12-5 18 0-6 5-12 5-18 0zM54 36c-6-5-12-5-18 0 6 5 12 5 18 0z" />
+                <circle cx="36" cy="36" r="6" />
+                <circle cx="36" cy="36" r="13" />
+                <circle cx="36" cy="36" r="20" strokeDasharray="2 4" />
                 <circle cx="0" cy="0" r="3" />
                 <circle cx="72" cy="0" r="3" />
                 <circle cx="0" cy="72" r="3" />
@@ -239,7 +237,7 @@ export function EntryScreen() {
       </header>
 
       <div className="ui-entry__inner">
-        <StampMotif />
+        <ThrowMotif />
         <div className="ui-kicker">{L(EXHIBITION_TITLE, 'kicker')}</div>
         <h1 id="ui-entry-title" className="ui-entry__title">
           {L(EXHIBITION_TITLE, 'title')}

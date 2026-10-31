@@ -12,6 +12,7 @@ import { TRAIL } from '../config/amenities'
 import { drawMotif } from '../exhibits/motifs'
 import { useMuseum } from '../state/store'
 import { TRAIL_TOTAL, useTrail } from './trail'
+import { SITE } from '../../site'
 import '../amenities/amenities.css'
 
 function IconMotif() {
@@ -109,7 +110,7 @@ export function TrailStartCard() {
         For families & schools
       </h3>
       <p>
-        <strong>Find the motifs</strong> — eight small brass medallions, each stamped with a printing motif, are hidden around the museum. Spot them all to earn a certificate.
+        <strong>Find the motifs</strong> — eight small brass medallions, each stamped with a motif, are hidden around the pavilion. Spot them all to earn a certificate.
       </p>
       <button
         type="button"
@@ -185,7 +186,7 @@ export async function drawCertificate(name: string, date: Date): Promise<HTMLCan
   g.font = `500 26px ${SANS}`
   const c = g as CanvasRenderingContext2D & { letterSpacing?: string }
   if ('letterSpacing' in c) c.letterSpacing = '8px'
-  g.fillText('HAND BLOCK PRINTING — VIRTUAL MUSEUM', W / 2, 250)
+  g.fillText(SITE.name.toUpperCase(), W / 2, 250)
   if ('letterSpacing' in c) c.letterSpacing = '0px'
   g.fillStyle = '#2e2a26'
   g.font = `400 116px ${SERIF}`
@@ -200,7 +201,7 @@ export async function drawCertificate(name: string, date: Date): Promise<HTMLCan
   g.fillRect(W / 2 - 260, 640, 520, 2)
   g.font = `400 34px ${SANS}`
   g.fillStyle = 'rgba(46,42,38,0.85)'
-  g.fillText(`found all ${TRAIL_TOTAL} hidden motifs on the museum trail.`, W / 2, 720)
+  g.fillText(`found all ${TRAIL_TOTAL} hidden motifs on the pavilion trail.`, W / 2, 720)
   // the eight motifs, stamped in a row
   const n = TRAIL.length
   const pitch = 150
@@ -216,7 +217,7 @@ export async function drawCertificate(name: string, date: Date): Promise<HTMLCan
   g.fillStyle = 'rgba(46,42,38,0.7)'
   g.fillText(dateText, W / 2, 1010)
   g.font = `400 22px ${SANS}`
-  g.fillText('A keepsake from the virtual exhibition. The motifs are designs made for this museum.', W / 2, 1080)
+  g.fillText('A keepsake from the virtual exhibition. The motifs are designs made for this pavilion.', W / 2, 1080)
   return cv
 }
 

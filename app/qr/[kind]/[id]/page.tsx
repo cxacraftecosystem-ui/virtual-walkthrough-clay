@@ -11,7 +11,7 @@ import '../../qr.css'
 
 /**
  * /qr/<kind>/<id> — a printable QR label for physical exhibition cross-linking: the item's
- * title and a QR code for its virtual-museum deep link (/gallery#<kind>=<id>).
+ * title and a QR code for its virtual-pavilion deep link (/gallery#<kind>=<id>).
  * kind: artwork | object | exhibit | infographic | video | zone.
  */
 export const dynamic = 'force-dynamic'
@@ -19,12 +19,12 @@ export const dynamic = 'force-dynamic'
 type Props = { params: Promise<{ kind: string; id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }
 
 const KIND_LABEL: Record<LinkKind, string> = {
-  artwork: 'Textile',
-  exhibit: 'Hand block',
-  object: 'Installation',
-  infographic: 'Craft panel',
+  artwork: 'Work',
+  exhibit: 'Object',
+  object: 'Object',
+  infographic: 'Panel',
   video: 'Film',
-  zone: 'Room',
+  zone: 'Space',
 }
 
 async function origin(): Promise<string> {
@@ -75,18 +75,18 @@ export default async function QrLabelPage({ params, searchParams }: Props) {
           {size === 'large' ? 'Small label' : 'Large label'}
         </a>
         <a className="qr-tool" href={url}>
-          Open in the virtual museum →
+          Open in the virtual pavilion →
         </a>
       </div>
       <article className="qr-label" aria-label={`QR label for ${it.title}`}>
-        <svg className="qr-label__code" viewBox={`0 0 ${n} ${n}`} shapeRendering="crispEdges" role="img" aria-label={`QR code linking to ${it.title} in the virtual museum`}>
+        <svg className="qr-label__code" viewBox={`0 0 ${n} ${n}`} shapeRendering="crispEdges" role="img" aria-label={`QR code linking to ${it.title} in the virtual pavilion`}>
           <rect width={n} height={n} fill="#fff" />
           <path d={qrSvgPath(qr)} fill="#1f1b17" />
         </svg>
         <div className="qr-label__text">
-          <div className="qr-label__kicker">{KIND_LABEL[it.kind]} · Virtual museum</div>
+          <div className="qr-label__kicker">{KIND_LABEL[it.kind]} · Virtual pavilion</div>
           <h1 className="qr-label__title">{it.title}</h1>
-          <p className="qr-label__cta">Scan to see this in the Hand Block Printing virtual museum.</p>
+          <p className="qr-label__cta">Scan to see this in the Clay Traditions virtual pavilion.</p>
           <p className="qr-label__url">{url.replace(/^https?:\/\//, '')}</p>
         </div>
       </article>

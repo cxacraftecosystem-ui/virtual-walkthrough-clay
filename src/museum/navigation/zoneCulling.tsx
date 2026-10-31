@@ -1,16 +1,18 @@
 /**
  * Zone-based render culling.
  *
- * Each wing's interior/content is wrapped in <ZoneGroup zones={[...]}>. Every frame the
- * visitor's zone is resolved and ZONE_VISIBILITY (layout.ts) gives the set of zones that
- * can be seen from it (through doorways and bay openings); groups outside that set are
- * hidden — no draw calls, no shadow casting. Between zones (in a doorway) the last known
- * zone is kept, and the set of the zone being entered is merged in, so nothing pops.
+ * Each space's content is wrapped in <ZoneGroup zones={[...]}>. Every frame the visitor's
+ * zone is resolved and ZONE_VISIBILITY (layout.ts) gives the set of zones that can be seen
+ * from it (through openings and round the free-standing walls); groups outside that set are
+ * hidden — no draw calls, no shadow casting. Near a zone edge the set of the zone being
+ * entered is merged in, so nothing pops. Zones are tested by their real footprint (arc
+ * sectors, polygons), and only zones visible from the current one count as "being entered",
+ * so a zone behind a wall never leaks in.
  */
 import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type * as THREE from 'three'
-import { ZONES, ZONE_VISIBILITY, zoneAt, type ZoneId } from '../config/layout'
+import { ZONES, ZONE_VISIBILITY, zoneAt, zoneDistance, type ZoneId } from '../config/layout'
 import { visitor } from '../state/visitor'
 import { requestShadowRefresh } from '../lighting/SkyAndSun'
 
@@ -23,19 +25,18 @@ function applyVisibility() {
   for (const [g, zones] of groups) g.visible = zones.some((z) => visible.has(z))
 }
 
-/** Zones whose rectangle (grown by MARGIN) contains the point — catches doorway thresholds. */
-function nearbyZones(x: number, z: number): ZoneId[] {
-  return ZONES.filter((zn) => x >= zn.rect.minX - MARGIN && x <= zn.rect.maxX + MARGIN && z >= zn.rect.minZ - MARGIN && z <= zn.rect.maxZ + MARGIN).map((zn) => zn.id)
+/** Zones within MARGIN of the point that can be seen from `from` — catches thresholds. */
+function nearbyZones(x: number, z: number, from: ZoneId): ZoneId[] {
+  const open = ZONE_VISIBILITY[from] ?? [from]
+  return ZONES.filter((zn) => open.includes(zn.id) && zoneDistance(zn, x, z) <= MARGIN).map((zn) => zn.id)
 }
 
-/** Outside every room (forecourt, or inside a wall/door threshold): the closest zone rectangle. */
+/** Outside every zone (inside a wall or a door threshold): the closest zone footprint. */
 function nearestZone(x: number, z: number): ZoneId | null {
   let best: ZoneId | null = null
   let bestD = Infinity
   for (const zn of ZONES) {
-    const dx = Math.max(zn.rect.minX - x, 0, x - zn.rect.maxX)
-    const dz = Math.max(zn.rect.minZ - z, 0, z - zn.rect.maxZ)
-    const d = dx * dx + dz * dz
+    const d = zoneDistance(zn, x, z)
     if (d < bestD) {
       bestD = d
       best = zn.id
@@ -64,7 +65,7 @@ export function ZoneCuller({ enabled = true }: { enabled?: boolean }) {
     const here = zoneAt(visitor.x, visitor.z)?.id ?? nearestZone(visitor.x, visitor.z)
     if (here) current = here
     const set = new Set<ZoneId>()
-    for (const id of current ? [current, ...nearbyZones(visitor.x, visitor.z)] : ZONES.map((z) => z.id)) {
+    for (const id of current ? [current, ...nearbyZones(visitor.x, visitor.z, current)] : ZONES.map((z) => z.id)) {
       for (const v of ZONE_VISIBILITY[id] ?? [id]) set.add(v)
     }
     const key = [...set].sort().join(',')

@@ -1,7 +1,8 @@
 /**
- * CINEMATIC ARRIVAL — after "Enter Exhibition", a ~11 s drone-style flight: high over the
- * forecourt and lawns with the cuboid roof and its roof lights below, a swoop down to the
- * glazed atrium facade, then a glide through the entrance into the visitor's start pose.
+ * CINEMATIC ARRIVAL — after "Enter Exhibition", a ~11 s drone-style flight: in high over the
+ * landscape plinth, across the round roof and straight over the open oculus (looking down
+ * into the court and its plinth), then a long turn over the annex roof and down to the
+ * entrance front, settling on the forecourt in the visitor's start pose facing the door.
  *
  *  • Only on the first entry of a browser session (sessionStorage), never with ?autostart,
  *    never with prefers-reduced-motion, and not when the guided tour is starting.
@@ -15,7 +16,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { create } from 'zustand'
-import { MUSEUM } from '../config/museum'
+import { KEY, MUSEUM } from '../config/museum'
 import { useMuseum } from '../state/store'
 import { visitor } from '../state/visitor'
 import { useTour } from '../tour/engine'
@@ -93,15 +94,16 @@ export function ArrivalFlight() {
     const fz = -Math.cos(-S.yawDeg * DEG)
     const end = new THREE.Vector3(S.x, EYE, S.z)
     const endLook = end.clone().add(new THREE.Vector3(fx * 10, Math.tan(S.pitchDeg * DEG) * 10, fz * 10))
-    const facadeZ = MUSEUM.wings.atrium.maxZ
+    const door = new THREE.Vector3(0, MUSEUM.annex.door.height * 0.6, KEY.annexOuterZ)
+    const top = MUSEUM.pavilion.height
     const pos = new THREE.CatmullRomCurve3(
       [
-        new THREE.Vector3(-58, 46, facadeZ + 58), // high over the lawns, south-west
-        new THREE.Vector3(-24, 37, facadeZ + 32),
-        new THREE.Vector3(14, 25, facadeZ + 26), // banking east, the roof lights below
-        new THREE.Vector3(9, 9.5, facadeZ + 15), // swoop down toward the facade
-        new THREE.Vector3(1.5, 3.1, facadeZ + 6.5),
-        new THREE.Vector3(0, EYE + 0.35, facadeZ + 1.8), // gliding through the entrance
+        new THREE.Vector3(-36, top + 26, -32), // high over the landscape, north-west
+        new THREE.Vector3(-15, top + 18, -12),
+        new THREE.Vector3(-1.2, top + 11, -0.8), // over the open oculus, looking down into the court
+        new THREE.Vector3(11, top + 9, 9), // a long turn out over the annex roof
+        new THREE.Vector3(8, top + 3, door.z + 12),
+        new THREE.Vector3(1.5, 2.8, door.z + 8), // down in front of the entrance
         end,
       ],
       false,
@@ -109,12 +111,12 @@ export function ArrivalFlight() {
     )
     const look = new THREE.CatmullRomCurve3(
       [
-        new THREE.Vector3(0, 4, -8),
-        new THREE.Vector3(0, 4, -8),
-        new THREE.Vector3(0, 5, 2),
-        new THREE.Vector3(0, 4, facadeZ - 4),
-        new THREE.Vector3(0, 2.6, facadeZ - 6),
-        new THREE.Vector3(0, EYE + 0.2, facadeZ - 8),
+        new THREE.Vector3(0, 2, 0),
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0.1, 0, 0.15), // straight down through the oculus onto the plinth
+        new THREE.Vector3(0, 3, KEY.annexEndZ - 4),
+        new THREE.Vector3(0, door.y, door.z - 2),
+        new THREE.Vector3(0, door.y, door.z - 3),
         endLook,
       ],
       false,
@@ -189,7 +191,7 @@ export function ArrivalFlight() {
     path.look.getPoint(u, tmpL)
     camera.position.copy(tmpP)
     camera.lookAt(tmpL)
-    // Above the roofs every room (the open courtyard especially) can be seen; once down at the
+    // Above the roof every room can be seen (the court through the oculus); once down at the
     // facade, normal zone culling resumes.
     setCullingOverride(u < 0.6)
     if (Math.abs(t - a.t) > 0.01 || t >= 1) useArrival.setState({ t })

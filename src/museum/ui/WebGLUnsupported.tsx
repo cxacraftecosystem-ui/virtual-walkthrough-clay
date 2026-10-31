@@ -1,4 +1,5 @@
 import { Rosette } from './icons'
+import { SITE } from '../../site'
 
 /** True when a WebGL2 (or, failing that, WebGL1) context can be created. */
 export function hasWebGL(): boolean {
@@ -21,7 +22,7 @@ export function WebGLUnsupported() {
         <div className="ui-kicker" style={{ marginTop: 18 }}>
           A Virtual Exhibition
         </div>
-        <h1 className="ui-nogl__title">Hand Block Printing</h1>
+        <h1 className="ui-nogl__title">{SITE.defaultExhibitionTitle}</h1>
         <p>
           This exhibition is a 3D walkthrough and needs 3D graphics, which this browser can&rsquo;t show right now.
         </p>

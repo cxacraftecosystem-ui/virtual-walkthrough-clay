@@ -3,7 +3,7 @@
  *
  * - `exhibit.model` set  → GLB/GLTF loaded with useGLTF, cloned, scaled by `modelScale`,
  *   shadows enabled, centred on the origin with its bottom at y = 0.
- * - missing / failed / loading → the procedural PLACEHOLDER block.
+ * - missing / failed / loading → the procedural PLACEHOLDER vessel (clay body from its tradition).
  */
 
 import { Suspense, useMemo } from 'react'
@@ -11,7 +11,7 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import type { ExhibitConfig } from '../config/exhibits'
 import { ErrorBoundary } from '../utils/ErrorBoundary'
-import { HandBlockPlaceholder } from './HandBlockPlaceholder'
+import { ClayVesselPlaceholder } from './ClayVesselPlaceholder'
 
 function GLTFArtifact({ url, scale }: { url: string; scale: number }) {
   // Draco + meshopt on (admin scan-import output: meshopt + quantized + WebP textures).
@@ -37,9 +37,7 @@ function GLTFArtifact({ url, scale }: { url: string; scale: number }) {
 }
 
 export function Artifact3D({ exhibit }: { exhibit: ExhibitConfig }) {
-  const placeholder = (
-    <HandBlockPlaceholder motif={exhibit.placeholderMotif} size={exhibit.placeholderSize} inkColor={exhibit.inkColor} />
-  )
+  const placeholder = <ClayVesselPlaceholder seed={exhibit.id} tradition={`${exhibit.tradition} ${exhibit.region ?? ''}`} />
   if (!exhibit.model) return placeholder
   return (
     <ErrorBoundary key={exhibit.model} fallback={placeholder}>

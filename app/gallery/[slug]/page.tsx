@@ -16,9 +16,9 @@ type Props = { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const ex = await exhibitionForPage(slug)
-  if (!ex || !ex.visible) return { title: 'Exhibition — Virtual Museum', robots: { index: false } }
+  if (!ex || !ex.visible) return { title: 'Exhibition — Clay Pavilion', robots: { index: false } }
   return {
-    title: `${ex.title} — Virtual Exhibition`,
+    title: `${ex.title} — Clay Pavilion`,
     description: ex.subtitle || undefined,
     ...(ex.status !== 'published' ? { robots: { index: false, follow: false } } : {}),
   }
@@ -32,8 +32,8 @@ export default async function ExhibitionPage({ params }: Props) {
     return (
       <main className="sp-root">
         <div className="sp-wrap">
-          <nav className="sp-nav" aria-label="Museum">
-            <a href="/gallery">← Back to the museum</a>
+          <nav className="sp-nav" aria-label="Pavilion">
+            <a href="/gallery">← Back to the pavilion</a>
           </nav>
           <div className="sp-kicker">Exhibition</div>
           <h1 className="sp-title">Not on view</h1>

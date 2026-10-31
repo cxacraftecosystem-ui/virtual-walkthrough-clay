@@ -19,7 +19,7 @@ import * as THREE from 'three'
 import { zoneAt } from '../config/layout'
 import { MUSEUM } from '../config/museum'
 import { interactiveItems } from '../interaction/registry'
-import { resolveCircle, segmentBlocked } from '../navigation/collision'
+import { ignoreLow, resolveCircle, segmentBlocked } from '../navigation/collision'
 import { isZoneVisible } from '../navigation/zoneCulling'
 import type { SelectionKind } from '../state/store'
 import { visitor } from '../state/visitor'
@@ -33,7 +33,6 @@ const ARC_STEPS = 48
 const ARC_DT = 0.035
 const RAY_LEN = 12
 
-const ignoreLow = (c: { id: string }) => c.id.startsWith('table-') || c.id.startsWith('bench')
 
 interface Hand {
   aiming: boolean

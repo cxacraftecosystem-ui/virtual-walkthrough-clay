@@ -15,8 +15,8 @@ export interface ItemSummary {
 }
 
 const LABEL: Record<SelectionKind, string> = {
-  artwork: 'Textile',
-  exhibit: 'Hand block',
+  artwork: 'Work',
+  exhibit: 'Object',
   infographic: 'Craft panel',
   video: 'Film',
   object: 'Installation',

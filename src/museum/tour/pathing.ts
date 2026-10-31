@@ -1,14 +1,14 @@
 /**
- * Tiny visibility-graph path planner over the collision rectangles.
+ * Tiny visibility-graph path planner over the collision geometry (boxes, arcs, discs).
  *
- * Waypoints (config/tour.ts NAV_WAYPOINTS) sit in room centres and on both sides of every
- * doorway; edges are created on demand between any two points whose straight segment keeps
- * `clearance` from every collider. Dijkstra then gives a walkable polyline, so an automatic
+ * Waypoints (config/tour.ts NAV_WAYPOINTS) sit round the ring, in the entry ways, the hallway,
+ * the annex and on both sides of the door; edges are created on demand between any two points
+ * whose straight segment keeps `clearance` from every collider. Dijkstra then gives a walkable polyline, so an automatic
  * walk (guided tour, "go to" a favourite) never runs into a wall and never gets stuck.
  */
 import { MUSEUM } from '../config/museum'
 import { NAV_WAYPOINTS } from '../config/tour'
-import { COLLIDERS, resolveCircle } from '../navigation/collision'
+import { COLLIDERS, resolveCircle, segmentDistance } from '../navigation/collision'
 
 export interface P2 {
   x: number
@@ -17,39 +17,16 @@ export interface P2 {
 
 const CLEAR = MUSEUM.visitor.collisionRadius + 0.06
 
-/** Segment a→b stays at least `r` away from every collider (AABBs inflated by r). */
+/** Segment a→b stays at least `r` away from every collider (exact for boxes, arcs and discs). */
 export function segmentClear(ax: number, az: number, bx: number, bz: number, r = CLEAR) {
-  const dx = bx - ax
-  const dz = bz - az
+  const minX = Math.min(ax, bx) - r
+  const maxX = Math.max(ax, bx) + r
+  const minZ = Math.min(az, bz) - r
+  const maxZ = Math.max(az, bz) + r
   for (const c of COLLIDERS) {
-    const minX = c.minX - r
-    const maxX = c.maxX + r
-    const minZ = c.minZ - r
-    const maxZ = c.maxZ + r
     // quick reject
-    if (Math.max(ax, bx) < minX || Math.min(ax, bx) > maxX || Math.max(az, bz) < minZ || Math.min(az, bz) > maxZ) continue
-    let t0 = 0
-    let t1 = 1
-    let hit = true
-    const p = [-dx, dx, -dz, dz]
-    const q = [ax - minX, maxX - ax, az - minZ, maxZ - az]
-    for (let i = 0; i < 4; i++) {
-      if (p[i] === 0) {
-        if (q[i] < 0) {
-          hit = false
-          break
-        }
-      } else {
-        const t = q[i] / p[i]
-        if (p[i] < 0) t0 = Math.max(t0, t)
-        else t1 = Math.min(t1, t)
-        if (t0 > t1) {
-          hit = false
-          break
-        }
-      }
-    }
-    if (hit) return false
+    if (maxX < c.minX || minX > c.maxX || maxZ < c.minZ || minZ > c.maxZ) continue
+    if (segmentDistance(c, ax, az, bx, bz) < r) return false
   }
   return true
 }

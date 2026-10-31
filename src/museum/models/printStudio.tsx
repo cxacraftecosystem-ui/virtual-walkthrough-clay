@@ -1,24 +1,29 @@
 /**
- * "Print it yourself" installations in the Craft Workshop Hall:
+ * "Shape it yourself" installations in the clay pavilion:
  *
- *  - PrintStudioTable ('print-studio') — a short printing table whose cloth shows the
- *    visitor's current studio design live (CanvasTexture of the studio canvas; a demo
- *    cloth until the visitor prints). Selecting it opens the studio overlay (see
- *    src/museum/studio/PrintStudio.tsx). While the overlay is open the museum canvas
- *    stops rendering (frameloop 'never') — it is fully covered.
- *  - VisitorsWall ('visitors-wall') — the latest approved visitor prints (GET /api/prints)
- *    as small box-framed textiles; empty frames hold plain cloth. One atlas texture,
- *    three draw calls for the whole wall.
+ *  - PottersWheel ('potters-wheel') — a potter's wheel whose head carries the visitor's
+ *    current studio pot live (the same lathe and painted surface as the studio; a demo pot
+ *    until the visitor shapes one), turning slowly. Selecting it opens the studio overlay
+ *    (see src/museum/studio/ClayStudio.tsx). While the overlay is open the museum canvas
+ *    stops rendering (frameloop 'never') — it is fully covered. `PrintStudioTable` is the
+ *    same model under the hand block museum's kind name ('print-studio').
+ *  - VisitorsWall ('visitors-wall', kept so content and admin work unchanged) — the Visitors'
+ *    Shelf: a niche unit in limewashed clay whose niches hold the latest approved visitor pots
+ *    (GET /api/prints) as framed turntable shots standing on the shelves; empty niches hold a
+ *    plain card. One atlas texture, a handful of draw calls for the whole unit.
  */
-import { useThree } from '@react-three/fiber'
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { drawMotif, hashString, mulberry32, paintCottonGround } from '../exhibits/motifs'
-import { DYES } from '../studio/palette'
-import { DESIGN_H, DESIGN_W } from '../studio/printEngine'
+import { tr, useLang } from '../i18n'
+import { useMuseum } from '../state/store'
+import { SLIPS } from '../studio/clayPalette'
+import { useClayStudio } from '../studio/clayStore'
+import { createPot, type PotHandle } from '../studio/potMesh'
+import { reducePot, type PotOp } from '../studio/potEngine'
 import { approvedPrints, type WallPrint } from '../studio/printsApi'
-import { designCanvas, useStudio } from '../studio/studioStore'
-import { box, Builder, lathe, Parts, rbox, useBuilt, type V3 } from './kit'
+import { VR_MODE } from '../utils/vr'
+import { box, Builder, lathe, Parts, rbox, useBuilt } from './kit'
 import { tinted, useModelMaterials } from './modelMaterials'
 import { InMuseumScene } from './sceneContext'
 import { fp, geoKey, num, str, type ModelProps } from './types'
@@ -39,70 +44,10 @@ function textCanvas(w: number, h: number, draw: (g: CanvasRenderingContext2D) =>
   return t
 }
 
-const KNOB: [number, number][] = [
-  [0.022, 0],
-  [0.02, 0.006],
-  [0.011, 0.018],
-  [0.009, 0.033],
-  [0.012, 0.047],
-  [0.019, 0.056],
-  [0.02, 0.063],
-  [0.014, 0.069],
-  [0, 0.072],
-]
-
-/** A hand block resting face down at p (y = the surface), turned by rotY. */
-function addBlock(b: Builder, p: V3, w: number, d: number, rotY: number) {
-  const c = Math.cos(rotY)
-  const s = Math.sin(rotY)
-  const at = (dx: number, dy: number, dz: number): V3 => [p[0] + dx * c + dz * s, p[1] + dy, p[2] - dx * s + dz * c]
-  b.add('ink', box(w - 0.006, 0.005, d - 0.006), { p: at(0, 0.0025, 0), r: [0, rotY, 0] })
-  b.add('teak', rbox(w, 0.048, d, 0.005), { p: at(0, 0.005 + 0.024, 0), r: [0, rotY, 0] })
-  b.add('teak', lathe(KNOB, 16), { p: at(0, 0.053, 0), r: [0, rotY, 0] })
-}
-
-/* ------------------------------------------------------------------ */
-/* Demo cloth (before the visitor prints)                              */
-/* ------------------------------------------------------------------ */
-
-let demo: HTMLCanvasElement | null = null
-function demoCloth(): HTMLCanvasElement {
-  if (demo) return demo
-  const cv = document.createElement('canvas')
-  cv.width = DESIGN_W / 2
-  cv.height = DESIGN_H / 2
-  const g = cv.getContext('2d')!
-  const r = mulberry32(hashString('studio-demo'))
-  paintCottonGround(g, cv.width, cv.height, '#ece2cc', r, { threadPx: 1, unevenness: 0.6, noise: 4 })
-  // a few trial impressions in one corner, the rest of the cloth left for the visitor
-  const s = 64
-  const pts: [number, number][] = [
-    [70, 70],
-    [138, 70],
-    [206, 70],
-    [104, 138],
-    [172, 138],
-    [70, 206],
-  ]
-  for (const [x, y] of pts)
-    drawMotif(g, 'rosette', x, y, s, '#27406b', { composite: 'multiply', alpha: 0.82 + r() * 0.12, rng: r, voids: 0.4, mottle: 0.45, grain: 0.3, bleed: 0.4, rotation: (r() - 0.5) * 0.02 })
-  g.save()
-  g.fillStyle = 'rgba(80, 60, 40, 0.55)'
-  g.font = "italic 500 30px 'Cormorant Garamond', Georgia, serif"
-  g.textAlign = 'center'
-  g.fillText('Print it yourself', cv.width * 0.62, cv.height * 0.56)
-  g.font = "500 13px Inter, system-ui, sans-serif"
-  g.fillStyle = 'rgba(80, 60, 40, 0.5)'
-  g.fillText('C L I C K   T H E   T A B L E   T O   B E G I N', cv.width * 0.62, cv.height * 0.56 + 30)
-  g.restore()
-  demo = cv
-  return cv
-}
-
 /** Stops the (fully covered) museum canvas while the studio overlay is open. */
 function PauseWhileStudioOpen() {
   const setFrameloop = useThree((s) => s.setFrameloop)
-  const open = useStudio((s) => s.open)
+  const open = useClayStudio((s) => s.open)
   useEffect(() => {
     if (!open) return
     const t = setTimeout(() => setFrameloop('never'), 320) // after the overlay has faded in
@@ -115,162 +60,191 @@ function PauseWhileStudioOpen() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Studio printing table                                               */
+/* Potter's wheel                                                      */
 /* ------------------------------------------------------------------ */
 
-export function PrintStudioTable({ config }: ModelProps) {
+/** The pot on the wheel before the visitor has shaped one: a plain wet jar. */
+const DEMO_OPS: PotOp[] = [{ t: 'pull' }, { t: 'widen', at: 0.42 }, { t: 'narrow', at: 0.86 }, { t: 'body', id: 'red' }]
+const DEMO_POT = reducePot(DEMO_OPS)
+const DEMO_SEED = 0x5eed
+
+/** Rev/s of the wheel in the pavilion (slow: it is on show, not throwing). */
+const SHOW_RPS = 0.12
+
+/**
+ * A floor-level wheel of the kind set spinning with a stick: a heavy disc on a stone pivot,
+ * the clay on a raised hub at its centre, the stick on the floor beside it, slip bowls and a
+ * water pot to hand. Built inside `footprint` (default 1 m square); the disc turns with the pot.
+ */
+export function PottersWheel({ config }: ModelProps) {
   const m = useModelMaterials()
   const inScene = useContext(InMuseumScene)
-  const [W, D] = fp(config, [2.2, 1.0])
-  const H = config.height ?? 0.86
-  const top = H - 0.005
-  // 4:3 cloth on the left of the pad, ink tray + blocks on the right
-  const clothW = Math.min(W - 0.72, (D - 0.14) * (4 / 3))
-  const clothD = clothW * 0.75
-  const clothX = -W / 2 + 0.07 + clothW / 2
+  const lang = useLang()
+  const [W, D] = fp(config, [1, 1])
+  const R = Math.max(0.3, Math.min(W, D) / 2 - 0.06)
+  const top = num(config, 'wheelTop', 0.16)
+  const hubH = 0.025
+  const turn = useRef<THREE.Group>(null)
 
-  const version = useStudio((s) => s.version)
-  const hasDesign = useStudio((s) => s.ops.length > 0)
+  const ops = useClayStudio((s) => s.ops)
+  const pot = useClayStudio((s) => s.pot)
+  const seed = useClayStudio((s) => s.seed)
+  const mine = ops.length > 0
+  const shown = mine ? pot : DEMO_POT
+  const shownSeed = mine ? seed : DEMO_SEED
 
-  const tex = useMemo(() => {
-    const t = new THREE.CanvasTexture(demoCloth())
-    t.colorSpace = THREE.SRGBColorSpace
-    t.anisotropy = 8
-    return t
-  }, [])
+  // the pot mesh follows the studio (re-created only when the seed changes)
+  const handle = useMemo<PotHandle>(() => createPot(shown, shownSeed, shown.fired, 64), [shownSeed]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const src = hasDesign ? designCanvas() : demoCloth()
-    if (tex.image !== src) {
-      tex.image = src
-      tex.dispose() // new size → reallocate
-    }
-    tex.needsUpdate = true
-  }, [tex, hasDesign, version])
-  useEffect(() => () => tex.dispose(), [tex])
+    handle.update(shown, shown.fired)
+  }, [handle, shown])
+  useEffect(() => () => handle.dispose(), [handle])
 
-  const clothMat = useMemo(() => new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0, envMapIntensity: 0.4 }), [tex])
-  useEffect(() => () => clothMat.dispose(), [clothMat])
-  const inkMat = useMemo(() => tinted(m.felt, '#27406b', { roughness: 0.45 }), [m.felt])
-  const dyeMats = useMemo(() => DYES.map((d) => new THREE.MeshStandardMaterial({ color: d.color, roughness: 0.35, metalness: 0 })), [])
-  useEffect(() => () => dyeMats.forEach((x) => x.dispose()), [dyeMats])
+  useFrame((_, dt) => {
+    if (!inScene || !turn.current || VR_MODE || useMuseum.getState().reducedMotion) return
+    turn.current.rotation.y -= Math.PI * 2 * SHOW_RPS * Math.min(dt, 0.1)
+  })
+
+  const slipMats = useMemo(() => SLIPS.map((s) => new THREE.MeshStandardMaterial({ color: s.raw, roughness: 0.3, metalness: 0 })), [])
+  useEffect(() => () => slipMats.forEach((x) => x.dispose()), [slipMats])
+  // the disc is wood under a skin of dried clay; the hub is wet from the last pot
+  const discMat = useMemo(() => tinted(m.earthenware, '#5a3b2d', { roughness: 0.92 }), [m.earthenware])
+  const hubMat = useMemo(() => tinted(m.earthenware, '#6d4030', { roughness: 0.45 }), [m.earthenware])
 
   const signTex = useMemo(
     () =>
       textCanvas(512, 200, (g) => {
-        g.fillStyle = '#f3ede1'
+        g.fillStyle = '#f4ece2'
         g.fillRect(0, 0, 512, 200)
-        g.strokeStyle = 'rgba(43,38,33,0.25)'
+        g.strokeStyle = 'rgba(45,34,29,0.25)'
         g.lineWidth = 2
         g.strokeRect(10, 10, 492, 180)
-        g.fillStyle = '#2b2621'
+        g.fillStyle = '#2d221d'
         g.textAlign = 'center'
         g.font = "500 54px 'Cormorant Garamond', Georgia, serif"
-        g.fillText('Print it yourself', 256, 96)
-        g.fillStyle = '#6f665c'
-        g.font = "500 20px Inter, system-ui, sans-serif"
-        g.fillText('STUDIO · CLICK THE TABLE TO BEGIN', 256, 146)
+        g.fillText(tr('studio.title'), 256, 96, 470)
+        g.fillStyle = '#6d5f55'
+        g.font = "500 19px Inter, system-ui, sans-serif"
+        g.fillText(tr('studio.signLine'), 256, 146, 470)
       }),
-    [],
+    [lang], // eslint-disable-line react-hooks/exhaustive-deps
   )
   useEffect(() => () => signTex.dispose(), [signTex])
 
-  const parts = useBuilt(geoKey('print-studio', config), () => {
+  // what turns: the disc (a heavy rim, a thinner web, the hub) — the pot sits on the hub
+  const disc = useBuilt(geoKey('potters-wheel-disc', config), () => {
     const b = new Builder()
-    const legH = H - 0.085
-    for (const x of [-W / 2 + 0.12, W / 2 - 0.12])
-      for (const z of [-(D / 2 - 0.09), D / 2 - 0.09]) b.add('frame', rbox(0.08, legH, 0.08, 0.006, 2, 'y'), { p: [x, legH / 2, z] })
-    for (const z of [-(D / 2 - 0.09), D / 2 - 0.09]) b.add('frame', rbox(W - 0.24, 0.09, 0.032, 0.004, 1, 'x'), { p: [0, legH - 0.065, z] })
-    for (const x of [-W / 2 + 0.12, W / 2 - 0.12]) {
-      b.add('frame', rbox(0.032, 0.09, D - 0.2, 0.004, 1, 'z'), { p: [x, legH - 0.065, 0] })
-      b.add('frame', rbox(0.045, 0.05, D - 0.2, 0.004, 1, 'z'), { p: [x, 0.18, 0] })
-    }
-    b.add('frame', rbox(W - 0.3, 0.05, 0.045, 0.004, 1, 'x'), { p: [0, 0.18, 0] })
-    b.add('frame', rbox(W, 0.05, D, 0.008, 2, 'x'), { p: [0, H - 0.06, 0] })
-    b.add('felt', rbox(W - 0.03, 0.032, D - 0.03, 0.012, 2, 'x'), { p: [0, H - 0.021, 0] })
-    // ink tray (a shallow teak tray with a felt ink pad) and the dye pots behind it
-    const tx = W / 2 - 0.33
-    b.add('teak', rbox(0.42, 0.014, 0.3, 0.003), { p: [tx, top + 0.007, 0.16] })
-    for (const s of [-1, 1]) {
-      b.add('teak', rbox(0.42, 0.045, 0.014, 0.003, 1, 'x'), { p: [tx, top + 0.0225, 0.16 + s * 0.143] })
-      b.add('teak', rbox(0.014, 0.045, 0.272, 0.003, 1, 'z'), { p: [tx + s * 0.203, top + 0.0225, 0.16] })
-    }
-    b.add('ink', rbox(0.38, 0.02, 0.26, 0.006), { p: [tx, top + 0.022, 0.16] })
-    addBlock(b, [tx - 0.02, top + 0.032, 0.16], 0.14, 0.14, 0.2)
-    addBlock(b, [tx + 0.05, top, -0.2], 0.16, 0.16, -0.35)
-    addBlock(b, [tx - 0.17, top, -0.3], 0.21, 0.07, 0.15)
+    const rim = 0.07
+    b.add('disc', lathe([[0, top - 0.03], [R - rim, top - 0.03], [R - 0.01, top - 0.045], [R, top - 0.03], [R, top], [R - rim, top + 0.006], [0.14, top], [0, top]], 72))
+    b.add('hub', lathe([[0, top], [0.13, top], [0.125, top + hubH], [0, top + hubH]], 48))
+    // the socket the stick goes in, near the rim
+    b.add('socket', lathe([[0, top + 0.0062], [0.018, top + 0.0062], [0.018, top + 0.0065], [0, top + 0.0065]], 16), { p: [R - 0.05, 0, 0] })
+    return b
+  })
+
+  const parts = useBuilt(geoKey('potters-wheel', config), () => {
+    const b = new Builder()
+    // stone pivot under the disc
+    b.add('stone', lathe([[0, 0], [0.12, 0], [0.1, top - 0.035], [0, top - 0.035]], 20))
+    // the stick, on the floor beside the wheel
+    const len = Math.min(0.95, Math.hypot(W, D) * 0.66)
+    b.add('stick', rbox(len, 0.022, 0.022, 0.009, 2, 'x'), { p: [-0.02, 0.011, D / 2 - 0.05], r: [0, 0.08, 0] })
+    // a water pot in one back corner
+    b.add('pot', lathe([[0, 0], [0.07, 0], [0.11, 0.08], [0.105, 0.17], [0.07, 0.2], [0.075, 0.22], [0.065, 0.22], [0.06, 0.205], [0, 0.205]], 28), { p: [-W / 2 + 0.11, 0, -D / 2 + 0.11] })
     return b
   })
 
   return (
     <group>
       {inScene && <PauseWhileStudioOpen />}
-      <Parts parts={parts} materials={{ frame: m.darkTimber, felt: m.felt, teak: m.teak, ink: inkMat }} />
-      <mesh material={clothMat} position={[clothX, top + 0.0035, -0.01]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[clothW, clothD]} />
-      </mesh>
-      {/* dye pots along the back edge */}
-      {dyeMats.map((mat, i) => {
-        const x = W / 2 - 0.62 + (i % 4) * 0.12 + (i >= 4 ? 0.06 : 0)
-        const z = -D / 2 + 0.1 + (i >= 4 ? 0.1 : 0)
-        return (
-          <group key={i} position={[x + 0.18, top, z]}>
-            <mesh material={m.terracotta} castShadow geometry={potGeo()} />
-            <mesh material={mat} position={[0, 0.052, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <circleGeometry args={[0.036, 20]} />
-            </mesh>
-          </group>
-        )
-      })}
-      {/* table sign, angled toward the visitor at the front edge */}
-      <group position={[W / 2 - 0.32, top, D / 2 - 0.1]} rotation={[-0.9, 0, 0]}>
-        <mesh position={[0, 0.06, 0]} material={m.darkTimber}>
-          <boxGeometry args={[0.34, 0.14, 0.012]} />
+      <Parts parts={parts} materials={{ stone: m.stoneDark, stick: m.teak, pot: m.terracotta }} />
+      <group ref={turn}>
+        <Parts parts={disc} materials={{ disc: discMat, hub: hubMat, socket: m.darkTimber }} />
+        <group position={[0, top + hubH, 0]}>
+          <primitive object={handle.mesh} />
+        </group>
+      </group>
+      {/* slip bowls in the other back corner */}
+      {slipMats.map((mat, i) => (
+        <group key={i} position={[W / 2 - 0.08 - (i % 2) * 0.11, 0, -D / 2 + 0.08 + Math.floor(i / 2) * 0.11]}>
+          <mesh material={m.terracotta} castShadow geometry={bowlGeo()} />
+          <mesh material={mat} position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.044, 20]} />
+          </mesh>
+        </group>
+      ))}
+      {/* a low card at the front corner, angled up toward the visitor */}
+      <group position={[W / 2 - 0.17, 0, D / 2 - 0.08]} rotation={[0, -0.35, 0]}>
+        <mesh position={[0, 0.16, -0.03]} rotation={[-0.35, 0, 0]} material={m.darkTimber}>
+          <boxGeometry args={[0.012, 0.32, 0.012]} />
         </mesh>
-        <mesh position={[0, 0.06, 0.0065]}>
-          <planeGeometry args={[0.32, 0.125]} />
-          <meshStandardMaterial map={signTex} roughness={0.8} />
-        </mesh>
+        <group position={[0, 0.3, 0]} rotation={[-0.6, 0, 0]}>
+          <mesh material={m.darkTimber}>
+            <boxGeometry args={[0.3, 0.125, 0.012]} />
+          </mesh>
+          <mesh position={[0, 0, 0.0065]}>
+            <planeGeometry args={[0.285, 0.111]} />
+            <meshStandardMaterial map={signTex} roughness={0.8} />
+          </mesh>
+        </group>
       </group>
     </group>
   )
 }
 
-let pot: THREE.BufferGeometry | null = null
-function potGeo() {
-  pot ??= lathe(
+/** The hand block museum's kind name for its studio table — the same studio entrance here. */
+export const PrintStudioTable = PottersWheel
+
+let bowl: THREE.BufferGeometry | null = null
+function bowlGeo() {
+  bowl ??= lathe(
     [
       [0, 0],
-      [0.036, 0],
-      [0.043, 0.012],
-      [0.046, 0.03],
-      [0.043, 0.046],
-      [0.038, 0.052],
-      [0.04, 0.056],
-      [0.036, 0.056],
-      [0.034, 0.05],
-      [0, 0.05],
+      [0.03, 0],
+      [0.045, 0.012],
+      [0.052, 0.03],
+      [0.05, 0.036],
+      [0.046, 0.034],
+      [0.04, 0.028],
+      [0, 0.028],
     ],
     20,
   )
-  return pot
+  return bowl
 }
 
 /* ------------------------------------------------------------------ */
-/* Visitors' Wall                                                      */
+/* Visitors' Shelf                                                     */
 /* ------------------------------------------------------------------ */
 
 const CELL_PX = 384
 const CELL_PY = 288
+/** Frames lean back against the niche wall by this much (radians). */
+const LEAN = 0.12
 
-function emptyCell(g: CanvasRenderingContext2D, x: number, y: number, i: number) {
-  const r = mulberry32(hashString(`wall-empty-${i}`))
+function emptyCell(g: CanvasRenderingContext2D, x: number, y: number) {
   g.save()
   g.translate(x, y)
-  paintCottonGround(g, CELL_PX, CELL_PY, '#e9dfca', r, { threadPx: 1.2, unevenness: 0.5, noise: 0 })
-  g.fillStyle = 'rgba(90, 70, 50, 0.32)'
+  const grd = g.createLinearGradient(0, 0, 0, CELL_PY)
+  grd.addColorStop(0, '#efe5d8')
+  grd.addColorStop(1, '#e2d3c1')
+  g.fillStyle = grd
+  g.fillRect(0, 0, CELL_PX, CELL_PY)
+  // a faint pot outline, so the card reads as a place waiting for one
+  g.strokeStyle = 'rgba(120, 80, 60, 0.18)'
+  g.lineWidth = 3
+  g.beginPath()
+  g.moveTo(CELL_PX / 2 - 34, CELL_PY * 0.72)
+  g.bezierCurveTo(CELL_PX / 2 - 70, CELL_PY * 0.5, CELL_PX / 2 - 30, CELL_PY * 0.32, CELL_PX / 2 - 26, CELL_PY * 0.22)
+  g.moveTo(CELL_PX / 2 + 34, CELL_PY * 0.72)
+  g.bezierCurveTo(CELL_PX / 2 + 70, CELL_PY * 0.5, CELL_PX / 2 + 30, CELL_PY * 0.32, CELL_PX / 2 + 26, CELL_PY * 0.22)
+  g.moveTo(CELL_PX / 2 - 34, CELL_PY * 0.72)
+  g.lineTo(CELL_PX / 2 + 34, CELL_PY * 0.72)
+  g.stroke()
+  g.fillStyle = 'rgba(90, 60, 45, 0.4)'
   g.textAlign = 'center'
-  g.font = "italic 26px 'Cormorant Garamond', Georgia, serif"
-  g.fillText('awaiting a visitor’s print', CELL_PX / 2, CELL_PY / 2 + 8)
+  g.font = "italic 24px 'Cormorant Garamond', Georgia, serif"
+  g.fillText(tr('studio.shelfEmpty'), CELL_PX / 2, CELL_PY * 0.88, CELL_PX - 24)
   g.restore()
 }
 
@@ -281,11 +255,11 @@ function nameTag(g: CanvasRenderingContext2D, x: number, y: number, name: string
   const w = Math.min(CELL_PX - 20, g.measureText(label).width + 20)
   const tx = x + CELL_PX - w - 10
   const ty = y + CELL_PY - 34
-  g.fillStyle = 'rgba(248, 244, 235, 0.94)'
+  g.fillStyle = 'rgba(248, 242, 234, 0.94)'
   g.fillRect(tx, ty, w, 24)
-  g.strokeStyle = 'rgba(43, 38, 33, 0.2)'
+  g.strokeStyle = 'rgba(45, 34, 29, 0.2)'
   g.strokeRect(tx + 0.5, ty + 0.5, w - 1, 23)
-  g.fillStyle = '#3a332c'
+  g.fillStyle = '#3a2c25'
   g.textAlign = 'left'
   g.fillText(label, tx + 10, ty + 17, w - 20)
   g.restore()
@@ -304,18 +278,22 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
 export function VisitorsWall({ config }: ModelProps) {
   const m = useModelMaterials()
-  const cols = Math.max(1, Math.round(num(config, 'cols', 8)))
+  const lang = useLang()
+  const cols = Math.max(1, Math.round(num(config, 'cols', 6)))
   const rows = Math.max(1, Math.round(num(config, 'rows', 3)))
-  const width = num(config, 'width', 6.2)
-  const bottom = num(config, 'bottom', 1.0)
-  const title = str(config, 'title', 'The Visitors’ Wall')
+  const width = num(config, 'width', 4.2)
+  const bottom = num(config, 'bottom', 0.55)
+  const depth = num(config, 'depth', 0.3)
+  const title = str(config, 'title', '')
   const pitchX = width / cols
-  const fw = pitchX * 0.82 // frame width
-  const fh = fw * 0.78
-  const pitchY = fh + 0.16
-  const border = 0.03
-  const depth = 0.035
+  const nicheH = pitchX * 0.86
+  const T = 0.03 // board thickness
+  const fw = (pitchX - T) * 0.7 // frame width
+  const fh = fw * 0.75
+  const border = 0.022
+  const fd = 0.022 // frame depth
   const n = cols * rows
+  const totalH = rows * nicheH + T
   const [prints, setPrints] = useState<WallPrint[]>([])
 
   useEffect(() => {
@@ -330,21 +308,20 @@ export function VisitorsWall({ config }: ModelProps) {
     const cv = document.createElement('canvas')
     cv.width = CELL_PX * cols
     cv.height = CELL_PY * rows
-    const g = cv.getContext('2d')!
-    for (let i = 0; i < n; i++) emptyCell(g, (i % cols) * CELL_PX, Math.floor(i / cols) * CELL_PY, i)
     const t = new THREE.CanvasTexture(cv)
     t.colorSpace = THREE.SRGBColorSpace
     t.anisotropy = 8
     return t
-  }, [cols, rows, n])
+  }, [cols, rows])
   useEffect(() => () => atlas.dispose(), [atlas])
 
-  // fill the atlas as prints arrive (newest top-left)
+  // empty cards first, then the pots as they arrive (newest top-left)
   useEffect(() => {
-    if (!prints.length) return
     let alive = true
     const cv = atlas.image as HTMLCanvasElement
     const g = cv.getContext('2d')!
+    for (let i = 0; i < n; i++) emptyCell(g, (i % cols) * CELL_PX, Math.floor(i / cols) * CELL_PY)
+    atlas.needsUpdate = true
     void Promise.all(
       prints.map(async (p, i) => {
         try {
@@ -352,7 +329,7 @@ export function VisitorsWall({ config }: ModelProps) {
           if (!alive) return
           const x = (i % cols) * CELL_PX
           const y = Math.floor(i / cols) * CELL_PY
-          // cover-fit the print into its 4:3 cell
+          // cover-fit the shot into its 4:3 cell
           const k = Math.max(CELL_PX / img.naturalWidth, CELL_PY / img.naturalHeight)
           const w = img.naturalWidth * k
           const h = img.naturalHeight * k
@@ -362,49 +339,59 @@ export function VisitorsWall({ config }: ModelProps) {
           g.clip()
           g.drawImage(img, x + (CELL_PX - w) / 2, y + (CELL_PY - h) / 2, w, h)
           g.restore()
-          nameTag(g, x, y, p.displayName || 'Anonymous visitor')
+          nameTag(g, x, y, p.displayName || tr('studio.anonymous'))
           atlas.needsUpdate = true
         } catch {
-          /* keep the empty cloth */
+          /* keep the empty card */
         }
       }),
     )
     return () => {
       alive = false
     }
-  }, [prints, atlas, cols])
+  }, [prints, atlas, cols, n, lang])
 
-  const cellCenter = (i: number): [number, number] => {
+  /** Niche i: centre x, shelf top y. */
+  const niche = (i: number): [number, number] => {
     const c = i % cols
     const r = Math.floor(i / cols)
-    return [-width / 2 + pitchX * (c + 0.5), bottom + fh / 2 + (rows - 1 - r) * pitchY]
+    return [-width / 2 + pitchX * (c + 0.5), bottom + T + (rows - 1 - r) * nicheH]
   }
+  // a leaning frame: local (x, y) on the frame face → world, the frame's foot at (cx, sy, zFoot)
+  const zFoot = depth * 0.42
+  const lean = (cx: number, sy: number, x: number, y: number, z: number): [number, number, number] => [cx + x, sy + y * Math.cos(LEAN) + z * Math.sin(LEAN), zFoot - y * Math.sin(LEAN) + z * Math.cos(LEAN)]
 
-  const frames = useBuilt(geoKey('visitors-wall-frames', config), () => {
+  const parts = useBuilt(geoKey('visitors-shelf', config), () => {
     const b = new Builder()
+    // carcass: back, shelves, dividers, a recessed plinth
+    b.add('back', box(width, totalH, 0.02), { p: [0, bottom + totalH / 2, 0.01] })
+    for (let r = 0; r <= rows; r++) b.add('board', rbox(width + T, T, depth, 0.004, 1, 'x'), { p: [0, bottom + T / 2 + r * nicheH, depth / 2] })
+    for (let c = 0; c <= cols; c++) b.add('board', rbox(T, totalH, depth, 0.004, 1, 'y'), { p: [-width / 2 + c * pitchX, bottom + totalH / 2, depth / 2] })
+    b.add('board', box(width - 0.04, bottom, depth - 0.05), { p: [0, bottom / 2, (depth - 0.05) / 2] })
+    // frames: four bars and a backing board, leaning on the niche wall
     for (let i = 0; i < n; i++) {
-      const [x, y] = cellCenter(i)
-      // box frame: four mitred-look bars + a recessed backing
-      b.add('frame', rbox(fw, border, depth, 0.004, 1, 'x'), { p: [x, y + fh / 2 - border / 2, depth / 2] })
-      b.add('frame', rbox(fw, border, depth, 0.004, 1, 'x'), { p: [x, y - fh / 2 + border / 2, depth / 2] })
-      b.add('frame', rbox(border, fh - 2 * border, depth, 0.004, 1, 'y'), { p: [x - fw / 2 + border / 2, y, depth / 2] })
-      b.add('frame', rbox(border, fh - 2 * border, depth, 0.004, 1, 'y'), { p: [x + fw / 2 - border / 2, y, depth / 2] })
-      b.add('back', box(fw - 0.01, fh - 0.01, 0.006), { p: [x, y, 0.003] })
+      const [cx, sy] = niche(i)
+      const at = (x: number, y: number) => lean(cx, sy, x, y, fd / 2)
+      const bars: [number, number, number, number][] = [
+        [0, fh - border / 2, fw, border],
+        [0, border / 2, fw, border],
+        [-fw / 2 + border / 2, fh / 2, border, fh - 2 * border],
+        [fw / 2 - border / 2, fh / 2, border, fh - 2 * border],
+      ]
+      for (const [x, y, w, h] of bars) b.add('frame', rbox(w, h, fd, 0.003), { p: at(x, y), r: [-LEAN, 0, 0] })
+      b.add('frameBack', box(fw - 0.004, fh - 0.004, 0.004), { p: lean(cx, sy, 0, fh / 2, 0.002), r: [-LEAN, 0, 0] })
     }
-    // a slim picture rail above the grid
-    const railY = bottom + rows * pitchY - 0.04
-    b.add('frame', rbox(width + 0.3, 0.035, 0.03, 0.004, 1, 'x'), { p: [0, railY, 0.015] })
     return b
   })
 
-  const clothGeo = useMemo(() => {
+  const shotGeo = useMemo(() => {
     const pos: number[] = []
     const uv: number[] = []
     const idx: number[] = []
-    const iw = fw - 2 * border - 0.02
-    const ih = fh - 2 * border - 0.02
+    const iw = fw - 2 * border - 0.012
+    const ih = fh - 2 * border - 0.012
     for (let i = 0; i < n; i++) {
-      const [x, y] = cellCenter(i)
+      const [cx, sy] = niche(i)
       const c = i % cols
       const r = Math.floor(i / cols)
       const u0 = c / cols
@@ -412,8 +399,10 @@ export function VisitorsWall({ config }: ModelProps) {
       const v1 = 1 - r / rows
       const v0 = 1 - (r + 1) / rows
       const k = pos.length / 3
-      const z = 0.016
-      pos.push(x - iw / 2, y - ih / 2, z, x + iw / 2, y - ih / 2, z, x + iw / 2, y + ih / 2, z, x - iw / 2, y + ih / 2, z)
+      const z = 0.008
+      const y0 = fh / 2 - ih / 2
+      const y1 = fh / 2 + ih / 2
+      pos.push(...lean(cx, sy, -iw / 2, y0, z), ...lean(cx, sy, iw / 2, y0, z), ...lean(cx, sy, iw / 2, y1, z), ...lean(cx, sy, -iw / 2, y1, z))
       uv.push(u0, v0, u1, v0, u1, v1, u0, v1)
       idx.push(k, k + 1, k + 2, k, k + 2, k + 3)
     }
@@ -424,34 +413,38 @@ export function VisitorsWall({ config }: ModelProps) {
     g.computeVertexNormals()
     return g
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [n, cols, rows, fw, fh, width, bottom])
-  useEffect(() => () => clothGeo.dispose(), [clothGeo])
+  }, [n, cols, rows, fw, fh, width, bottom, depth])
+  useEffect(() => () => shotGeo.dispose(), [shotGeo])
 
-  const clothMat = useMemo(() => new THREE.MeshStandardMaterial({ map: atlas, roughness: 0.95, metalness: 0, envMapIntensity: 0.35 }), [atlas])
-  useEffect(() => () => clothMat.dispose(), [clothMat])
+  const shotMat = useMemo(() => new THREE.MeshStandardMaterial({ map: atlas, roughness: 0.6, metalness: 0, envMapIntensity: 0.35 }), [atlas])
+  useEffect(() => () => shotMat.dispose(), [shotMat])
+  // limewashed rose clay for the carcass, a deep red-clay back for depth
+  const boardMat = useMemo(() => tinted(m.terracotta, '#d6a593', { roughness: 0.95 }), [m.terracotta])
+  const backMat = useMemo(() => tinted(m.terracotta, '#7c3a2c', { roughness: 0.98 }), [m.terracotta])
 
   const plaque = useMemo(
     () =>
       textCanvas(1024, 256, (g) => {
         g.clearRect(0, 0, 1024, 256)
-        g.fillStyle = '#2b2621'
+        g.fillStyle = '#2d221d'
         g.textAlign = 'left'
         g.font = "500 92px 'Cormorant Garamond', Georgia, serif"
-        g.fillText(title, 8, 112)
-        g.fillStyle = '#5d544b'
-        g.font = "500 26px Inter, system-ui, sans-serif"
-        g.fillText('PRINTS MADE BY VISITORS IN THE STUDIO · SHOWN AFTER REVIEW', 12, 176)
+        g.fillText(title || tr('studio.shelfName'), 8, 112, 1000)
+        g.fillStyle = '#3a2c25'
+        g.font = "600 27px Inter, system-ui, sans-serif"
+        g.fillText(tr('studio.shelfLine'), 12, 176, 1000)
       }),
-    [title],
+    [title, lang], // eslint-disable-line react-hooks/exhaustive-deps
   )
   useEffect(() => () => plaque.dispose(), [plaque])
-  const plaqueW = 2.4
-  const plaqueY = bottom + rows * pitchY + 0.34
+  const plaqueW = Math.min(2.4, width)
+  const plaqueY = bottom + totalH + 0.32
 
+  // Built from its back (z 0) forward; centred on the footprint like every model (origin at floor centre).
   return (
-    <group>
-      <Parts parts={frames} materials={{ frame: m.oak, back: m.darkTimber }} />
-      <mesh geometry={clothGeo} material={clothMat} receiveShadow />
+    <group position={[0, 0, -depth / 2]}>
+      <Parts parts={parts} materials={{ back: backMat, board: boardMat, frame: m.darkTimber, frameBack: m.darkTimber }} />
+      <mesh geometry={shotGeo} material={shotMat} receiveShadow />
       <mesh position={[-width / 2 + plaqueW / 2, plaqueY, 0.004]}>
         <planeGeometry args={[plaqueW, plaqueW / 4]} />
         <meshStandardMaterial map={plaque} transparent roughness={0.9} depthWrite={false} />

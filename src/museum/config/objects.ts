@@ -1,6 +1,6 @@
 /**
- * SCENE OBJECTS — craft installations, furniture, props and centrepieces placed around the
- * museum (v3 layout).
+ * SCENE OBJECTS — the pieces on the podium row, the oculus plinth, the visitors' potter's wheel
+ * and shelf, drying shelves, benches and planters of the clay pavilion.
  *
  * Each object renders either:
  *   - `model`: a GLB (CC0 library download or a supplied production model), or
@@ -11,9 +11,9 @@
  * is the size the procedural model is built to. Rotation is about +y in degrees.
  * `zone` drives render culling (ZONE_VISIBILITY) — it must be the zone the object stands in.
  */
-import { COURT_CENTER, type ZoneId } from './layout'
-import type { Vec3 } from './museum'
-import { MUSEUM } from './museum'
+import { COURT_CENTER, PODIUM, PODIUM_SLOTS, type ZoneId } from './layout'
+import { DEG, KEY, MUSEUM, polar, type Vec3 } from './museum'
+import { STUDY_NOTE, type TraditionKey } from './artworks'
 import type { ContentI18n } from '../i18n/core'
 import { AMENITY_OBJECTS } from './amenities'
 
@@ -66,6 +66,14 @@ export type ProceduralModelId =
   | 'resource-board'
   /** Credits / partners wall panel (models/credits.tsx). */
   | 'credits-panel'
+  /** Clay pavilion (models/clay.tsx): loose podium {height, top}, pots {form, clay, burnish}, Bankura-style horse {scale}, Molela-style plaque {motif}, the oculus plinth, drying shelf {width, rows, fired}; the studio's potter's wheel (models/printStudio.tsx). */
+  | 'podium'
+  | 'clay-vessel'
+  | 'terracotta-horse'
+  | 'votive-plaque'
+  | 'oculus-plinth'
+  | 'clay-shelf'
+  | 'potters-wheel'
 
 export interface SceneObjectConfig {
   id: string
@@ -89,7 +97,7 @@ export interface SceneObjectConfig {
   /** Opens in the 3D inspection viewer. */
   inspectable?: boolean
   description?: string
-  /** Zone the object stands in ('reveal' = the craft court). */
+  /** Zone the object stands in. */
   zone: ZoneId
   /** Attribution for downloaded CC0 assets. */
   credit?: { author: string; source: string; license: 'CC0' }
@@ -104,429 +112,378 @@ export interface SceneObjectConfig {
   links?: { label: string; href?: string; note?: string }[]
 }
 
-/**
- * Poly Haven CC0 model: the optimised single-file GLB (meshopt + WebP, scripts/optimize-assets.mjs,
- * verified by scripts/verify-optimized-models.mjs); sources in /models/cc0/<id>/ (download-cc0-models.mjs).
- */
+/** Poly Haven CC0 model: the optimised single-file GLB (scripts/optimize-assets.mjs). */
 const cc0 = (id: string) => `/models/opt/cc0/${id}.glb`
 const PH = (author: string, id: string) => ({ author, source: `https://polyhaven.com/a/${id}`, license: 'CC0' as const })
-const A = MUSEUM.wings.atrium
-const WS = MUSEUM.wings.workshop
-const CY = MUSEUM.wings.courtyard
-const TH = MUSEUM.wings.theatre
-const GD = MUSEUM.wings.galleryD
-const D = MUSEUM.wings.doors
-const COURT = COURT_CENTER
-const GDX = (GD.minX + GD.maxX) / 2
-const ART = (f: string) => `/artworks/${f}.jpg`
+/** Forecourt planters stand just beyond the annex corners, clear of the facade either side of the door. */
+const PLANTER_X = KEY.annexOuterHalf + 0.8
+const PLANTER_Z = KEY.annexOuterZ + 0.75
 
-const CENTREPIECE_TEXT =
-  'A large carved printing block, turning slowly on its table so the relief can be seen from every side: the mirrored central motif, the ring of small motifs and the ruled border band, with a brass-bound face and a turned handle with brass ferrules. The block was modelled for this exhibition.'
-const MAP_TEXT =
-  'A relief map of India, in the official Government of India depiction.'
-const VITRINE_TEXT = 'A table vitrine of printing blocks, each beside a trial impression of its motif. The blocks were modelled for this exhibition.'
+/** rotationDeg that turns an object's front (+z) to face outwards (away from the drum centre) at plan angle `aDeg`. */
+const facingOut = (aDeg: number) => Math.atan2(Math.cos(aDeg * DEG), Math.sin(aDeg * DEG)) / DEG
+/** …and to face the drum centre. */
+const facingIn = (aDeg: number) => facingOut(aDeg) + 180
+/** A floor point on the drum's polar grid. */
+const at = (r: number, aDeg: number, y = 0): Vec3 => {
+  const [x, z] = polar(r, aDeg)
+  return [x, y, z]
+}
 
-/** Theatre seating: two blocks of six either side of a centre aisle, six rows (x), facing the screen (west). */
-const THEATRE_ROWS = [0, 1, 2, 3, 4, 5].flatMap((r) =>
-  [-1, 1].map<SceneObjectConfig>((side) => ({
-    id: `theatre-row-${r + 1}${side < 0 ? 'n' : 's'}`,
-    title: 'Theatre seating',
-    kind: 'theatre-seating',
-    position: [TH.minX + 6.6 + r * 1.2, 0, (TH.minZ + TH.maxZ) / 2 + side * 3.5],
-    rotationDeg: -90,
-    footprint: [5.4, 0.62],
-    props: { seats: 6 },
-    zone: 'theatre',
-  })),
-)
+type Lang3 = [string, string, string]
+
+interface PodiumPiece {
+  slot: string
+  tradition: TraditionKey
+  id: string
+  title: Lang3
+  kind: ProceduralModelId
+  /** Footprint on the podium top (it is 0.305 m square). */
+  size: number
+  height: number
+  props: Record<string, string | number | boolean>
+  alt: Lang3
+}
+
+/**
+ * The podium row (PDF: "Podium product display", 12 in × 12 in at 4 ft) — one piece per podium,
+ * standing on its top and facing the court. The podiums themselves are architecture (they always
+ * collide, layout.ts PODIUM_SLOTS), so the pieces carry no footprint of their own beyond the top.
+ * Every piece is a procedural stand-in (`placeholder: true`) until the workshop's objects are
+ * photographed or scanned; set `model` to a GLB then.
+ */
+const PODIUM_PIECES: PodiumPiece[] = [
+  // A — Bankura terracotta
+  {
+    slot: 'pod-a-1',
+    tradition: 'a',
+    id: 'clay-a-horse',
+    title: ['Horse — Study', 'घोड़ा — अध्ययन', 'ঘোড়া — চর্চা'],
+    kind: 'terracotta-horse',
+    size: 0.26,
+    height: 0.5,
+    props: { scale: 1 },
+    alt: [
+      'A red terracotta horse standing square, with a tall straight neck, pricked ears and an open, hollow body.',
+      'सीधा खड़ा लाल टेराकोटा घोड़ा — ऊँची सीधी गर्दन, खड़े कान और भीतर से खोखला शरीर।',
+      'সোজা দাঁড়ানো লাল টেরাকোটার ঘোড়া — উঁচু খাড়া গলা, খাড়া কান আর ভেতরে ফাঁপা দেহ।',
+    ],
+  },
+  {
+    slot: 'pod-a-2',
+    tradition: 'a',
+    id: 'clay-a-horse-small',
+    title: ['Small Horse — Study', 'छोटा घोड़ा — अध्ययन', 'ছোট ঘোড়া — চর্চা'],
+    kind: 'terracotta-horse',
+    size: 0.2,
+    height: 0.34,
+    props: { scale: 0.68 },
+    alt: [
+      'A smaller red terracotta horse of the same upright form.',
+      'उसी सीधे रूप का एक छोटा लाल टेराकोटा घोड़ा।',
+      'একই খাড়া গড়নের একটি ছোট লাল টেরাকোটার ঘোড়া।',
+    ],
+  },
+  {
+    slot: 'pod-a-3',
+    tradition: 'a',
+    id: 'clay-a-pot',
+    title: ['Water Pot — Study', 'पानी का घड़ा — अध्ययन', 'জলের কলসি — চর্চা'],
+    kind: 'clay-vessel',
+    size: 0.26,
+    height: 0.3,
+    props: { form: 'matka', clay: 'terracotta', burnish: 0.35 },
+    alt: [
+      'A round-bellied red clay water pot with a short rolled rim.',
+      'छोटे मुड़े किनारे वाला, गोल पेट का लाल मिट्टी का पानी का घड़ा।',
+      'ছোট গোটানো কানার, গোল পেটের লাল মাটির জলের কলসি।',
+    ],
+  },
+  // B — Molela votive plaques
+  {
+    slot: 'pod-b-1',
+    tradition: 'b',
+    id: 'clay-b-plaque-rider',
+    title: ['Plaque: Rider — Study', 'पट्टिका: अश्वारोही — अध्ययन', 'ফলক: অশ্বারোহী — চর্চা'],
+    kind: 'votive-plaque',
+    size: 0.26,
+    height: 0.38,
+    props: { motif: 'rider' },
+    alt: [
+      'A small arched clay plaque standing upright, with a horse and rider in relief, painted red, ochre and white.',
+      'सीधी खड़ी एक छोटी मेहराबदार मिट्टी की पट्टिका, जिस पर उभरे घोड़ा और सवार, लाल, पीले और सफ़ेद रंग में।',
+      'খাড়া করে রাখা একটি ছোট খিলান-আকারের মাটির ফলক, তাতে উঁচু করে গড়া ঘোড়া ও সওয়ার, লাল, হলুদ আর সাদায় রং করা।',
+    ],
+  },
+  {
+    slot: 'pod-b-2',
+    tradition: 'b',
+    id: 'clay-b-cups',
+    title: ['Cups — Study', 'कुल्हड़ — अध्ययन', 'ভাঁড় — চর্চা'],
+    kind: 'clay-vessel',
+    size: 0.2,
+    height: 0.12,
+    props: { form: 'kulhad', clay: 'red', burnish: 0 },
+    alt: ['A plain, unglazed red clay cup.', 'बिना चमक का एक सादा लाल मिट्टी का कुल्हड़।', 'চকচকে প্রলেপ ছাড়া একটি সাধারণ লাল মাটির ভাঁড়।'],
+  },
+  {
+    slot: 'pod-b-3',
+    tradition: 'b',
+    id: 'clay-b-plaque-deity',
+    title: ['Plaque: Seated Deity — Study', 'पट्टिका: आसीन देवता — अध्ययन', 'ফলক: উপবিষ্ট দেবতা — চর্চা'],
+    kind: 'votive-plaque',
+    size: 0.28,
+    height: 0.44,
+    props: { motif: 'deity' },
+    alt: [
+      'An arched clay plaque with a seated figure in relief under a canopy, painted in earth colours.',
+      'मेहराबदार मिट्टी की पट्टिका, जिस पर छत्र के नीचे बैठी एक उभरी आकृति, मिट्टी के रंगों में रँगी।',
+      'খিলান-আকারের মাটির ফলক, তাতে চাঁদোয়ার নিচে বসা এক রিলিফ মূর্তি, মাটির রঙে রং করা।',
+    ],
+  },
+  {
+    slot: 'pod-b-4',
+    tradition: 'b',
+    id: 'clay-b-lamp',
+    title: ['Oil Lamp — Study', 'दीया — अध्ययन', 'প্রদীপ — চর্চা'],
+    kind: 'clay-vessel',
+    size: 0.16,
+    height: 0.07,
+    props: { form: 'diya', clay: 'red', burnish: 0 },
+    alt: ['A small, shallow clay oil lamp with a pinched spout.', 'चुटकी से बनी टोंटी वाला छोटा, उथला मिट्टी का दीया।', 'চিমটি দিয়ে গড়া নলওয়ালা একটি ছোট, অগভীর মাটির প্রদীপ।'],
+  },
+  {
+    slot: 'pod-b-5',
+    tradition: 'b',
+    id: 'clay-b-plaque-serpent',
+    title: ['Plaque: Serpent — Study', 'पट्टिका: नाग — अध्ययन', 'ফলক: নাগ — চর্চা'],
+    kind: 'votive-plaque',
+    size: 0.26,
+    height: 0.38,
+    props: { motif: 'serpent' },
+    alt: [
+      'An arched clay plaque with a hooded serpent in relief, in red and cream.',
+      'मेहराबदार मिट्टी की पट्टिका, जिस पर फन फैलाए उभरा नाग, लाल और क्रीम रंग में।',
+      'খিলান-আকারের মাটির ফলক, তাতে ফণা তোলা রিলিফ সাপ, লাল আর ঘিয়ে রঙে।',
+    ],
+  },
+  // C — Longpi black pottery
+  {
+    slot: 'pod-c-1',
+    tradition: 'c',
+    id: 'clay-c-kettle',
+    title: ['Kettle — Study', 'केतली — अध्ययन', 'কেটলি — চর্চা'],
+    kind: 'clay-vessel',
+    size: 0.26,
+    height: 0.26,
+    props: { form: 'kettle', clay: 'black', burnish: 0.85 },
+    alt: [
+      'A black clay kettle with a short spout and a cane-bound handle, polished to a soft shine.',
+      'छोटी टोंटी और बेंत से बँधे हत्थे वाली काली मिट्टी की केतली, हल्की चमक तक घिसी हुई।',
+      'ছোট নল আর বেত-বাঁধা হাতলওয়ালা কালো মাটির কেটলি, নরম আভা পর্যন্ত ঘষা।',
+    ],
+  },
+  {
+    slot: 'pod-c-2',
+    tradition: 'c',
+    id: 'clay-c-bowl',
+    title: ['Bowl — Study', 'कटोरा — अध्ययन', 'বাটি — চর্চা'],
+    kind: 'clay-vessel',
+    size: 0.26,
+    height: 0.12,
+    props: { form: 'bowl', clay: 'black', burnish: 0.85 },
+    alt: ['A wide, low black clay bowl with a burnished surface.', 'घिसकर चमकाई सतह वाला चौड़ा, नीचा काली मिट्टी का कटोरा।', 'ঘষে-মাজা তলের একটি চওড়া, নিচু কালো মাটির বাটি।'],
+  },
+  {
+    slot: 'pod-c-3',
+    tradition: 'c',
+    id: 'clay-c-pot',
+    title: ['Cooking Pot — Study', 'खाना पकाने का बर्तन — अध्ययन', 'রান্নার হাঁড়ি — চর্চা'],
+    kind: 'clay-vessel',
+    size: 0.26,
+    height: 0.28,
+    props: { form: 'matka', clay: 'black', burnish: 0.7 },
+    alt: ['A round black clay cooking pot with a wide mouth.', 'चौड़े मुँह वाला गोल, काली मिट्टी का खाना पकाने का बर्तन।', 'চওড়া মুখের গোল, কালো মাটির রান্নার হাঁড়ি।'],
+  },
+]
+
+function podiumObject(p: PodiumPiece): SceneObjectConfig {
+  const slot = PODIUM_SLOTS.find((s) => s.id === p.slot)
+  if (!slot) throw new Error(`objects.ts: unknown podium slot ${p.slot}`)
+  const note = STUDY_NOTE[p.tradition]
+  return {
+    id: p.id,
+    title: p.title[0],
+    kind: p.kind,
+    position: [slot.x, PODIUM.height, slot.z],
+    rotationDeg: slot.rotationY / DEG,
+    footprint: [p.size, p.size],
+    height: p.height,
+    props: p.props,
+    interactive: true,
+    inspectable: true,
+    description: note.en,
+    zone: slot.zone,
+    placeholder: true,
+    alt: p.alt[0],
+    i18n: { hi: { title: p.title[1], description: note.hi, alt: p.alt[1] }, bn: { title: p.title[2], description: note.bn, alt: p.alt[2] } },
+  }
+}
+
+/** Hallway shelves stand against the outer face of the hallway wall, facing the drum. */
+const SHELF_R = MUSEUM.hallwayWall.r + MUSEUM.hallwayWall.thickness / 2 + 0.2
 
 export const SCENE_OBJECTS: SceneObjectConfig[] = [
-  // ══ Grand Atrium ═════════════════════════════════════════════════
-  // five printed lengths hung high over the centre of the hall (bottom edges ≈ 4.5 m)
-  ...(
-    [
-      [-6.4, 14.8],
-      [-4.6, 14.0],
-      [0, 14.4],
-      [4.6, 14.0],
-      [6.4, 14.8],
-    ] as const
-  ).map<SceneObjectConfig>(([x, z], i) => ({
-    id: `banner-${i + 1}`,
-    title: 'Suspended Textile Installation',
-    kind: 'textile-banner',
-    position: [x, A.height - 0.3, z],
-    height: 4.2,
-    props: { width: 1.3, image: ['/artworks/hero-04.jpg', '/artworks/drape-02.jpg', '/artworks/drape-01.jpg', '/artworks/drape-03.jpg', '/artworks/hero-01.jpg'][i] },
-    interactive: i === 2,
-    description: 'A suspended installation of printed lengths welcoming visitors.',
-    zone: 'atrium',
-    placeholder: true,
-  })),
-  // information desk below the exhibition title on the north-east wall; visitor side faces south
-  { id: 'grand-desk', title: 'Information Desk', kind: 'grand-desk', position: [5.8, 0, 11.0], footprint: [3.6, 1.0], height: 1.05, zone: 'atrium' },
-  { id: 'desk-lantern', title: 'Brass lantern', kind: 'vessel', model: cc0('brass_diya_lantern'), modelScale: 1, position: [7.15, 1.05, 11.28], rotationDeg: -30, height: 0.38, zone: 'atrium', credit: PH('Bhargav Kubal', 'brass_diya_lantern') },
-  { id: 'desk-vase-1', title: 'Ceramic vase', kind: 'vessel', model: cc0('ceramic_vase_03'), modelScale: 1, position: [6.8, 1.05, 11.3], height: 0.41, zone: 'atrium', credit: PH('James Ray Cock', 'ceramic_vase_03') },
-  { id: 'desk-vase-2', title: 'Ceramic vase', kind: 'vessel', model: cc0('ceramic_vase_01'), modelScale: 1, position: [4.45, 1.05, 11.28], rotationDeg: 40, height: 0.4, zone: 'atrium', credit: PH('James Ray Cock', 'ceramic_vase_01') },
-  { id: 'desk-succulent', title: 'Succulent', kind: 'vessel', model: cc0('potted_plant_04'), modelScale: 1, position: [4.82, 1.05, 11.3], height: 0.27, zone: 'atrium', credit: PH('James Ray Cock', 'potted_plant_04') },
-  ...(
-    [
-      [-8.7, 9.4],
-      [8.8, 9.4],
-      [-7.4, 19.3],
-      [7.4, 19.3],
-    ] as const
-  ).map<SceneObjectConfig>(([x, z], i) => ({
-    id: `atrium-planter-${i + 1}`,
+  // ── Forecourt ───────────────────────────────────────────────────────────────────
+  ...[-1, 1].map<SceneObjectConfig>((side, i) => ({
+    id: `forecourt-planter-${i + 1}`,
     title: 'Planter',
     kind: 'planter',
-    model: cc0('potted_plant_01'),
-    position: [x, 0, z],
-    rotationDeg: i * 97,
-    footprint: [1.0, 1.0],
-    height: 1.6,
-    zone: 'atrium',
-    credit: PH('Rico Cilliers', 'potted_plant_01'),
+    model: cc0('potted_plant_02'),
+    position: [side * PLANTER_X, 0, PLANTER_Z],
+    rotationDeg: i * 140,
+    footprint: [0.8, 0.8],
+    height: 1.0,
+    zone: 'entrance-court',
+    credit: PH('Rico Cilliers', 'potted_plant_02'),
   })),
-  // four full-height timber columns framing the axis from the entrance to the reception door
-  ...(
-    [
-      [-2.6, 12.0],
-      [2.6, 12.0],
-      [-2.6, 16.4],
-      [2.6, 16.4],
-    ] as const
-  ).map<SceneObjectConfig>(([x, z], i) => ({
-    id: `atrium-column-${i + 1}`,
-    title: 'Timber column',
-    kind: 'column',
-    position: [x, 0, z],
-    footprint: [0.5, 0.5],
-    height: A.height,
-    zone: 'atrium',
+  // benches on the landscape plinth, looking out over it
+  ...[38, 142].map<SceneObjectConfig>((aDeg, i) => ({
+    id: `plinth-bench-${i + 1}`,
+    title: 'Bench',
+    kind: 'garden-bench',
+    position: at(13.6, aDeg),
+    rotationDeg: facingOut(aDeg),
+    footprint: [1.8, 0.5],
+    zone: 'entrance-court',
+    i18n: { hi: { title: 'बेंच' }, bn: { title: 'বেঞ্চ' } },
   })),
-  { id: 'atrium-bench-1', title: 'Bench', kind: 'garden-bench', position: [-5.6, 0, 12.4], rotationDeg: 180, footprint: [2.4, 0.5], zone: 'atrium' },
-  { id: 'atrium-bench-2', title: 'Bench', kind: 'garden-bench', position: [5.6, 0, 16.8], rotationDeg: 180, footprint: [2.4, 0.5], zone: 'atrium' },
 
-  // ══ Immersive Theatre ════════════════════════════════════════════
-  ...THEATRE_ROWS,
+  // ── The podium row, A → B → C ───────────────────────────────────────────────────
+  ...PODIUM_PIECES.map(podiumObject),
 
-  // ══ Craft court — rotating centrepiece under the skylight ════════
+  // ── Oculus court: the plinth under the open sky ─────────────────────────────────
   {
-    id: 'centrepiece-court',
-    title: 'The Master Block',
-    kind: 'centrepiece',
-    position: [COURT.x, 0, COURT.z],
-    footprint: [1.5, 1.5],
-    height: 1.1,
-    props: { motif: 'rosette', ink: '#8a3b2b', wood: 'teak', spin: 0.15 },
+    id: 'oculus-plinth',
+    title: 'The Oculus',
+    kind: 'oculus-plinth',
+    position: [COURT_CENTER.x, 0, COURT_CENTER.z],
+    // its curb is a wall collider (layout.ts 'oculus-plinth'); no second footprint here
+    height: MUSEUM.oculus.curbHeight,
     interactive: true,
-    inspectable: true,
-    description: CENTREPIECE_TEXT,
-    zone: 'reveal',
-    placeholder: true,
-  },
-  ...[-1, 1].map<SceneObjectConfig>((s, i) => ({
-    id: `court-vitrine-${i + 1}`,
-    title: 'Block Vitrine',
-    kind: 'vitrine',
-    position: [s * 3.6, 0, COURT.z + 3.45],
-    footprint: [1.6, 0.8],
-    height: 0.92,
-    props: { motifs: i === 0 ? 'rosette,teardrop,diamond' : 'star-lattice,leaf-trail,rosette' },
-    interactive: true,
-    description: VITRINE_TEXT,
-    zone: 'reveal',
-    placeholder: true,
-  })),
-
-  // ══ Gallery D — regional gallery ═════════════════════════════════
-  {
-    id: 'india-map-wall',
-    title: 'A Map of Making — India',
-    kind: 'map-wall',
-    position: [GD.minX + 0.075, 0, D.galleryToGalleryD.z],
-    rotationDeg: 90,
-    footprint: [8.1, 0.14],
-    height: 5.25,
-    props: {
-      width: 8,
-      height: 4.6,
-      bottom: 0.65,
-      title: 'A Map of Making',
-      // stand-in pins: arbitrary layout positions (lon,lat), not drawn while the item is `placeholder`.
-      pins: '73.6,25.2;78.2,22.6;81.4,19.2;86.4,23.6;76.8,13.4',
+    description:
+      'The roof opens to the sky above a round plinth of concentric rings. Daylight falls through the opening onto the rings and moves across them through the day.',
+    zone: 'inner',
+    alt: 'A round, low plinth of concentric clay-coloured rings under a circular opening in the roof.',
+    i18n: {
+      hi: {
+        title: 'ओकुलस',
+        description: 'छत यहाँ आकाश की ओर खुलती है, और नीचे संकेंद्रित वलयों का एक गोल चबूतरा है। दिन की रोशनी इस झरोखे से वलयों पर पड़ती है और दिन भर उन पर सरकती रहती है।',
+        alt: 'छत के गोल झरोखे के नीचे मिट्टी के रंग के संकेंद्रित वलयों का एक नीचा, गोल चबूतरा।',
+      },
+      bn: {
+        title: 'অকুলাস',
+        description: 'এখানে ছাদ আকাশের দিকে খোলা, নিচে সমকেন্দ্রিক বলয়ের একটি গোল বেদি। দিনের আলো এই ফোকর দিয়ে বলয়গুলির ওপর পড়ে আর সারা দিন ধরে তাদের ওপর সরে সরে যায়।',
+        alt: 'ছাদের গোল ফোকরের নিচে মাটি-রঙা সমকেন্দ্রিক বলয়ের একটি নিচু, গোল বেদি।',
+      },
     },
-    interactive: true,
-    description: MAP_TEXT,
-    zone: 'gallery-d',
-    placeholder: true,
   },
-  { id: 'gd-bench-map', title: 'Bench', kind: 'garden-bench', position: [GD.minX + 5.8, 0, D.galleryToGalleryD.z], rotationDeg: 90, footprint: [2.4, 0.5], zone: 'gallery-d' },
-  // an avenue of suspended printed drapes from the doorway to the map wall
-  ...[-19.8, -12.6].flatMap((z, row) =>
-    [-14.4, -17.8, -21.2].map<SceneObjectConfig>((x, i) => ({
-      id: `gd-drape-${row + 1}-${i + 1}`,
-      title: 'Suspended Drape',
-      kind: 'textile-banner',
-      position: [x, GD.height - 0.4, z],
-      height: 4.4,
-      footprint: [1.3, 0.3],
-      props: { width: 1.3, image: ART(['drape-01', 'drape-02', 'drape-03'][(i + row) % 3]) },
-      interactive: row === 0 && i === 1,
-      description: 'An avenue of suspended printed lengths leading to the map wall.',
-      zone: 'gallery-d',
-      placeholder: true,
-    })),
-  ),
-  {
-    id: 'centrepiece-gallery-d',
-    title: 'Block under Glass',
-    kind: 'centrepiece',
-    position: [GDX, 0, -26.4],
-    footprint: [1.5, 1.5],
-    height: 1.05,
-    props: { motif: 'star-lattice', ink: '#2c3f6b', wood: 'rosewood', dome: true, spin: 0.12, light: 0.9 },
-    interactive: true,
-    inspectable: true,
-    description: CENTREPIECE_TEXT,
-    zone: 'gallery-d',
-    placeholder: true,
-  },
-  ...[GDX - 4.15, GDX + 2.05].map<SceneObjectConfig>((x, i) => ({
-    id: `gd-vitrine-${i + 1}`,
-    title: 'Block Vitrine',
-    kind: 'vitrine',
-    position: [x, 0, -8.2],
-    footprint: [1.8, 0.9],
-    height: 0.92,
-    props: { motifs: i === 0 ? 'teardrop,star-lattice,diamond,rosette' : 'leaf-trail,rosette,teardrop,diamond' },
-    interactive: true,
-    description: VITRINE_TEXT,
-    zone: 'gallery-d',
-    placeholder: true,
-  })),
-  // plaster pedestals with CC0 vessels (the vessel sits on the pedestal top)
-  ...(
-    [
-      ['gd-pedestal-1', -20.3, -4.6, 1.0, 'antique_ceramic_vase_01', 0.44, 'James Ray Cock', 'Antique ceramic vase'],
-      ['gd-pedestal-2', -17.9, -4.6, 0.9, 'brass_pot_01', 0.29, 'Rico Cilliers', 'Brass pot'],
-      ['gd-pedestal-3', GD.minX + 2.4, -10.2, 1.05, 'ceramic_vase_03', 0.41, 'James Ray Cock', 'Ceramic vase'],
-    ] as const
-  ).flatMap<SceneObjectConfig>(([id, x, z, h, model, mh, author, title]) => [
-    { id, title: 'Pedestal', kind: 'pedestal', position: [x, 0, z], footprint: [0.55, 0.55], height: h, props: { cover: true }, zone: 'gallery-d' },
-    { id: `${id}-object`, title, kind: 'vessel', model: cc0(model), modelScale: 1, position: [x, h, z], height: mh, zone: 'gallery-d', credit: PH(author, model) },
-  ]),
 
-  // ══ Craft Workshop Hall ══════════════════════════════════════════
-  // four printing tables either side of the east–west aisle from the atrium door (z ≈ 14.3)
-  ...(
-    [
-      [16.4, 11.0, 'rosette', '#2c3f6b'],
-      [24.2, 11.0, 'teardrop', '#9b3326'],
-      [16.4, 17.6, 'star-lattice', '#b7862f'],
-      [24.2, 17.6, 'diamond', '#2a2522'],
-    ] as const
-  ).map<SceneObjectConfig>(([x, z, motif, ink], i) => ({
-    id: `printing-table-${i + 1}`,
-    title: `Printing Table ${['I', 'II', 'III', 'IV'][i]}`,
-    kind: 'printing-table',
-    position: [x, 0, z],
-    footprint: [6.0, 1.3],
-    height: 0.86,
-    props: { motif, ink, printed: [0.62, 0.4, 0.8, 0.25][i] },
-    interactive: true,
-    zone: 'workshop',
-    placeholder: true,
-  })),
-  ...(
-    [
-      ['dye-vat-indigo', 'Dye Vat — Indigo', 24.4, 1.3, 0.95, '#1f2d52'],
-      ['dye-vat-madder', 'Dye Vat — Madder', 26.3, 1.1, 0.85, '#7c2419'],
-      ['dye-vat-ochre', 'Dye Vat — Ochre', 28.1, 1.1, 0.85, '#a8741f'],
-      ['dye-vat-iv', 'Dye Vat IV', 29.8, 1.0, 0.8, '#3a3526'],
-    ] as const
-  ).map<SceneObjectConfig>(([id, title, x, d, h, liquid]) => ({
-    id,
-    title,
-    kind: 'dye-vat',
-    position: [x, 0, WS.minZ + 2.1],
-    footprint: [d, d],
-    height: h,
-    props: { liquid },
-    interactive: true,
-    inspectable: true,
-    zone: 'workshop',
-    placeholder: true,
-  })),
-  ...[4.2, 8.0, 11.8].map<SceneObjectConfig>((z, i) => ({
-    id: `block-shelf-${i + 1}`,
-    title: `Block Archive ${['I', 'II', 'III'][i]}`,
-    kind: 'block-shelf',
-    position: [WS.maxX - 0.3, 0, z],
-    rotationDeg: -90,
-    footprint: [3.2, 0.5],
-    height: 2.4,
-    interactive: true,
-    inspectable: true,
-    zone: 'workshop',
-    placeholder: true,
-  })),
-  { id: 'wash-tank', title: 'Wash Tank', kind: 'wash-tank', position: [25.2, 0, 3.6], footprint: [2.6, 1.1], height: 0.8, interactive: true, zone: 'workshop', placeholder: true },
-  { id: 'pigment-station', title: 'Pigment Station', kind: 'pigment-station', position: [14.8, 0, WS.minZ + 0.65], footprint: [2.2, 0.8], height: 0.9, interactive: true, inspectable: true, zone: 'workshop', placeholder: true },
-  { id: 'workshop-drying-line', title: 'Drying Line', kind: 'drying-line', position: [16.4, 0, 7.0], footprint: [4.6, 0.4], height: 2.6, props: { cloths: 4, images: '/artworks/study-14.jpg,/artworks/drape-03.jpg,/artworks/study-11.jpg,/artworks/study-15.jpg' }, interactive: true, zone: 'workshop', placeholder: true },
-  { id: 'workshop-vitrine', title: 'Block Vitrine', kind: 'vitrine', position: [26.0, 0, 7.2], footprint: [1.8, 0.9], height: 0.92, props: { motifs: 'diamond,teardrop,leaf-trail' }, interactive: true, description: VITRINE_TEXT, zone: 'workshop', placeholder: true },
-  { id: 'workshop-film-bench', title: 'Bench', kind: 'garden-bench', position: [13.6, 0, 3.0], rotationDeg: 90, footprint: [2.4, 0.5], zone: 'workshop' },
-  { id: 'fabric-rolls', title: 'Cloth Rolls', kind: 'fabric-rolls', position: [12.6, 0, 19.2], footprint: [2.0, 0.9], height: 1.4, interactive: true, zone: 'workshop', placeholder: true },
-  { id: 'carving-bench', title: 'Block Carving Bench', kind: 'carving-bench', position: [29.2, 0, 16.8], rotationDeg: -90, footprint: [2.0, 0.9], height: 0.85, interactive: true, inspectable: true, zone: 'workshop', placeholder: true },
-  { id: 'workshop-stool-1', title: 'Stool', kind: 'stool', model: cc0('wooden_stool_01'), modelScale: 1, position: [28.3, 0, 16.8], rotationDeg: 15, footprint: [0.45, 0.45], height: 0.44, zone: 'workshop', credit: PH('Kuutti Siitonen', 'wooden_stool_01') },
-  { id: 'workshop-stool-2', title: 'Stool', kind: 'stool', model: cc0('wooden_stool_01'), modelScale: 1, position: [14.8, 0, -0.3], rotationDeg: -20, footprint: [0.45, 0.45], height: 0.44, zone: 'workshop', credit: PH('Kuutti Siitonen', 'wooden_stool_01') },
-  { id: 'workshop-bucket', title: 'Wooden bucket', kind: 'vessel', model: cc0('wooden_bucket_01'), modelScale: 1, position: [27.1, 0, 3.4], rotationDeg: 60, footprint: [0.4, 0.4], height: 0.55, zone: 'workshop', credit: PH('James Ray Cock', 'wooden_bucket_01') },
-  { id: 'workshop-crate', title: 'Timber crate', kind: 'crate', model: cc0('wooden_crate_01'), modelScale: 1, position: [14.4, 0, 19.6], rotationDeg: 180, footprint: [0.85, 0.44], height: 0.35, zone: 'workshop', credit: PH('James Ray Cock', 'wooden_crate_01') },
-  { id: 'workshop-crate-basket', title: 'Wicker basket', kind: 'vessel', model: cc0('wicker_basket_01'), modelScale: 1, position: [14.25, 0.35, 19.6], rotationDeg: 8, height: 0.12, zone: 'workshop', credit: PH('Kuutti Siitonen', 'wicker_basket_01') },
-  { id: 'workshop-brass-pot', title: 'Brass pot', kind: 'vessel', model: cc0('brass_pot_01'), modelScale: 1, position: [30.1, 0, 1.6], footprint: [0.34, 0.34], height: 0.29, zone: 'workshop', credit: PH('Rico Cilliers', 'brass_pot_01') },
-  // "Print it yourself": the studio table (opens the studio overlay) in front of the Visitors' Wall (west wall)
+  // ── Gallery B: the visitors' potter's wheel, between the podiums and the court ─────
+  // Selecting it opens the clay studio (studio/ClayStudio.tsx); its head carries the visitor's pot.
   {
-    id: 'print-studio',
-    title: 'Print It Yourself — Studio Table',
-    kind: 'print-studio',
-    position: [13.0, 0, 8.5],
-    rotationDeg: 90,
-    footprint: [2.2, 1.0],
-    height: 0.86,
+    id: 'potters-wheel',
+    title: 'Shape It Yourself — Potter’s Wheel',
+    kind: 'potters-wheel',
+    position: at(4.2, -72.5),
+    rotationDeg: facingIn(-72.5),
+    footprint: [1.2, 1.0],
+    height: 0.56,
     interactive: true,
-    description: 'A printing table for visitors. Choose a block and a dye, press it onto the cloth and hang your print on the Visitors’ Wall. The blocks are designs made for this museum.',
-    zone: 'workshop',
+    description: 'A potter’s wheel for visitors. Raise a pot from the clay, finish its surface, and set it on the Visitors’ Shelf in the entrance hall.',
+    zone: 'ring-b',
+    alt: 'A low potter’s wheel with a pot on its head, turning slowly.',
+    i18n: {
+      hi: {
+        title: 'ख़ुद गढ़कर देखें — कुम्हार का चाक',
+        description: 'आगंतुकों के लिए एक कुम्हार का चाक। मिट्टी से एक बर्तन उठाइए, उसकी सतह को अंतिम रूप दीजिए, और उसे प्रवेश कक्ष में आगंतुकों की टाँड़ पर रख दीजिए।',
+        alt: 'एक नीचा कुम्हार का चाक, जिसके ऊपर एक बर्तन धीरे-धीरे घूम रहा है।',
+      },
+      bn: {
+        title: 'নিজে গড়ে দেখুন — কুমোরের চাক',
+        description: 'দর্শকদের জন্য একটি কুমোরের চাক। মাটি থেকে একটি পাত্র গড়ে তুলুন, তার তল শেষ করুন, আর প্রবেশকক্ষে দর্শকদের তাকে রেখে দিন।',
+        alt: 'একটি নিচু কুমোরের চাক, তার মাথায় একটি পাত্র ধীরে ধীরে ঘুরছে।',
+      },
+    },
   },
+
+  // ── Entrance hall, west wall: the Visitors' Shelf (pots made at the wheel, after review) ──
   {
     id: 'visitors-wall',
-    title: 'The Visitors’ Wall',
+    title: 'The Visitors’ Shelf',
     kind: 'visitors-wall',
-    position: [WS.minX + 0.02, 0, 8.6],
+    position: [-KEY.annexHalf + 0.17, 0, (KEY.annexMouthZ + MUSEUM.annex.endZ) / 2 + 0.2],
     rotationDeg: 90,
-    footprint: [6.4, 0.08],
-    height: 3.6,
-    props: { cols: 8, rows: 3, width: 6.2, bottom: 1.0 },
-    interactive: true,
-    description: 'Prints made by visitors at the studio table, hung after review by the museum team. Make your own at the table in front of the wall.',
-    zone: 'workshop',
-  },
-  // volumetric artisan captures (Gaussian splats) — placeholders until the captures are made
-  ...(
-    [
-      ['artisan-capture-1', 17.2, 18.25 + 0.42, 180],
-      ['artisan-capture-2', 23.4, 10.35 - 0.42, 0],
-    ] as const
-  ).map<SceneObjectConfig>(([id, x, z, r]) => ({
-    id,
-    title: 'The Printer’s Place',
-    kind: 'splat',
-    // model: '/models/splats/<capture>.splat',  ← set when a capture exists
-    position: [x, 0, z],
-    rotationDeg: r,
-    footprint: [1.5, 0.7],
-    height: 1.45,
-    props: { seat: 0.6, tableHeight: 0.86, reach: 0.42 },
-    interactive: true,
-    description: 'A softly glowing figure, seated at the printing table where the work is done.',
-    zone: 'workshop',
-    placeholder: true,
-  })),
-
-  // ══ Dye Garden Courtyard ═════════════════════════════════════════
-  // four drying lines in two pairs either side of the N–S axis from the workshop door (x ≈ 20.6),
-  // clear of the E–W route from Gallery B's door (z ≈ −16.2)
-  ...(
-    [
-      [15.8, -10.0, '/artworks/study-02.jpg,/artworks/hero-03.jpg,/artworks/study-03.jpg,/artworks/hero-05.jpg'],
-      [25.4, -10.0, '/artworks/hero-01.jpg,/artworks/study-04.jpg,/artworks/hero-02.jpg,/artworks/study-01.jpg'],
-      [15.8, -22.4, '/artworks/study-12.jpg,/artworks/drape-01.jpg,/artworks/study-16.jpg,/artworks/study-06.jpg'],
-      [25.4, -22.4, '/artworks/study-08.jpg,/artworks/study-13.jpg,/artworks/drape-02.jpg,/artworks/study-10.jpg'],
-    ] as const
-  ).map<SceneObjectConfig>(([x, z, images], i) => ({
-    id: `drying-line-${i + 1}`,
-    title: 'Drying Lines',
-    kind: 'drying-line',
-    position: [x, 0, z],
-    footprint: [4.6, 0.4],
+    footprint: [3.8, 0.32],
     height: 2.6,
-    props: { cloths: 4, images },
+    props: { cols: 6, rows: 3, width: 3.6, bottom: 0.6, depth: 0.3 },
     interactive: true,
-    zone: 'courtyard',
-    placeholder: true,
-  })),
-  ...(
-    [
-      ['plant-bed-west-s', CY.minX + 0.7, -8.0, 8.0],
-      ['plant-bed-west-n', CY.minX + 0.7, -25.4, 9.0],
-      ['plant-bed-east-s', CY.maxX - 0.7, -8.0, 8.0],
-      ['plant-bed-east-n', CY.maxX - 0.7, -25.4, 9.0],
-    ] as const
-  ).map<SceneObjectConfig>(([id, x, z, len]) => ({
-    id,
-    title: 'Dye Plant Bed',
-    kind: 'plant-bed',
-    position: [x, 0, z],
-    rotationDeg: 90,
-    footprint: [len, 1.2],
-    height: 0.45,
-    interactive: true,
-    description: 'A planting bed for dye plants.',
-    zone: 'courtyard',
-    placeholder: true,
-  })),
-  { id: 'water-channel', title: 'Rinsing Channel', kind: 'water-channel', position: [D.workshopToCourtyard.x, 0, CY.minZ + 0.8], footprint: [10.0, 0.9], height: 0.35, interactive: true, zone: 'courtyard', placeholder: true },
-  ...(
-    [
-      [14.2, -28.8, 6.5],
-      [27.0, -28.8, 6.0],
-      [14.4, -5.4, 5.5],
-      [26.8, -5.4, 5.8],
-    ] as const
-  ).map<SceneObjectConfig>(([x, z, h], i) => ({ id: `tree-${i + 1}`, title: 'Tree', kind: 'tree', position: [x, 0, z], footprint: [0.6, 0.6], height: h, zone: 'courtyard' })),
-  { id: 'garden-bench-1', title: 'Bench', kind: 'garden-bench', position: [17.4, 0, -29.6], rotationDeg: 180, footprint: [2.4, 0.5], zone: 'courtyard' },
-  { id: 'garden-bench-2', title: 'Bench', kind: 'garden-bench', position: [23.8, 0, -29.6], rotationDeg: 180, footprint: [2.4, 0.5], zone: 'courtyard' },
-  // long printed cloths hung high against the east wall, drying over the beds
-  ...[-12.6, -16.2, -19.8].map<SceneObjectConfig>((z, i) => ({
-    id: `court-drape-${i + 1}`,
-    title: 'Hanging Cloths',
-    kind: 'textile-banner',
-    position: [CY.maxX - 0.45, 7.4, z],
-    rotationDeg: -90,
-    height: 5.0,
-    props: { width: 1.3, image: ART(['drape-03', 'drape-01', 'drape-02'][i]) },
-    interactive: i === 1,
-    description: 'Printed lengths hung high against the courtyard wall.',
-    zone: 'courtyard',
-    placeholder: true,
-  })),
-  { id: 'garden-planter-1', title: 'Planter', kind: 'planter', model: cc0('potted_plant_02'), position: [12.2, 0, -3.4], footprint: [0.8, 0.8], height: 1.0, zone: 'courtyard', credit: PH('Rico Cilliers', 'potted_plant_02') },
-  { id: 'garden-planter-2', title: 'Planter', kind: 'planter', model: cc0('potted_plant_02'), position: [29.0, 0, -3.4], rotationDeg: 140, footprint: [0.8, 0.8], height: 1.0, zone: 'courtyard', credit: PH('Rico Cilliers', 'potted_plant_02') },
-  { id: 'garden-basket', title: 'Wicker basket', kind: 'vessel', model: cc0('wicker_basket_02'), modelScale: 1, position: [16.4, 0, -9.2], rotationDeg: 25, footprint: [0.4, 0.32], height: 0.22, zone: 'courtyard', credit: PH('Kuutti Siitonen', 'wicker_basket_02') },
-  ...(
-    [
-      [28.3, -30.5, 0],
-      [28.62, -30.31, 70],
-      [28.5, -30.79, 150],
-    ] as const
-  ).map<SceneObjectConfig>(([x, z, r], i) => ({
-    id: `garden-clay-pot-${i + 1}`,
-    title: 'Clay pot',
-    kind: 'vessel',
-    model: cc0('planter_pot_clay'),
-    modelScale: 1,
-    position: [x, 0, z],
-    rotationDeg: r,
-    // one collider for the group
-    footprint: i === 0 ? [0.8, 0.75] : undefined,
-    height: 0.22,
-    zone: 'courtyard',
-    credit: PH('Amal Kumar', 'planter_pot_clay'),
-  })),
-  { id: 'garden-vase', title: 'Antique ceramic vase', kind: 'vessel', model: cc0('antique_ceramic_vase_01'), modelScale: 1, position: [28.95, 0, -30.65], rotationDeg: 20, footprint: [0.28, 0.28], height: 0.44, zone: 'courtyard', credit: PH('James Ray Cock', 'antique_ceramic_vase_01') },
-  { id: 'garden-bucket', title: 'Wooden bucket', kind: 'vessel', model: cc0('wooden_bucket_01'), modelScale: 1, position: [13.4, 0, -31.6], rotationDeg: -35, footprint: [0.4, 0.4], height: 0.55, zone: 'courtyard', credit: PH('James Ray Cock', 'wooden_bucket_01') },
+    description: 'Pots shaped by visitors at the potter’s wheel in Gallery B, set out here after review by the pavilion team.',
+    zone: 'annex',
+    i18n: {
+      hi: {
+        title: 'आगंतुकों की टाँड़',
+        description: 'गैलरी B में कुम्हार के चाक पर आगंतुकों के गढ़े बर्तन, मंडप की टीम की समीक्षा के बाद यहाँ रखे जाते हैं।',
+      },
+      bn: {
+        title: 'দর্শকদের তাক',
+        description: 'গ্যালারি B-তে কুমোরের চাকে দর্শকদের গড়া পাত্র, প্যাভিলিয়ন দলের পর্যালোচনার পরে এখানে রাখা হয়।',
+      },
+    },
+  },
 
-  // ══ Museum Shop, Reading Room & Library, credits wall (config/amenities.ts) ══
+  // ── Gallery C: a bench facing the works on the curved wall ──────────────────────
+  {
+    id: 'bench-c',
+    title: 'Bench',
+    kind: 'garden-bench',
+    position: at(6.2, 185),
+    rotationDeg: facingOut(185),
+    footprint: [1.8, 0.45],
+    zone: 'ring-c',
+    i18n: { hi: { title: 'बेंच' }, bn: { title: 'বেঞ্চ' } },
+  },
+
+  // ── Hallway D: drying shelves against the hallway wall, opposite the making panels ──
+  ...[
+    { aDeg: 194, rows: 3, title: ['Drying Shelf — Unfired', 'सुखाने की टाँड़ — कच्चे बर्तन', 'শুকোনোর তাক — কাঁচা পাত্র'] as Lang3 },
+    { aDeg: 168, rows: 3, title: ['Drying Shelf — Fired', 'सुखाने की टाँड़ — पके बर्तन', 'শুকোনোর তাক — পোড়া পাত্র'] as Lang3 },
+  ].map<SceneObjectConfig>((s, i) => ({
+    id: `hallway-shelf-${i + 1}`,
+    title: s.title[0],
+    kind: 'clay-shelf',
+    position: at(SHELF_R, s.aDeg),
+    rotationDeg: facingOut(s.aDeg),
+    footprint: [1.6, 0.34],
+    height: 1.9,
+    props: { width: 1.6, rows: s.rows, fired: i === 1 },
+    interactive: true,
+    description:
+      i === 0
+        ? 'Shaped pieces are set out to dry in the shade before they are fired, turned now and then so they dry evenly.'
+        : 'After firing the same pieces are harder, have changed colour, and ring when tapped.',
+    zone: 'hallway-d',
+    placeholder: true,
+    i18n: {
+      hi: {
+        title: s.title[1],
+        description: i === 0 ? 'आकार दिए गए बर्तन पकाने से पहले छाया में सूखने के लिए रखे जाते हैं, और बीच-बीच में पलटे जाते हैं ताकि वे एकसार सूखें।' : 'पकने के बाद वही बर्तन ज़्यादा सख़्त हो जाते हैं, उनका रंग बदल जाता है, और ठोकने पर वे खनकते हैं।',
+      },
+      bn: {
+        title: s.title[2],
+        description: i === 0 ? 'আকার দেওয়া পাত্র পোড়ানোর আগে ছায়ায় শুকোতে রাখা হয়, মাঝে মাঝে ওলটানো হয় যাতে সমানভাবে শুকোয়।' : 'পোড়ানোর পরে সেই একই পাত্র আরও শক্ত হয়, রং বদলায়, আর টোকা দিলে টুংটাং বাজে।',
+      },
+    },
+  })),
   ...AMENITY_OBJECTS,
 ]
 

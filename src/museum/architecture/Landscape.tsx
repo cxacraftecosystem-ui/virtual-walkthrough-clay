@@ -1,6 +1,7 @@
 /**
- * Distant landscape seen through the atrium facade and over the courtyard walls:
- * a ring of softly rolling terrain and an instanced tree belt (canopies + trunks).
+ * Distant landscape round the pavilion's site, seen from the forecourt, through the door and
+ * from the arrival flight: a ring of softly rolling terrain beyond the ground disc and an
+ * instanced tree belt (canopies + trunks), the entrance axis to the south left open.
  * Two instanced meshes + one terrain mesh; no shadows (far beyond the shadow frustum).
  */
 import { useLayoutEffect, useMemo, useRef } from 'react'
@@ -8,9 +9,9 @@ import * as THREE from 'three'
 import { MUSEUM } from '../config/museum'
 import { mulberry32, TileNoise } from '../materials/noise'
 
-const S = MUSEUM.wings.shell
-const CX = (S.minX + S.maxX) / 2
-const CZ = (S.minZ + S.maxZ) / 2
+/** Centred on the drum. */
+const CX = 0
+const CZ = 0
 
 function Terrain() {
   const geo = useMemo(() => {
@@ -67,7 +68,7 @@ function Trees() {
       const x = CX + Math.cos(a) * r * 1.15
       const z = CZ + Math.sin(a) * r
       // keep the entrance axis (south) open so the facade view reads as an approach
-      if (z > S.maxZ + 8 && Math.abs(x) < 16) continue
+      if (z > MUSEUM.forecourt.endZ + 8 && Math.abs(x) < 16) continue
       const h = 5 + rnd() * 7
       const w = h * (0.35 + rnd() * 0.2)
       q.setFromEuler(new THREE.Euler(0, rnd() * Math.PI, 0))

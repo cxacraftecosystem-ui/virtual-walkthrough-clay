@@ -50,9 +50,12 @@ function fit(ctx: CanvasRenderingContext2D, text: string, weight: number, px: nu
   return s
 }
 
-/** Relative arrow angle (radians, 0 = straight ahead / up, +π/2 = right) for a destination seen from a sign. */
-export function arrowAngle(facing: Compass, dir: Compass) {
-  const [nx, nz] = compassVec(facing)
+/**
+ * Relative arrow angle (radians, 0 = straight ahead / up, +π/2 = right) for a destination seen
+ * from a sign facing `facing` (a compass point, or compass degrees: 0 = north, 90 = east).
+ */
+export function arrowAngle(facing: Compass | number, dir: Compass) {
+  const [nx, nz] = typeof facing === 'number' ? [Math.sin((facing * Math.PI) / 180), -Math.cos((facing * Math.PI) / 180)] : compassVec(facing)
   const fx = -nx
   const fz = -nz // viewer looks into the sign
   const rx = -fz
@@ -119,7 +122,7 @@ export async function plaqueTexture(line: SignLine, lang: Lang, w: number, h: nu
 }
 
 /** Totem face (w × h m): walnut-ink ground, brass kicker + destination lines with relative arrows. */
-export async function totemTexture(lines: SignLine[], facing: Compass, lang: Lang, w: number, h: number): Promise<THREE.CanvasTexture> {
+export async function totemTexture(lines: SignLine[], facing: Compass | number, lang: Lang, w: number, h: number): Promise<THREE.CanvasTexture> {
   await ensureWallFonts()
   const s = 700
   const { cv, ctx } = canvas(Math.round(w * s), Math.round(h * s))

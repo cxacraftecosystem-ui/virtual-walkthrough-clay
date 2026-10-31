@@ -4,31 +4,27 @@
  * Frames are generated automatically from each image's intrinsic aspect ratio:
  * swap the image file (or `image` path) and the frame, mat and spotlight adapt.
  *
- * Placement: `surface` is a display-surface id from layout.ts and `at` is the
- * world coordinate ALONG that wall (z for side walls, x for the reveal/product walls).
+ * Placement: `surface` is a display-surface id from layout.ts. Every pavilion surface is a
+ * straight run ('along'), so `at` is metres along the run from its start; `atAngle` below
+ * turns a plan angle on the drum into that distance, so works can be set between podiums.
  *
- * v3 hang (62 × 53 m compound). Curatorial rhythm, room by room:
- *   Gallery A/B/C  each 8 m bay: the HERO work + its hand-block table on the perimeter wall,
- *                  a large feature on the island's outer face, a quieter piece on its inner
- *                  face, and the partition side (salon cluster in A-south, a tall panel,
- *                  hero V, a diptych in C).
- *   Craft court    reveal wall = exhibition title + large framed feature painting; a feature
- *                  on the reveal wall's north face behind the rotating centrepiece; a tall
- *                  work + table on the west wall, a 7 m printed runner on the east wall, two
- *                  tall panels flanking the product-wall infographics.
- *   Gallery D      north-wall triptych, two large works on each long wall, one on the south
- *                  wall (the west wall centre is the India map installation — objects.ts).
- *   Atrium / reception  a monumental textile on the atrium west wall; three small studies.
+ * Hang, in walking order round the ring (CONTRACT §6, "Clay exhibition layout"):
+ *   A  Bankura terracotta   one work at eye level where the ring opens (a-outer-1), two in the
+ *                           upper register above the podium row
+ *   B  Molela plaques       three works in the upper register above the five podiums
+ *   C  Longpi pottery       three works at eye level on the curved wall facing the podiums
+ *                           (c-south — no podiums stand in front of it)
+ * Podium objects (the other hero pieces) are scene objects — objects.ts. Each tradition has
+ * five hero pieces in all: two hung works here and three podium pieces.
  *
- * STAND-IN STATUS: every image below is a procedurally generated design (see
+ * STAND-IN STATUS: every image below is a procedurally generated study (see
  * scripts/generate-placeholders.mjs) flagged `placeholder: true`; its description says it was made
- * for this exhibition, so nothing is passed off as a documented textile.
+ * for this exhibition, so nothing is passed off as a documented object. Titles are working titles.
  */
 
-import { COURT_CENTER, BAY } from './layout'
 import type { FrameConfig, FrameStyleId } from './frames'
-import type { SurfaceId } from './layout'
-import { MUSEUM } from './museum'
+import { SURFACES, type SurfaceId } from './layout'
+import { polar } from './museum'
 import type { ContentI18n } from '../i18n/core'
 
 export interface ArtworkConfig {
@@ -75,7 +71,7 @@ export interface ArtworkConfig {
   physicalWidth?: number
   frame?: FrameConfig | FrameStyleId
   spotlight?: { enabled?: boolean; intensity?: number; spread?: number }
-  /** Hand-block exhibit id displayed on the adjacent table (see exhibits.ts). */
+  /** Exhibit id shown on the adjacent table or podium (see exhibits.ts). */
   exhibitId?: string
   /** Individual wall label beside the work (default true; salon hangs share one key panel). */
   label?: boolean
@@ -87,9 +83,46 @@ export interface ArtworkConfig {
   i18n?: ContentI18n<'title' | 'tradition' | 'artisan' | 'region' | 'material' | 'technique' | 'description' | 'context' | 'alt'>
 }
 
-export const TRADITION = 'Hand Block Printing'
+//** The pavilion's three traditions (working titles until the workshop confirms them), with Hindi / Bengali. */
+export const TRADITIONS = {
+  a: {
+    name: 'Bankura terracotta',
+    region: 'Bankura, West Bengal',
+    i18n: { hi: { tradition: 'बाँकुड़ा टेराकोटा', region: 'बाँकुड़ा, पश्चिम बंगाल' }, bn: { tradition: 'বাঁকুড়ার টেরাকোটা', region: 'বাঁকুড়া, পশ্চিমবঙ্গ' } },
+  },
+  b: {
+    name: 'Molela votive plaques',
+    region: 'Molela, Rajasthan',
+    i18n: { hi: { tradition: 'मोलेला की मन्नत पट्टिकाएँ', region: 'मोलेला, राजस्थान' }, bn: { tradition: 'মোলেলার মানতের ফলক', region: 'মোলেলা, রাজস্থান' } },
+  },
+  c: {
+    name: 'Longpi black pottery',
+    region: 'Longpi, Manipur',
+    i18n: { hi: { tradition: 'लोंगपी के काले मृद्भांड', region: 'लोंगपी, मणिपुर' }, bn: { tradition: 'লংপির কালো মৃৎপাত্র', region: 'লংপি, মণিপুর' } },
+  },
+} as const
 
-const DESIGN_NOTE = 'A design made for this exhibition, in the manner of a hand block print.'
+export type TraditionKey = keyof typeof TRADITIONS
+
+/** The exhibition as a whole (kept for shared code that names one craft). */
+export const TRADITION = 'Clay'
+
+/**
+ * Distance along a straight surface run (`at`) of the point where a plan angle meets it —
+ * the foot of the ray from the drum centre at `aDeg`. Clamped to the run.
+ */
+export function atAngle(surface: SurfaceId, aDeg: number): number {
+  const s = SURFACES[surface]
+  const [px, pz] = polar(1, aDeg)
+  // the ray t·(px, pz) meets the wall plane dot(p, normal) = face
+  const denom = px * s.normal[0] + pz * s.normal[1]
+  const t = Math.abs(denom) > 1e-6 ? s.face / denom : 0
+  const at = (t * px - s.a[0]) * s.dir[0] + (t * pz - s.a[1]) * s.dir[1]
+  return Math.min(s.range[1], Math.max(s.range[0], at))
+}
+
+/** Middle of a surface run. */
+export const midAt = (surface: SurfaceId) => (SURFACES[surface].range[0] + SURFACES[surface].range[1]) / 2
 
 type Place = ArtworkConfig['placement']
 interface Opts {
@@ -97,92 +130,152 @@ interface Opts {
   maxHeight: number
   frame: FrameConfig | FrameStyleId
   hero?: boolean
-  exhibitId?: string
   label?: boolean
   spotlight?: ArtworkConfig['spotlight']
+  alt: string
+  altHi: string
+  altBn: string
 }
-/** Compact constructor for a placeholder work. */
-function work(id: string, title: string, image: string, placement: Place, o: Opts): ArtworkConfig {
+
+/** What every stand-in says about itself: made for the exhibition, in the manner of its tradition. */
+export const STUDY_NOTE: Record<TraditionKey, { en: string; hi: string; bn: string }> = {
+  a: {
+    en: 'A study made for this exhibition, in the manner of Bankura terracotta.',
+    hi: 'इस प्रदर्शनी के लिए बनाया गया एक अध्ययन, बाँकुड़ा टेराकोटा की शैली में।',
+    bn: 'এই প্রদর্শনীর জন্য তৈরি একটি চর্চা, বাঁকুড়ার টেরাকোটার ধরনে।',
+  },
+  b: {
+    en: 'A study made for this exhibition, in the manner of the votive plaques of Molela.',
+    hi: 'इस प्रदर्शनी के लिए बनाया गया एक अध्ययन, मोलेला की मन्नत पट्टिकाओं की शैली में।',
+    bn: 'এই প্রদর্শনীর জন্য তৈরি একটি চর্চা, মোলেলার মানতের ফলকের ধরনে।',
+  },
+  c: {
+    en: 'A study made for this exhibition, in the manner of Longpi black pottery.',
+    hi: 'इस प्रदर्शनी के लिए बनाया गया एक अध्ययन, लोंगपी के काले मृद्भांडों की शैली में।',
+    bn: 'এই প্রদর্শনীর জন্য তৈরি একটি চর্চা, লংপির কালো মৃৎপাত্রের ধরনে।',
+  },
+}
+
+/** Compact constructor for a stand-in work of tradition `t`; titles are [en, hi, bn]. */
+function work(t: TraditionKey, id: string, title: [string, string, string], placement: Place, o: Opts): ArtworkConfig {
+  const tr = TRADITIONS[t]
+  const { alt, altHi, altBn, ...rest } = o
   return {
     id,
-    title,
-    tradition: TRADITION,
-    image: `/artworks/${image}.jpg`,
+    title: title[0],
+    tradition: tr.name,
+    region: tr.region,
+    image: `/artworks/${id}.jpg`,
     placement,
-    description: DESIGN_NOTE,
+    description: STUDY_NOTE[t].en,
     placeholder: true,
-    // hero placeholders ship with generated deep-zoom pyramids (scripts/generate-deepzoom.mjs)
-    ...(o.hero ? { deepZoom: `/deepzoom/${image}/image.dzi` } : {}),
-    ...o,
+    alt,
+    ...rest,
+    i18n: {
+      hi: { title: title[1], ...tr.i18n.hi, description: STUDY_NOTE[t].hi, alt: altHi },
+      bn: { title: title[2], ...tr.i18n.bn, description: STUDY_NOTE[t].bn, alt: altBn },
+    },
   }
 }
 
-const S = BAY.southZ // -4.5  (south bays A-south / C)
-const N = BAY.northZ // -13.5 (north bays A-north / B)
-const CZ = COURT_CENTER.z
-const GD = MUSEUM.wings.galleryD
-const GDX = (GD.minX + GD.maxX) / 2
-/** Salon studies share one wide wash from the centre study's fixture (no scalloped pools). */
-const SALON_WASHED = { enabled: false }
-const salon = (dz: number, cy: number): Place => ({ surface: 'gallery-a-partition', at: S + dz, centerHeight: cy })
+/** Upper register: above the podium row (podium tops at 1.22 m, the pieces on them to about 1.7 m). */
+const UPPER = 2.85
+/** Clay-coloured mats instead of the paper white of the textile frames. */
+const CLAY_MAT = '#eadbc8'
+const SHADOW_BOX: FrameConfig = { style: 'float-walnut', matColor: CLAY_MAT }
+const OAK: FrameConfig = { style: 'natural-wood', matColor: CLAY_MAT }
+const DARK: FrameConfig = { style: 'dark-wood', matColor: '#e4dccf' }
 
 export const ARTWORKS: ArtworkConfig[] = [
-  // ══ Gallery A — south bay ═════════════════════════════════════════
-  work('hero-01', 'Hero Textile I', 'hero-01', { surface: 'gallery-a-outer', at: S, centerHeight: 1.75 }, { hero: true, maxWidth: 1.75, maxHeight: 2.3, frame: 'natural-wood', exhibitId: 'block-01' }),
-  work('feature-04', 'Printed Length — Feature', 'feature-04', { surface: 'island-a-south-outer', at: S, centerHeight: 1.65 }, { maxWidth: 2.6, maxHeight: 2.2, frame: 'dark-wood' }),
-  work('study-04', 'Study IV', 'study-04', { surface: 'island-a-south-inner', at: S + 0.2 }, { maxWidth: 2.2, maxHeight: 1.4, frame: 'textile-panel' }),
-  // salon hang (labels gathered on the key panel 'info-salon')
-  work('salon-01', 'Salon Study I', 'study-02', salon(0, 1.75), { maxWidth: 1.0, maxHeight: 1.0, frame: 'natural-wood', label: false, spotlight: { spread: 2.3, intensity: 20 } }),
-  work('salon-02', 'Salon Study II', 'study-07', salon(1.1, 2.05), { maxWidth: 0.62, maxHeight: 0.85, frame: 'thin-black', label: false, spotlight: SALON_WASHED }),
-  work('salon-03', 'Salon Study III', 'study-10', salon(1.1, 1.12), { maxWidth: 0.8, maxHeight: 0.62, frame: 'white', label: false, spotlight: SALON_WASHED }),
-  work('salon-04', 'Salon Study IV', 'study-05', salon(-1.1, 2.05), { maxWidth: 0.55, maxHeight: 0.8, frame: 'brass-slim', label: false, spotlight: SALON_WASHED }),
-  work('salon-05', 'Salon Study V', 'study-08', salon(-1.1, 1.12), { maxWidth: 0.7, maxHeight: 0.7, frame: 'dark-wood', label: false, spotlight: SALON_WASHED }),
-  work('salon-06', 'Salon Study VI', 'study-06', salon(-1.98, 1.6), { maxWidth: 0.6, maxHeight: 0.6, frame: 'thin-black', label: false, spotlight: SALON_WASHED }),
-  work('salon-07', 'Salon Study VII', 'study-01', salon(1.98, 1.6), { maxWidth: 0.5, maxHeight: 0.66, frame: 'white', label: false, spotlight: SALON_WASHED }),
+  // ══ A — Bankura terracotta (ring-a, the first gallery, on the right) ══════════════
+  // eye level where the ring opens, between the NE notch and the first podium
+  work('a', 'clay-a-01', ['Horse and Rider — Study', 'घोड़ा और सवार — अध्ययन', 'ঘোড়া ও সওয়ার — চর্চা'], { surface: 'a-outer-1', at: atAngle('a-outer-1', 24.5), centerHeight: 1.65 }, {
+    hero: true,
+    maxWidth: 1.0,
+    maxHeight: 1.4,
+    frame: SHADOW_BOX,
+    alt: 'A panel of fired red clay in low relief: a long-necked horse in profile with its rider sitting upright, on a ground of incised lines.',
+    altHi: 'पकी लाल मिट्टी का उभरा हुआ फलक: लंबी गर्दन वाला घोड़ा, बगल से, उस पर सीधा बैठा सवार; पीछे खुदी हुई रेखाएँ।',
+    altBn: 'পোড়া লাল মাটির অল্প-উঁচু রিলিফ ফলক: পাশ থেকে দেখা লম্বা গলার একটি ঘোড়া, তার পিঠে সোজা হয়ে বসা সওয়ার; পিছনে খোদাই করা রেখা।',
+  }),
+  work('a', 'clay-a-02', ['Temple Frieze — Study', 'मंदिर की पट्टी — अध्ययन', 'মন্দিরের ফ্রিজ — চর্চা'], { surface: 'a-outer-3', at: midAt('a-outer-3'), centerHeight: UPPER }, {
+    hero: true,
+    maxWidth: 1.75,
+    maxHeight: 0.9,
+    frame: SHADOW_BOX,
+    label: false,
+    alt: 'A long panel of red clay tiles in low relief: a row of small figures under arches, above a border of lotus petals.',
+    altHi: 'लाल मिट्टी की टाइलों की एक लंबी उभरी पट्टी: मेहराबों के नीचे छोटी आकृतियों की पंक्ति, नीचे कमल-पंखुड़ियों की किनारी।',
+    altBn: 'লাল মাটির টালির একটি লম্বা রিলিফ ফলক: খিলানের নিচে ছোট ছোট মূর্তির সারি, নিচে পদ্মের পাপড়ির পাড়।',
+  }),
+  work('a', 'clay-a-03', ['Lotus Tiles — Study', 'कमल की टाइलें — अध्ययन', 'পদ্মের টালি — চর্চা'], { surface: 'a-outer-2', at: midAt('a-outer-2'), centerHeight: UPPER }, {
+    maxWidth: 1.75,
+    maxHeight: 0.8,
+    frame: OAK,
+    label: false,
+    alt: 'Three square terracotta tiles side by side, each pressed with an open lotus.',
+    altHi: 'टेराकोटा की तीन चौकोर टाइलें अगल-बगल, हर एक पर खिले कमल की छाप।',
+    altBn: 'পাশাপাশি তিনটি চৌকো টেরাকোটা টালি, প্রতিটিতে একটি ফোটা পদ্মের ছাপ।',
+  }),
 
-  // ══ Gallery A — north bay (door to Gallery D in the perimeter wall at z −16.2) ═══
-  work('hero-02', 'Hero Textile II', 'hero-02', { surface: 'gallery-a-outer', at: N + 2.5, centerHeight: 1.65 }, { hero: true, maxWidth: 2.4, maxHeight: 1.7, frame: 'natural-wood', exhibitId: 'block-02' }),
-  work('feature-03', 'Printed Panel — Feature', 'feature-03', { surface: 'island-a-north-outer', at: N, centerHeight: 1.72 }, { maxWidth: 1.9, maxHeight: 2.6, frame: 'float-walnut' }),
-  work('study-03', 'Study III', 'study-03', { surface: 'island-a-north-inner', at: N + 0.2 }, { maxWidth: 1.3, maxHeight: 1.1, frame: 'natural-wood' }),
-  work('panel-01', 'Tall Panel I', 'panel-01', { surface: 'gallery-a-partition', at: N, centerHeight: 1.8 }, { maxWidth: 1.05, maxHeight: 2.5, frame: 'textile-panel' }),
+  // ══ B — Molela votive plaques (ring-b, the far side of the ring) ═══════════════════
+  work('b', 'clay-b-01', ['Rider Deity — Study', 'अश्वारोही देवता — अध्ययन', 'অশ্বারোহী দেবতা — চর্চা'], { surface: 'b-outer-2', at: midAt('b-outer-2'), centerHeight: UPPER }, {
+    hero: true,
+    maxWidth: 1.0,
+    maxHeight: 1.25,
+    frame: SHADOW_BOX,
+    label: false,
+    alt: 'An arched clay plaque in relief, painted in earth red, ochre and white: a figure on horseback under a scalloped arch.',
+    altHi: 'मेहराबदार मिट्टी की उभरी पट्टिका, गेरुए लाल, पीले और सफ़ेद रंग में रँगी: झालरदार मेहराब के नीचे घोड़े पर सवार एक आकृति।',
+    altBn: 'খিলান-আকারের মাটির রিলিফ ফলক, মেটে লাল, হলুদ আর সাদায় রং করা: ঢেউখেলানো খিলানের নিচে ঘোড়সওয়ার এক মূর্তি।',
+  }),
+  work('b', 'clay-b-02', ['Serpent Plaque — Study', 'नाग पट्टिका — अध्ययन', 'নাগ ফলক — চর্চা'], { surface: 'b-outer-3', at: midAt('b-outer-3'), centerHeight: UPPER }, {
+    hero: true,
+    maxWidth: 1.0,
+    maxHeight: 1.25,
+    frame: SHADOW_BOX,
+    label: false,
+    alt: 'An arched clay plaque in relief: a coiled, hooded serpent inside a border of dots, in red and cream.',
+    altHi: 'मेहराबदार मिट्टी की उभरी पट्टिका: बिंदुओं की किनारी के भीतर कुंडली मारे फन फैलाए नाग, लाल और क्रीम रंग में।',
+    altBn: 'খিলান-আকারের মাটির রিলিফ ফলক: বিন্দুর পাড়ের ভেতরে কুণ্ডলী পাকানো ফণা তোলা সাপ, লাল আর ঘিয়ে রঙে।',
+  }),
+  work('b', 'clay-b-03', ['Plaque Fragments — Study', 'पट्टिका के अंश — अध्ययन', 'ফলকের টুকরো — চর্চা'], { surface: 'b-outer-4', at: midAt('b-outer-4'), centerHeight: UPPER }, {
+    maxWidth: 1.6,
+    maxHeight: 0.85,
+    frame: OAK,
+    label: false,
+    alt: 'Four small relief fragments of unpainted fired clay in a row: a face, a hand, a hoof and a leaf.',
+    altHi: 'बिना रँगी पकी मिट्टी के चार छोटे उभरे अंश एक पंक्ति में: एक चेहरा, एक हाथ, एक खुर और एक पत्ता।',
+    altBn: 'রং না-করা পোড়া মাটির চারটি ছোট রিলিফ টুকরো এক সারিতে: একটি মুখ, একটি হাত, একটি খুর আর একটি পাতা।',
+  }),
 
-  // ══ Gallery B — north-east bay (door to the courtyard at z −16.2) ═══
-  work('hero-03', 'Hero Textile III', 'hero-03', { surface: 'gallery-b-outer', at: N + 2.1, centerHeight: 1.65 }, { hero: true, maxWidth: 1.9, maxHeight: 1.9, frame: 'dark-wood', exhibitId: 'block-03' }),
-  work('feature-02', 'Resist-dyed Length — Feature', 'feature-02', { surface: 'island-b-outer', at: N + 0.2, centerHeight: 1.65 }, { maxWidth: 2.6, maxHeight: 2.1, frame: 'thin-black' }),
-  work('study-13', 'Study XIII', 'study-13', { surface: 'island-b-inner', at: N - 0.1 }, { maxWidth: 1.0, maxHeight: 1.3, frame: 'white' }),
-  work('hero-05', 'Hero Textile V', 'hero-05', { surface: 'gallery-b-partition', at: N, centerHeight: 1.6 }, { hero: true, maxWidth: 3.0, maxHeight: 1.3, frame: 'thin-black', exhibitId: 'block-05' }),
-
-  // ══ Gallery C — south-east bay ═════════════════════════════════════
-  work('hero-04', 'Hero Textile IV', 'hero-04', { surface: 'gallery-c-outer', at: S, centerHeight: 1.75 }, { hero: true, maxWidth: 1.2, maxHeight: 2.7, frame: 'textile-panel', exhibitId: 'block-04' }),
-  work('feature-05', 'Printed Panel — Feature', 'feature-05', { surface: 'island-c-outer', at: S + 0.2, centerHeight: 1.7 }, { maxWidth: 1.9, maxHeight: 2.3, frame: 'brass-slim' }),
-  work('study-09', 'Study IX', 'study-09', { surface: 'island-c-inner', at: S }, { maxWidth: 1.1, maxHeight: 1.45, frame: 'white' }),
-  work('study-14', 'Diptych — upper', 'study-14', { surface: 'gallery-c-partition', at: S, centerHeight: 2.2 }, { maxWidth: 1.3, maxHeight: 0.95, frame: 'dark-wood' }),
-  work('study-15', 'Diptych — lower', 'study-15', { surface: 'gallery-c-partition', at: S, centerHeight: 1.1 }, { maxWidth: 1.3, maxHeight: 0.95, frame: 'dark-wood' }),
-
-  // ══ Craft court ════════════════════════════════════════════════════
-  // reveal wall arrival face: title vinyl on the left third (WallGraphics), painting on the right
-  work('feature-01', 'The Reveal — Feature Painting', 'feature-01', { surface: 'reveal-south', at: 1.45, centerHeight: 1.95 }, { maxWidth: 3.7, maxHeight: 2.75, frame: 'dark-wood' }),
-  work('feature-06', 'Court Feature', 'feature-06', { surface: 'reveal-north', at: 0, centerHeight: 1.95 }, { maxWidth: 4.0, maxHeight: 2.6, frame: 'natural-wood' }),
-  work('feature-07', 'Standing Panel — Feature', 'feature-07', { surface: 'court-west', at: CZ, centerHeight: 2.1 }, { maxWidth: 2.3, maxHeight: 3.1, frame: 'dark-wood', exhibitId: 'block-06' }),
-  work('runner-01', 'Printed Runner', 'runner-01', { surface: 'court-east', at: CZ, centerHeight: 1.75 }, { maxWidth: 7.2, maxHeight: 1.4, frame: 'textile-panel', exhibitId: 'block-07', spotlight: { spread: 1.15 } }),
-  work('panel-02', 'Tall Panel II', 'panel-02', { surface: 'product-wall', at: -7.3, centerHeight: 1.95 }, { maxWidth: 1.2, maxHeight: 2.8, frame: 'textile-panel' }),
-  work('panel-03', 'Tall Panel III', 'panel-03', { surface: 'product-wall', at: 7.3, centerHeight: 1.95 }, { maxWidth: 1.2, maxHeight: 2.8, frame: 'textile-panel' }),
-
-  // ══ Gallery D — regional gallery ═══════════════════════════════════
-  work('tri-01', 'Triptych — I', 'tri-01', { surface: 'gallery-d-north', at: GDX - 4.25, centerHeight: 2.35 }, { maxWidth: 1.5, maxHeight: 3.3, frame: 'textile-panel' }),
-  work('tri-02', 'Triptych — II', 'tri-02', { surface: 'gallery-d-north', at: GDX, centerHeight: 2.35 }, { maxWidth: 1.5, maxHeight: 3.3, frame: 'textile-panel' }),
-  work('tri-03', 'Triptych — III', 'tri-03', { surface: 'gallery-d-north', at: GDX + 4.25, centerHeight: 2.35 }, { maxWidth: 1.5, maxHeight: 3.3, frame: 'textile-panel' }),
-  work('feature-08', 'Regional Feature I', 'feature-08', { surface: 'gallery-d-west', at: -27.4, centerHeight: 2.0 }, { maxWidth: 3.2, maxHeight: 2.4, frame: 'dark-wood', exhibitId: 'block-08' }),
-  work('feature-09', 'Regional Feature II', 'feature-09', { surface: 'gallery-d-west', at: -6.0, centerHeight: 2.0 }, { maxWidth: 2.2, maxHeight: 2.8, frame: 'float-walnut' }),
-  work('feature-10', 'Regional Feature III', 'feature-10', { surface: 'gallery-d-east', at: -27.0, centerHeight: 2.0 }, { maxWidth: 3.2, maxHeight: 2.4, frame: 'natural-wood', exhibitId: 'block-09' }),
-  work('feature-11', 'Regional Feature IV', 'feature-11', { surface: 'gallery-d-east', at: -7.0, centerHeight: 1.95 }, { maxWidth: 2.0, maxHeight: 2.7, frame: 'textile-panel' }),
-  work('feature-12', 'Regional Feature V', 'feature-12', { surface: 'gallery-d-south', at: -24.5, centerHeight: 1.9 }, { maxWidth: 3.6, maxHeight: 2.2, frame: 'dark-wood' }),
-
-  // ══ Grand Atrium & reception ═══════════════════════════════════════
-  work('feature-13', 'Monumental Textile', 'feature-13', { surface: 'atrium-west', at: 12.0, centerHeight: 4.6 }, { maxWidth: 6.0, maxHeight: 3.8, frame: 'textile-panel', label: false }),
-  work('study-11', 'Study XI', 'study-11', { surface: 'reception-west', at: 1.6, centerHeight: 1.55 }, { maxWidth: 0.8, maxHeight: 1.0, frame: 'thin-black', spotlight: { intensity: 14 } }),
-  work('study-16', 'Study XVI', 'study-16', { surface: 'reception-west', at: 7.05, centerHeight: 1.55 }, { maxWidth: 0.72, maxHeight: 0.95, frame: 'white', spotlight: { intensity: 14 } }),
-  work('study-12', 'Study XII', 'study-12', { surface: 'reception-east', at: 1.5, centerHeight: 1.55 }, { maxWidth: 1.0, maxHeight: 0.8, frame: 'brass-slim', spotlight: { intensity: 14 } }),
+  // ══ C — Longpi black pottery (ring-c, eye level on the curved wall facing the podiums) ═
+  work('c', 'clay-c-01', ['Kettle — Study', 'केतली — अध्ययन', 'কেটলি — চর্চা'], { surface: 'c-south-1', at: midAt('c-south-1') - 0.3, centerHeight: 1.6 }, {
+    hero: true,
+    maxWidth: 1.1,
+    maxHeight: 1.35,
+    frame: DARK,
+    alt: 'A black, burnished clay kettle with a cane-wrapped handle, against a pale ground.',
+    altHi: 'बेंत से लिपटे हत्थे वाली काली, घिसकर चमकाई मिट्टी की केतली, हल्की पृष्ठभूमि पर।',
+    altBn: 'বেত জড়ানো হাতলওয়ালা একটি কালো, ঘষে-মাজা মাটির কেটলি, হালকা পটভূমিতে।',
+  }),
+  work('c', 'clay-c-02', ['Bowls — Study', 'कटोरे — अध्ययन', 'বাটি — চর্চা'], { surface: 'c-south-2', at: midAt('c-south-2') - 0.3, centerHeight: 1.6 }, {
+    hero: true,
+    maxWidth: 1.3,
+    maxHeight: 1.0,
+    frame: DARK,
+    alt: 'Three black clay bowls set one inside another, with a soft polished sheen.',
+    altHi: 'एक के भीतर एक रखे तीन काले मिट्टी के कटोरे, हल्की चमक के साथ।',
+    altBn: 'একটির ভেতরে আরেকটি রাখা তিনটি কালো মাটির বাটি, নরম মসৃণ আভা।',
+  }),
+  work('c', 'clay-c-03', ['Burnished Surface — Study', 'घिसकर चमकाई सतह — अध्ययन', 'ঘষে-মাজা তল — চর্চা'], { surface: 'c-south-3', at: midAt('c-south-3') - 0.3, centerHeight: 1.6 }, {
+    maxWidth: 0.95,
+    maxHeight: 0.95,
+    frame: { style: 'thin-black', matColor: '#ece6dc' },
+    alt: 'A close view of a black clay surface polished to a low shine, with flecks of grey stone in it.',
+    altHi: 'हल्की चमक तक घिसी काली मिट्टी की सतह का पास का दृश्य, जिसमें धूसर पत्थर के कण दिखते हैं।',
+    altBn: 'হালকা চকচকে করে ঘষা কালো মাটির তলের কাছ থেকে দেখা, তাতে ধূসর পাথরের কণা।',
+  }),
 ]
 
 export function getArtwork(id: string) {

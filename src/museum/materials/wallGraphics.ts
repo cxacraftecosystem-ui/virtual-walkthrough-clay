@@ -11,9 +11,7 @@
  */
 
 import * as THREE from 'three'
-import { EXHIBITION_TITLE, RECEPTION_WELCOME, type InfographicConfig } from '../config/infographics'
-import { WALLS, ZONES } from '../config/layout'
-import { MUSEUM } from '../config/museum'
+import { EXHIBITION_TITLE, type InfographicConfig } from '../config/infographics'
 import { mulberry32 } from './noise'
 
 const SERIF = '"Cormorant Garamond", "Cormorant", "Iowan Old Style", Georgia, serif'
@@ -202,6 +200,30 @@ export async function createTitleWallTexture(widthM: number, heightM: number, op
 }
 
 /* ------------------------------------------------------------------ */
+/* 1b. Facade lettering (transparent)                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The exhibition's name above the pavilion door: widely spaced serif capitals in oxblood,
+ * sized to fit `widthM` on one line, centred. Transparent background.
+ */
+export async function createFacadeLetteringTexture(text: string, widthM: number, heightM: number): Promise<THREE.CanvasTexture> {
+  await ensureWallFonts()
+  const { ctx, m, W, H } = surface(widthM, heightM, 420)
+  const label = text.trim().toUpperCase()
+  const spacing = 0.32
+  setFont(ctx, 500, 100, SERIF, spacing)
+  const w100 = ctx.measureText(label).width
+  const size = Math.min(m(heightM * 0.62), (W * 0.96 * 100) / Math.max(1, w100))
+  setFont(ctx, 500, size, SERIF, spacing)
+  ctx.textAlign = 'center'
+  ctx.fillStyle = '#6a2a22'
+  // letter-spacing adds space after the last glyph too: shift back by half of it
+  ctx.fillText(label, W / 2 + (size * spacing) / 2, H / 2 + size * 0.34)
+  return toTexture(ctx.canvas, 'facade-lettering')
+}
+
+/* ------------------------------------------------------------------ */
 /* 2. Craft infographic panels (opaque print)                           */
 /* ------------------------------------------------------------------ */
 
@@ -311,7 +333,7 @@ function drawIllustration(ctx: CanvasRenderingContext2D, cfg: InfographicConfig,
     case 'block':
       return drawBlock(ctx, b, lw, U)
     case 'process':
-      return drawProcess(ctx, b, lw, U, cfg.steps ?? ['Block', 'Cloth', 'Colour', 'Print', 'Finish'])
+      return drawProcess(ctx, b, lw, U, cfg.steps ?? ['Prepare', 'Form', 'Dry', 'Fire', 'Finish'])
   }
 }
 
@@ -682,166 +704,6 @@ function drawProcess(ctx: CanvasRenderingContext2D, b: Box, lw: number, U: numbe
     ctx.textAlign = 'left'
   })
   ctx.restore()
-}
-
-/* ------------------------------------------------------------------ */
-/* 3. Reception welcome + orientation plan (transparent)                */
-/* ------------------------------------------------------------------ */
-
-export async function createWelcomeTexture(widthM: number, heightM: number): Promise<THREE.CanvasTexture> {
-  await ensureWallFonts()
-  const { ctx, m } = surface(widthM, heightM, 900)
-  const W = RECEPTION_WELCOME
-
-  // World plan bounds (walls included).
-  let minX = Infinity
-  let maxX = -Infinity
-  let minZ = Infinity
-  let maxZ = -Infinity
-  for (const w of WALLS) {
-    minX = Math.min(minX, w.min[0])
-    maxX = Math.max(maxX, w.max[0])
-    minZ = Math.min(minZ, w.min[2])
-    maxZ = Math.max(maxZ, w.max[2])
-  }
-  const planWm = maxX - minX
-  const planHm = maxZ - minZ
-
-  const pad = Math.min(widthM, heightM) * 0.08
-  const side = widthM >= heightM * 0.95
-  const textW = side ? (widthM - pad * 3) * 0.52 : widthM - pad * 2
-  const k = Math.min(1.6, Math.max(0.6, Math.min(widthM, heightM * 1.2) / 1.4))
-
-  // Text column
-  const titleSize = 0.15 * k
-  const bodySize = 0.034 * k
-  let y = pad + titleSize * 0.8
-  ctx.fillStyle = ACCENT
-  setFont(ctx, 500, m(0.024 * k), SANS, 0.3)
-  ctx.fillText('HAND BLOCK PRINTING', m(pad), m(y))
-  y += titleSize * 1.05
-  ctx.fillStyle = INK
-  setFont(ctx, 400, m(titleSize), SERIF, -0.005)
-  ctx.fillText(W.title, m(pad - titleSize * 0.03), m(y))
-  y += bodySize * 1.4
-  ctx.fillStyle = ACCENT
-  ctx.fillRect(m(pad), m(y), m(0.16 * k), Math.max(1.5, m(0.0026)))
-  y += bodySize * 2.3
-  ctx.fillStyle = INK
-  setFont(ctx, 400, m(bodySize), SANS)
-  const lines = wrap(ctx, W.body, Math.min(m(textW), measureWidthForChars(ctx, 44)))
-  for (const l of lines) {
-    ctx.fillText(l, m(pad), m(y))
-    y += bodySize * 1.62
-  }
-  const textBottom = y
-
-  // Plan area
-  let area: { x: number; y: number; w: number; h: number }
-  if (side) area = { x: pad * 2 + textW, y: pad, w: widthM - pad * 3 - textW, h: heightM - pad * 2 }
-  else area = { x: pad, y: textBottom + pad * 0.6, w: widthM - pad * 2, h: heightM - textBottom - pad * 1.6 }
-  const labelSpace = 0.07 * k // room for the "N" marker above
-  const sc = Math.min(area.w / planWm, (area.h - labelSpace) / planHm) // metres on panel per world metre
-  const ox = area.x + (area.w - planWm * sc) / 2
-  const oy = area.y + labelSpace + (area.h - labelSpace - planHm * sc) / 2
-  const PX = (x: number) => m(ox + (x - minX) * sc)
-  const PY = (z: number) => m(oy + (z - minZ) * sc) // north (-z) up
-
-  // Zones — hairline tint
-  for (const z of ZONES) {
-    ctx.fillStyle = z.id === 'reception' ? 'rgba(138, 74, 51, 0.08)' : 'rgba(46, 42, 38, 0.035)'
-    ctx.fillRect(PX(z.rect.minX), PY(z.rect.minZ), PX(z.rect.maxX) - PX(z.rect.minX), PY(z.rect.maxZ) - PY(z.rect.minZ))
-  }
-  // Walls (skip lintels over openings so doorways read open)
-  ctx.fillStyle = '#4a4540'
-  for (const w of WALLS) {
-    if (w.collide === false) continue
-    const x0 = PX(w.min[0])
-    const y0 = PY(w.min[2])
-    ctx.fillRect(x0, y0, Math.max(1, PX(w.max[0]) - x0), Math.max(1, PY(w.max[2]) - y0))
-  }
-  // Zone labels
-  // One common label size that fits every gallery zone (≤ 80 % of its plan width).
-  const lblBase = 0.026 * k
-  let lblSize = lblBase
-  setFont(ctx, 500, m(lblBase), SANS, 0.12)
-  for (const z of ZONES) {
-    if (z.id === 'reception' || z.id === 'passage') continue
-    const avail = (z.rect.maxX - z.rect.minX - 0.6) * sc * 0.8
-    const tw = ctx.measureText(z.short.toUpperCase()).width / m(1)
-    if (tw > avail) lblSize = Math.min(lblSize, (lblBase * avail) / tw)
-  }
-  setFont(ctx, 500, m(lblSize), SANS, 0.12)
-  ctx.textAlign = 'center'
-  ctx.fillStyle = INK_SOFT
-  for (const z of ZONES) {
-    if (z.id === 'reception' || z.id === 'passage') continue
-    const cx = (z.rect.minX + z.rect.maxX) / 2
-    let cz = (z.rect.minZ + z.rect.maxZ) / 2
-    if (z.id === 'reveal') cz = z.rect.minZ + (z.rect.maxZ - z.rect.minZ) * 0.2
-    if (z.id === 'gallery-a') cz = z.rect.minZ + (z.rect.maxZ - z.rect.minZ) * 0.25
-    ctx.fillText(z.short.toUpperCase(), PX(cx), PY(cz) + m(lblSize * 0.35))
-  }
-  // Passage label, rotated along the axis
-  const passage = ZONES.find((z) => z.id === 'passage')
-  if (passage) {
-    ctx.save()
-    ctx.translate(PX(0), PY((passage.rect.minZ + passage.rect.maxZ) / 2))
-    ctx.rotate(-Math.PI / 2)
-    setFont(ctx, 500, m(lblSize * 0.85), SANS, 0.2)
-    ctx.fillText('PASSAGE', 0, m(lblSize * 0.3))
-    ctx.restore()
-  }
-  ctx.textAlign = 'left'
-
-  // You are here
-  const start = MUSEUM.visitor.start
-  const hx = PX(start.x)
-  const hy = PY(start.z)
-  const dr = m(Math.max(0.012 * k, 0.28 * sc))
-  ctx.fillStyle = 'rgba(138, 74, 51, 0.22)'
-  ctx.beginPath()
-  ctx.arc(hx, hy, dr * 2.1, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = ACCENT
-  ctx.beginPath()
-  ctx.arc(hx, hy, dr, 0, Math.PI * 2)
-  ctx.fill()
-  const yahSize = Math.max(lblSize, 0.024 * k)
-  setFont(ctx, 600, m(yahSize), SANS, 0.08)
-  ctx.fillStyle = ACCENT
-  const rec = ZONES.find((z) => z.id === 'reception')
-  const rightEdge = PX((rec ? rec.rect.maxX : maxX) + MUSEUM.walls.exteriorThickness)
-  const yahText = 'You are here'
-  const tw = ctx.measureText(yahText).width
-  const tx = rightEdge + m(0.02 * k) + tw < m(widthM - pad * 0.3) ? rightEdge + m(0.02 * k) : hx - tw / 2
-  const ty = tx === hx - tw / 2 ? hy + dr * 2.2 + m(yahSize) : hy + m(yahSize * 0.35)
-  if (tx !== hx - tw / 2) {
-    ctx.strokeStyle = ACCENT
-    ctx.lineWidth = Math.max(1, m(0.0015))
-    ctx.beginPath()
-    ctx.moveTo(hx + dr * 2.3, hy)
-    ctx.lineTo(tx - m(0.006 * k), hy)
-    ctx.stroke()
-  }
-  ctx.fillText(yahText, tx, ty)
-
-  // North marker
-  const nX = PX(maxX) - m(0.02 * k)
-  const nY = m(oy) - m(0.02 * k)
-  ctx.fillStyle = INK
-  ctx.beginPath()
-  ctx.moveTo(nX, nY - m(0.04 * k))
-  ctx.lineTo(nX - m(0.011 * k), nY - m(0.012 * k))
-  ctx.lineTo(nX + m(0.011 * k), nY - m(0.012 * k))
-  ctx.closePath()
-  ctx.fill()
-  setFont(ctx, 600, m(0.02 * k), SANS)
-  ctx.textAlign = 'center'
-  ctx.fillText('N', nX, nY + m(0.012 * k))
-  ctx.textAlign = 'left'
-
-  return toTexture(ctx.canvas, 'welcome')
 }
 
 /* ------------------------------------------------------------------ */

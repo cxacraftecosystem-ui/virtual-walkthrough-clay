@@ -29,7 +29,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import type { MotifId } from '../config/exhibits'
 import { ZONES } from '../config/layout'
 import { LIGHTING } from '../config/lighting'
-import { COURT_RAIL_Z, RAIL_Y } from '../lighting/tracks'
+import { RAIL_Y, RAILS } from '../lighting/tracks'
 import { registerSpot } from '../lighting/SpotPool'
 import { TRACK_COLOR, TrackSpot } from '../lighting/TrackLight'
 import { inkTraceTexture, woodGrainTexture } from '../exhibits/HandBlockPlaceholder'
@@ -397,19 +397,22 @@ function DisplayTable({ H, dome }: { H: number; dome: boolean }) {
   )
 }
 
-/** Accent light(s): court rail spots in the craft court, otherwise a ceiling pendant spot. */
+/** Accent light(s): oculus rail spots under the oculus, otherwise a ceiling pendant spot. */
 function AccentLights({ config, H }: { config: ModelProps['config']; H: number }) {
   const m = useModelMaterials()
   const [px, py, pz] = config.position
   const target: [number, number, number] = [px, H + 0.26, pz]
-  const onRail = config.zone === 'reveal' && Math.abs(pz - COURT_RAIL_Z) < 0.05
+  // under the oculus: two heads on the oculus rail either side; elsewhere a pendant
+  const oculusRail = RAILS.find((r) => r.id === 'rail-oculus')
+  const railR = oculusRail?.kind === 'arc' ? oculusRail.r : 0
+  const onRail = config.zone === 'inner' && railR > 0 && Math.hypot(px, pz) < 1
   const k = num(config, 'light', 1)
   const ceiling = ZONES.find((z) => z.id === config.zone)?.height ?? 6
   const pendantY = Math.min(ceiling - 0.9, 5.2)
   const rail = useMemo(() => {
     if (!onRail) return []
-    return [-1.35, 1.35].map((dx, i) => {
-      const pos: [number, number, number] = [px + dx, RAIL_Y - 0.1, pz]
+    return [-railR, railR].map((dx, i) => {
+      const pos: [number, number, number] = [dx, RAIL_Y - 0.1, pz]
       const d = Math.hypot(dx, pos[1] - target[1])
       return { pos, angle: Math.atan(0.42 / d) * 1.35, intensity: LIGHTING.track.artworkIntensity * (i === 0 ? 1.0 : 0.6) * k * (d / 2.2) ** 2 }
     })

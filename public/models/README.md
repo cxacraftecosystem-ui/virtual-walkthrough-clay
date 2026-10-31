@@ -2,11 +2,11 @@
 
 All models are metres, **+Y up**, glTF 2.0 (`.glb`, or `.gltf` + `.bin` + textures).
 
-## 1. Hand-block exhibits
+## 1. Exhibits
 
-Put the workshop's scanned/modelled blocks here and reference them from
-`src/museum/config/exhibits.ts` via `model: "/models/<file>.glb"` (optional `modelScale`).
-Until a model exists, a clearly labelled procedural placeholder block is shown.
+Put the workshop's scanned/modelled clay pieces here and reference them from
+`src/museum/config/exhibits.ts` (or a podium piece in `objects.ts`) via `model: "/models/<file>.glb"`
+(optional `modelScale`). Until a model exists, a procedural clay vessel stands in.
 
 ## 2. Scene objects (installations, furniture, props)
 

@@ -137,7 +137,7 @@ export function LandingNav({ links }: { links: NavLink[] }) {
   return (
     <header ref={barRef} className={cls}>
       <div className="lp-nav__bar">
-        <a className="lp-nav__brand lp-plaque" href="#top" aria-label="Hand Block Printing — back to top" onClick={() => open && close(false)}>
+        <a className="lp-nav__brand lp-plaque" href="#top" aria-label="Clay Traditions — back to top" onClick={() => open && close(false)}>
           <img src="/brand/dc-handicrafts.png" width={642} height={240} alt="DC Handicrafts — Indian Handicrafts, continuing tradition" />
         </a>
 

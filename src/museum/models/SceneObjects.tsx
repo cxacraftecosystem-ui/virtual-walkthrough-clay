@@ -14,7 +14,7 @@ import { ZONES, type ZoneId } from '../config/layout'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { MUSEUM, type Vec3 } from '../config/museum'
+import type { Vec3 } from '../config/museum'
 import { SCENE_OBJECTS, type SceneObjectConfig } from '../config/objects'
 import { registerItem } from '../interaction/registry'
 import { focusOn } from '../navigation/focus'
@@ -70,8 +70,8 @@ export function ObjectModel({ config }: { config: SceneObjectConfig }) {
 /* ------------------------------------------------------------------ */
 
 function wingCentre(zone: SceneObjectConfig['zone']): [number, number] {
-  const w = ZONES.find((z) => z.id === zone)?.rect ?? MUSEUM.wings.atrium
-  return [(w.minX + w.maxX) / 2, (w.minZ + w.maxZ) / 2]
+  // the zone's anchor (for the pavilion's ring sectors the rect centre can lie outside the zone)
+  return ZONES.find((z) => z.id === zone)?.anchor ?? [0, 0]
 }
 
 /**

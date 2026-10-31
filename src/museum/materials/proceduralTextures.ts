@@ -13,7 +13,22 @@
 import * as THREE from 'three'
 import { TileNoise, clamp01, hash2, lerp, mulberry32, smoothstep } from './noise'
 
-export type TextureKind = 'oakFloor' | 'plaster' | 'timber' | 'walnut' | 'stone' | 'linen' | 'limewash' | 'limewashStained' | 'ashlar' | 'brick'
+export type TextureKind =
+  | 'oakFloor'
+  | 'plaster'
+  | 'timber'
+  | 'walnut'
+  | 'stone'
+  | 'linen'
+  | 'limewash'
+  | 'limewashStained'
+  | 'ashlar'
+  | 'brick'
+  // ── clay pavilion finishes ──
+  | 'clayPlaster'
+  | 'rawClay'
+  | 'rammedEarth'
+  | 'earthFloor'
 
 /** Physical size (metres) covered by one texture tile. */
 export const TEXTURE_TILE_METRES: Record<TextureKind, number> = {
@@ -27,6 +42,10 @@ export const TEXTURE_TILE_METRES: Record<TextureKind, number> = {
   limewashStained: 4.0,
   ashlar: 1.8,
   brick: 1.02,
+  clayPlaster: 4.0,
+  rawClay: 1.6,
+  rammedEarth: 2.4,
+  earthFloor: 3.0,
 }
 
 export interface PBRTextureSet {
@@ -966,6 +985,245 @@ function genLinen(size: number): Fields {
 }
 
 /* ------------------------------------------------------------------ */
+/* Clay pavilion finishes                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Clay plaster (earthen render, all the pavilion's plastered walls). NEUTRAL albedo
+ * (≈ 0.8–0.95) so one set serves rose, terracotta, ochre, buff and oxblood via
+ * `material.color`. Most of the wall is a trowelled, softly burnished skim; scattered
+ * through it are islands, half a metre to a metre across, where the coarser base coat
+ * shows through: lumpy aggregate and straw flecks, matte, a shade deeper — felt in the
+ * light more than seen. (The bold raw-clay panels are geometry: architecture/Pavilion.)
+ * 4 m tile so nothing visibly repeats.
+ */
+function genClayPlaster(size: number): Fields {
+  const f = allocate(size)
+  const T = TEXTURE_TILE_METRES.clayPlaster
+  const px = T / size
+  const noise = new TileNoise(4401)
+  const noise2 = new TileNoise(77)
+  const cr = Math.min(size, 256)
+  const cloudF = coarseField(cr, cr, (u, v) => noise.fbm(u * 3, v * 3, 3, 3, 5, 0.55))
+  const cloud2F = coarseField(cr, cr, (u, v) => noise2.fbm(u * 11, v * 11, 11, 11, 3))
+  // Patch mask: low-frequency islands with a ragged (higher-octave) edge.
+  const patchF = coarseField(cr, cr, (u, v) => noise2.fbm(u * 4 + 1.3, v * 4 + 0.7, 4, 4, 5, 0.6))
+  const lumpF = coarseField(cr, cr, (u, v) => noise.fbm(u * 24, v * 24, 24, 24, 3))
+  const cells = Math.max(6, Math.round(T / 0.11)) // ~11 cm shrinkage cells inside patches
+  const crackEdge = makeVoronoiEdge(cells, 902)
+  const crackW = (1.4 * cells) / size
+  const fine = Math.max(8, Math.round(Math.min(size / 2.5, 600)))
+  const n = size * size
+  const hS = new Float32Array(n)
+  const bS = new Float32Array(n)
+  trowelStrokes(size, px, hS, bS, { count: 260, along: [0.22, 0.42], across: [0.08, 0.16], ridge: 0.00008, level: 0.00008, burnish: [0, 1], seed: 3111 })
+  // straw / fibre flecks inside the patches
+  const fibre = new Float32Array(n)
+  const rnd = mulberry32(61)
+  const flecks = Math.round(2600 * (T / 4) ** 2)
+  for (let k = 0; k < flecks; k++) {
+    const cx = rnd() * size
+    const cy = rnd() * size
+    const len = (0.012 + rnd() * 0.03) / px
+    const th = rnd() * Math.PI
+    const c = Math.cos(th)
+    const s = Math.sin(th)
+    const steps = Math.max(2, Math.ceil(len))
+    for (let t = 0; t < steps; t++) {
+      const x = ((Math.floor(cx + c * t) % size) + size) % size
+      const y = ((Math.floor(cy + s * t) % size) + size) % size
+      fibre[y * size + x] = 1
+    }
+  }
+
+  for (let y = 0; y < size; y++) {
+    const v = y / size
+    for (let x = 0; x < size; x++) {
+      const u = x / size
+      const i = y * size + x
+      const cl = cloudF(u, v)
+      const c2 = cloud2F(u, v)
+      const patch = smoothstep(0.16, 0.3, patchF(u, v))
+      const lump = lumpF(u, v)
+      const s = noise.value(u * fine, v * fine, fine, fine)
+      const crack = patch * (1 - smoothstep(0, crackW, crackEdge(u + lump * 0.004, v - lump * 0.004))) * 0.4
+      const fb = fibre[i] * patch
+      // skim: quiet, slightly burnished; patch: a shade deeper, coarser, flecked
+      let k = 0.9 + cl * 0.05 + c2 * 0.015 + bS[i] * 0.02 * (1 - patch) + s * 0.006
+      k *= 1 - patch * (0.035 - lump * 0.03)
+      k *= 1 - crack * 0.12
+      k += fb * 0.035
+      const g = 255 * clamp01(k)
+      putRGB(f.albedo, i, g * (1.006 - patch * 0.01), g, g * (0.99 - patch * 0.02))
+      const hSkim = cl * 0.0002 + hS[i]
+      const hRaw = lump * 0.0011 + s * 0.0001 - crack * 0.0005 + fb * 0.00025
+      f.height[i] = lerp(hSkim, hRaw, patch)
+      f.rough[i] = lerp(0.8 - bS[i] * 0.08 + cl * 0.03, 0.95, patch)
+    }
+  }
+  f.normalStrength = 1
+  return f
+}
+
+/**
+ * Raw clay: the coarse, hand-thrown base coat left unfinished — soft wavy ridges where the
+ * clay was pressed on in handfuls and smeared sideways (a little like eroded strata), pits
+ * and grit, a few short shrinkage cracks. NEUTRAL albedo; tinted per use (the raw patches,
+ * the plinth's centre).
+ */
+function genRawClay(size: number): Fields {
+  const f = allocate(size)
+  const T = TEXTURE_TILE_METRES.rawClay
+  const noise = new TileNoise(1207)
+  const noise2 = new TileNoise(19)
+  const cr = Math.min(size, 256)
+  // ridges: stretched (mostly horizontal) ridged noise, domain-warped
+  const warpF = coarseField(cr, cr, (u, v) => noise.fbm(u * 3, v * 3, 3, 3, 3))
+  const ridgeF = coarseField(cr, cr, (u, v) => noise2.ridged(u * 4, v * 14, 4, 14, 3, 0.55))
+  const lumpF = coarseField(cr, cr, (u, v) => noise.fbm(u * 10 + 2.3, v * 10, 10, 10, 4, 0.55))
+  const toneF = coarseField(64, 64, (u, v) => noise2.fbm(u * 2, v * 2, 2, 2, 3))
+  const cells = Math.max(4, Math.round(T / 0.16))
+  const edge = makeVoronoiEdge(cells, 515)
+  const crackMaskF = coarseField(64, 64, (u, v) => noise.fbm(u * 3 + 7.7, v * 3 + 1.9, 3, 3, 3))
+  const crackW = (0.9 * cells) / size
+  const fine = Math.max(8, Math.round(Math.min(size / 2, 700)))
+  const pf = Math.max(2, Math.round(fine / 3))
+  for (let y = 0; y < size; y++) {
+    const v = y / size
+    for (let x = 0; x < size; x++) {
+      const u = x / size
+      const i = y * size + x
+      const w = warpF(u, v)
+      const ridge = ridgeF(u + w * 0.05, v + w * 0.03)
+      const lump = lumpF(u, v)
+      const grit = noise2.value(u * fine, v * fine, fine, fine)
+      const pit = smoothstep(0.55, 0.8, noise.value(u * pf + 5, v * pf, pf, pf))
+      const cm = smoothstep(0.35, 0.6, crackMaskF(u, v))
+      const crack = cm > 0 ? cm * (1 - smoothstep(0, crackW, edge(u + w * 0.01, v))) : 0
+      const tone = toneF(u, v)
+      const k = clamp01(0.84 + tone * 0.07 + ridge * 0.07 + lump * 0.04 + grit * 0.03 - pit * 0.08 - crack * 0.2)
+      const g = 255 * k
+      putRGB(f.albedo, i, g * 1.012, g, g * 0.98)
+      f.height[i] = ridge * 0.0032 + lump * 0.0022 + grit * 0.00015 - pit * 0.0008 - crack * 0.0015
+      f.rough[i] = 0.94 + grit * 0.03 - ridge * 0.04
+    }
+  }
+  f.normalStrength = 1
+  return f
+}
+
+/**
+ * Rammed earth: horizontal lifts of compacted soil, 5–11 cm, each a slightly different
+ * earth (ochre, terracotta, buff, rose), with a recessed line at every lift, small
+ * pebbles and slow waviness along the run. Albedo baked in colour (material colour white).
+ */
+function genRammedEarth(size: number): Fields {
+  const f = allocate(size)
+  const T = TEXTURE_TILE_METRES.rammedEarth
+  const px = T / size
+  const noise = new TileNoise(808)
+  const noise2 = new TileNoise(3)
+  const cr = Math.min(size, 256)
+  const rnd = mulberry32(1717)
+  // lifts: thicknesses summing exactly to the tile
+  const lifts: { y0: number; y1: number; col: RGB; grit: number }[] = []
+  const earths = [hex('#c99a76'), hex('#bd8365'), hex('#d0a888'), hex('#c48d78'), hex('#b67b60'), hex('#cc9f7f')]
+  let acc = 0
+  const raw: number[] = []
+  while (acc < T) {
+    const t = 0.05 + rnd() * 0.06
+    raw.push(t)
+    acc += t
+  }
+  const scale = T / acc
+  let y0 = 0
+  for (const t of raw) {
+    const th = t * scale
+    lifts.push({ y0, y1: y0 + th, col: earths[Math.floor(rnd() * earths.length)], grit: rnd() })
+    y0 += th
+  }
+  // pull every lift part of the way to the mean earth: strata read, but quietly
+  const mean = earths.reduce<RGB>((m, c) => [m[0] + c[0] / earths.length, m[1] + c[1] / earths.length, m[2] + c[2] / earths.length], [0, 0, 0])
+  for (const l of lifts) l.col = [lerp(mean[0], l.col[0], 0.6), lerp(mean[1], l.col[1], 0.6), lerp(mean[2], l.col[2], 0.6)]
+  const waveF = coarseField(cr, 8, (u) => noise.fbm(u * 3, 0, 3, 1, 3))
+  const mottF = coarseField(cr, cr, (u, v) => noise2.fbm(u * 9, v * 5, 9, 5, 4))
+  const fine = Math.max(8, Math.round(Math.min(size / 2, 600)))
+  const pf = Math.max(2, Math.round(fine / 4))
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size
+      const i = y * size + x
+      // texture V runs up the wall; canvas row 0 = top of the tile
+      let hgt = (size - 1 - y + 0.5) * px + waveF(u, 0) * 0.018
+      hgt -= Math.floor(hgt / T) * T
+      let L = lifts[lifts.length - 1]
+      for (const l of lifts)
+        if (hgt < l.y1) {
+          L = l
+          break
+        }
+      const dEdge = Math.min(hgt - L.y0, L.y1 - hgt)
+      const line = 1 - smoothstep(0, 0.004, dEdge)
+      const mott = mottF(u, y / size)
+      const grit = noise2.value(u * fine, (y / size) * fine, fine, fine)
+      const pebble = smoothstep(0.62 - L.grit * 0.08, 0.75, noise.value(u * pf + 3, (y / size) * pf, pf, pf))
+      const sh = 1 + mott * 0.05 + grit * 0.03 - line * 0.09 + pebble * 0.06
+      putRGB(f.albedo, i, L.col[0] * sh, L.col[1] * sh, L.col[2] * sh * (1 - pebble * 0.04))
+      f.height[i] = mott * 0.0006 + grit * 0.00015 - line * 0.0025 + pebble * 0.0012
+      f.rough[i] = 0.9 + grit * 0.04 - pebble * 0.05
+    }
+  }
+  f.normalStrength = 1
+  return f
+}
+
+/**
+ * Burnished earth floor: a poured clay-lime floor polished with stones — cloudy
+ * variegation, overlapping polishing arcs (glossier where burnished), sparse fine
+ * aggregate and faint crazing. NEUTRAL albedo, tinted warm per use.
+ */
+function genEarthFloor(size: number): Fields {
+  const f = allocate(size)
+  const T = TEXTURE_TILE_METRES.earthFloor
+  const px = T / size
+  const noise = new TileNoise(2024)
+  const noise2 = new TileNoise(88)
+  const cr = Math.min(size, 256)
+  const cloudF = coarseField(cr, cr, (u, v) => noise.fbm(u * 2, v * 2, 2, 2, 5, 0.6))
+  const cloud2F = coarseField(cr, cr, (u, v) => noise2.fbm(u * 9, v * 9, 9, 9, 3))
+  const cells = Math.max(6, Math.round(T / 0.14))
+  const crackEdge = makeVoronoiEdge(cells, 311)
+  const crackMaskF = coarseField(64, 64, (u, v) => noise2.fbm(u * 2 + 4.2, v * 2 + 1.1, 2, 2, 3))
+  const crackW = (0.9 * cells) / size
+  const fine = Math.max(8, Math.round(Math.min(size / 2, 700)))
+  const fa = Math.max(2, Math.round(fine / 2))
+  const n = size * size
+  const hS = new Float32Array(n)
+  const bS = new Float32Array(n)
+  trowelStrokes(size, px, hS, bS, { count: 340, along: [0.16, 0.34], across: [0.1, 0.2], ridge: 0.00002, level: 0.00003, burnish: [0, 1], seed: 4242 })
+  for (let y = 0; y < size; y++) {
+    const v = y / size
+    for (let x = 0; x < size; x++) {
+      const u = x / size
+      const i = y * size + x
+      const cl = cloudF(u, v)
+      const c2 = cloud2F(u, v)
+      const s = noise.value(u * fine, v * fine, fine, fine)
+      const agg = smoothstep(0.7, 0.85, noise2.value(u * fa + 9, v * fa, fa, fa))
+      const cm = smoothstep(0.25, 0.5, crackMaskF(u, v))
+      const crack = cm > 0 ? cm * (1 - smoothstep(0, crackW, crackEdge(u, v))) : 0
+      const k = clamp01(0.88 + cl * 0.08 + c2 * 0.025 + bS[i] * 0.015 + s * 0.006 - agg * 0.06 - crack * 0.14)
+      const g = 255 * k
+      putRGB(f.albedo, i, g * 1.004, g, g * 0.99)
+      f.height[i] = cl * 0.00015 + hS[i] + s * 0.000008 - crack * 0.0002 + agg * 0.00004
+      f.rough[i] = 0.62 - bS[i] * 0.2 + cl * 0.04 + crack * 0.2 + agg * 0.05
+    }
+  }
+  f.normalStrength = 1
+  return f
+}
+
+/* ------------------------------------------------------------------ */
 /* Cache & public API                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -980,6 +1238,10 @@ const GENERATORS: Record<TextureKind, (size: number) => Fields> = {
   limewashStained: genLimewashStained,
   ashlar: genAshlar,
   brick: genBrick,
+  clayPlaster: genClayPlaster,
+  rawClay: genRawClay,
+  rammedEarth: genRammedEarth,
+  earthFloor: genEarthFloor,
 }
 
 const cache = new Map<string, PBRTextureSet>()

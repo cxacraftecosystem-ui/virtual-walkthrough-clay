@@ -228,14 +228,14 @@ async function faceTexture(L: MapLayout, pins: [number, number][], title: string
   y += s * 0.02
   ctx.fillStyle = 'rgba(43,38,33,0.75)'
   ctx.font = `italic 400 ${Math.round(s * 0.1)}px ${SERIF}`
-  ctx.fillText('Hand block printing — places of making', tl, y)
+  ctx.fillText('Clay traditions — places of making', tl, y)
   y += s * 0.12
   ctx.fillStyle = MADDER
   ctx.fillRect(tl, y, s * 0.4, Math.max(2, s * 0.004))
   y += s * 0.2
   ctx.fillStyle = INK
   ctx.font = `400 ${Math.round(s * 0.072)}px ${SANS}`
-  const body = 'Hand block printing is practised in many places across India, each with its own blocks, colours and patterns.'
+  const body = 'Clay is worked in many places across India, each with its own clays, forms and firings.'
   for (const line of wrap(ctx, body, tw)) {
     ctx.fillText(line, tl, y)
     y += s * 0.112

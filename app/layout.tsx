@@ -12,20 +12,20 @@ import '../src/styles.css'
 import '../src/museum/a11y/a11y.css'
 import { ServiceWorkerRegistration } from '../src/museum/pwa/ServiceWorkerRegistration'
 
-const SHARE_TITLE = 'Hand Block Printing — Virtual Exhibition'
+const SHARE_TITLE = 'Clay Traditions — Virtual Pavilion'
 const SHARE_DESCRIPTION =
-  'Carved wood, natural dye and cloth — walk through a virtual museum of Indian hand block printing, in your browser.'
-const SHARE_IMAGE = { url: '/brand/og-image.jpg', width: 1200, height: 630, alt: 'Hand Block Printing — Virtual Exhibition' }
+  'Earth, water, hand and fire — walk through a virtual pavilion of three Indian clay traditions, in your browser.'
+const SHARE_IMAGE = { url: '/brand/og-image.jpg', width: 1200, height: 630, alt: 'Clay Traditions — Virtual Pavilion' }
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
-  title: 'Hand Block Printing — Virtual Gallery',
-  description: 'Hand Block Printing — a virtual museum walkthrough.',
+  title: 'Clay Traditions — Virtual Pavilion',
+  description: 'Clay Traditions — a virtual walk through a pavilion of Bankura terracotta, Molela plaques and Longpi black pottery.',
   icons: { icon: '/favicon.svg', apple: '/brand/icon-512.png' },
   manifest: '/manifest.webmanifest',
   openGraph: {
     type: 'website',
-    siteName: 'Hand Block Printing',
+    siteName: 'Clay Traditions',
     title: SHARE_TITLE,
     description: SHARE_DESCRIPTION,
     images: [SHARE_IMAGE],
@@ -42,7 +42,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#efe9df',
+  themeColor: '#f3e7dc',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {

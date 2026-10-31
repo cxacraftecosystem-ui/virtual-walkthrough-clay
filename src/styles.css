@@ -360,7 +360,8 @@ button {
   left: calc(var(--edge) + var(--safe-l));
   padding: 10px 16px 11px;
   max-width: calc(100vw - 2 * var(--edge) - 260px);
-  text-shadow: 0 0 18px rgba(245, 241, 232, 0.9);
+  /* a soft halo plus a tight one, so the zone line reads on the deep clay walls too */
+  text-shadow: 0 0 18px rgba(245, 241, 232, 0.9), 0 0 4px rgba(245, 241, 232, 0.85);
 }
 
 .ui-hud__name {
@@ -857,8 +858,9 @@ button {
 
 .ui-map__svg {
   display: block;
-  /* The whole complex is wider than deep: size by width, height follows the aspect. */
-  width: min(380px, 30vw, calc((46vh - 40px) * 1.32));
+  /* The pavilion plan is taller than wide (round drum + annex + forecourt): size by height,
+     the width follows the plan aspect (set inline as --map-aspect). */
+  width: min(270px, 26vw, calc((52vh - 40px) * var(--map-aspect, 0.7)));
   height: auto;
   overflow: visible;
 }
@@ -867,33 +869,37 @@ button {
   fill: rgba(255, 252, 246, 0.55);
 }
 
+/* the landscape plinth disc and forecourt round the building */
+.ui-map__floor--entrance-court {
+  fill: rgba(196, 206, 170, 0.32);
+}
+
+.ui-map__oculus {
+  fill: rgba(214, 232, 240, 0.7);
+  pointer-events: none;
+}
+
 .ui-map__wall {
   fill: #4a4139;
 }
 
-.ui-map__wall--partition,
-.ui-map__wall--bay-divider {
+/* free-standing inner walls (H, F, the hallway wall) and the fins read lighter */
+.ui-map__wall--description,
+.ui-map__wall--inner-main,
+.ui-map__wall--hallway,
+.ui-map__wall--fin {
   fill: #7d7166;
 }
 
-.ui-map__wall--reveal {
-  fill: var(--accent);
+.ui-map__wall--plinth {
+  fill: none;
+  stroke: #9b8f82;
+  stroke-width: 0.08;
 }
 
-.ui-map__wall--garden {
-  fill: #8f8474;
-}
-
-.ui-map__wall--glazing {
-  fill: #9db3b6;
-}
-
-.ui-map__floor--courtyard {
-  fill: rgba(196, 206, 170, 0.45);
-}
-
-.ui-map__floor--theatre {
-  fill: rgba(236, 229, 218, 0.7);
+.ui-map__podium {
+  fill: #a35a48;
+  stroke: none;
 }
 
 .ui-map__object {
@@ -998,7 +1004,7 @@ button {
 
 @media (max-width: 640px) {
   .ui-map__svg {
-    width: min(300px, calc(100vw - 2 * var(--edge) - 164px), calc((36vh - 34px) * 1.32));
+    width: min(210px, calc(100vw - 2 * var(--edge) - 164px), calc((40vh - 34px) * var(--map-aspect, 0.7)));
     height: auto;
   }
   .ui-map__card {

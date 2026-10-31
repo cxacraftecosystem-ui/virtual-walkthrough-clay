@@ -25,7 +25,7 @@ export interface QualityPreset {
   smaa: boolean
   /** Rendered planar reflections on the oak floor (drei MeshReflectorMaterial). */
   floorReflections: boolean
-  /** Accent spotlights on hand-block tables. */
+  /** Accent spotlights on exhibit display tables. */
   tableSpots: boolean
   /** Number of real SpotLights shared between all track fixtures (nearest first). */
   spotPool: number

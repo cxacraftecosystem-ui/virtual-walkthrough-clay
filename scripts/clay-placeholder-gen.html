@@ -1,0 +1,723 @@
+<!doctype html>
+<!--
+  Clay pavilion placeholder studies (driven by scripts/generate-placeholders.mjs).
+
+  Every picture here is a procedural stand-in for layout and lighting: a relief, a plaque or a
+  pot drawn on a canvas in the manner of its tradition. None depicts a documented object and
+  none carries a caption; the workshop's photographs replace them file for file.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Clay placeholder generator</title>
+    <style>
+      @font-face {
+        font-family: 'Cormorant Garamond';
+        font-weight: 500;
+        src: url('../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Cormorant Garamond';
+        font-weight: 400;
+        font-style: italic;
+        src: url('../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-400-italic.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-weight: 500;
+        src: url('../node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2') format('woff2');
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      /* ---------------------------------------------------------------- helpers */
+      function rng(seed) {
+        let s = 0
+        for (const c of String(seed)) s = (s * 31 + c.charCodeAt(0)) >>> 0
+        return () => {
+          s = (s + 0x6d2b79f5) >>> 0
+          let t = s
+          t = Math.imul(t ^ (t >>> 15), t | 1)
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+      }
+      const lerp = (a, b, t) => a + (b - a) * t
+      function hex(c) {
+        const n = parseInt(c.slice(1), 16)
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+      }
+      function mix(a, b, t) {
+        const A = hex(a)
+        const B = hex(b)
+        return `rgb(${A.map((v, i) => Math.round(lerp(v, B[i], t))).join(',')})`
+      }
+      function canvas(w, h) {
+        const c = document.createElement('canvas')
+        c.width = w
+        c.height = h
+        return [c, c.getContext('2d')]
+      }
+
+      /** Fired-clay ground: base colour, soft mottling, fine grit and a few pores. */
+      function clayGround(g, w, h, base, seed, { mottle = 0.12, grit = 0.08, dark = '#3a1a12', light = '#f0c9a8' } = {}) {
+        const r = rng(seed)
+        g.fillStyle = base
+        g.fillRect(0, 0, w, h)
+        // large soft mottles
+        for (let i = 0; i < 90; i++) {
+          const x = r() * w
+          const y = r() * h
+          const rad = (0.05 + r() * 0.18) * Math.max(w, h)
+          const grd = g.createRadialGradient(x, y, 0, x, y, rad)
+          const c = r() < 0.5 ? dark : light
+          grd.addColorStop(0, hexA(c, mottle * r()))
+          grd.addColorStop(1, hexA(c, 0))
+          g.fillStyle = grd
+          g.fillRect(x - rad, y - rad, rad * 2, rad * 2)
+        }
+        // grit
+        const img = g.getImageData(0, 0, w, h)
+        const d = img.data
+        for (let i = 0; i < d.length; i += 4) {
+          const n = (r() - 0.5) * 255 * grit
+          d[i] += n
+          d[i + 1] += n
+          d[i + 2] += n
+        }
+        g.putImageData(img, 0, 0)
+        // pores
+        for (let i = 0; i < (w * h) / 9000; i++) {
+          g.fillStyle = hexA(dark, 0.25 + r() * 0.3)
+          g.beginPath()
+          g.arc(r() * w, r() * h, 0.6 + r() * 1.8, 0, Math.PI * 2)
+          g.fill()
+        }
+      }
+      function hexA(c, a) {
+        const [r, g, b] = hex(c)
+        return `rgba(${r},${g},${b},${a})`
+      }
+
+      /** Low relief: the path is filled, then lit from the upper left (highlight up-left, shadow down-right). */
+      function relief(g, path, fill, depth = 6, { light = 'rgba(255,226,196,0.55)', shadow = 'rgba(40,14,8,0.55)', blur = 4 } = {}) {
+        g.save()
+        g.shadowColor = shadow
+        g.shadowBlur = blur * 2
+        g.shadowOffsetX = depth
+        g.shadowOffsetY = depth
+        g.fillStyle = fill
+        g.fill(path)
+        g.restore()
+        g.save()
+        g.clip(path)
+        g.lineWidth = depth * 1.6
+        g.strokeStyle = light
+        g.translate(depth * 0.6, depth * 0.6)
+        g.stroke(path)
+        g.restore()
+        g.save()
+        g.clip(path)
+        g.lineWidth = depth * 1.2
+        g.strokeStyle = 'rgba(40,14,8,0.28)'
+        g.translate(-depth * 0.5, -depth * 0.5)
+        g.stroke(path)
+        g.restore()
+      }
+
+      /** Incised line (a groove): dark core with a light lower lip. */
+      function incise(g, path, w = 3) {
+        g.save()
+        g.lineCap = 'round'
+        g.lineJoin = 'round'
+        g.strokeStyle = 'rgba(255,228,200,0.35)'
+        g.lineWidth = w
+        g.translate(w * 0.5, w * 0.5)
+        g.stroke(path)
+        g.restore()
+        g.save()
+        g.lineCap = 'round'
+        g.lineJoin = 'round'
+        g.strokeStyle = 'rgba(38,14,8,0.65)'
+        g.lineWidth = w
+        g.stroke(path)
+        g.restore()
+      }
+
+      function vignette(g, w, h, a = 0.35) {
+        const grd = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.25, w / 2, h / 2, Math.max(w, h) * 0.75)
+        grd.addColorStop(0, 'rgba(0,0,0,0)')
+        grd.addColorStop(1, `rgba(20,8,4,${a})`)
+        g.fillStyle = grd
+        g.fillRect(0, 0, w, h)
+      }
+
+      /* ---------------------------------------------------------------- motifs */
+
+      /** A long-necked, upright horse in profile (Bankura manner), facing right; (x, y) = hoof line centre, s = height. */
+      function horsePath(x, y, s) {
+        const p = new Path2D()
+        const u = s / 100
+        const P = (dx, dy) => [x + dx * u, y - dy * u]
+        p.moveTo(...P(-34, 0))
+        p.lineTo(...P(-30, 34)) // back leg
+        p.quadraticCurveTo(...P(-40, 44), ...P(-34, 52)) // rump
+        p.lineTo(...P(14, 54)) // back
+        p.lineTo(...P(20, 92)) // neck rises
+        p.quadraticCurveTo(...P(22, 100), ...P(30, 99)) // poll
+        p.lineTo(...P(32, 108)) // ear
+        p.lineTo(...P(36, 99))
+        p.lineTo(...P(48, 90)) // face
+        p.quadraticCurveTo(...P(52, 85), ...P(46, 82)) // muzzle
+        p.lineTo(...P(30, 80))
+        p.lineTo(...P(30, 46)) // throat / chest
+        p.lineTo(...P(26, 34))
+        p.lineTo(...P(28, 0)) // fore leg
+        p.lineTo(...P(18, 0))
+        p.lineTo(...P(18, 30))
+        p.lineTo(...P(-20, 30))
+        p.lineTo(...P(-22, 0))
+        p.closePath()
+        return p
+      }
+
+      function riderPath(x, y, s) {
+        const p = new Path2D()
+        const u = s / 100
+        const P = (dx, dy) => [x + dx * u, y - dy * u]
+        p.moveTo(...P(-8, 54))
+        p.lineTo(...P(-6, 86))
+        p.quadraticCurveTo(...P(-4, 92), ...P(0, 92))
+        p.arc(...P(0, 101), 8 * u, Math.PI / 2, Math.PI * 2.5)
+        p.moveTo(...P(0, 92))
+        p.quadraticCurveTo(...P(6, 92), ...P(8, 84))
+        p.lineTo(...P(14, 70)) // arm forward
+        p.lineTo(...P(10, 66))
+        p.lineTo(...P(6, 74))
+        p.lineTo(...P(8, 54))
+        p.lineTo(...P(10, 40)) // leg down the flank
+        p.lineTo(...P(2, 40))
+        p.closePath()
+        return p
+      }
+
+      function lotusPath(cx, cy, r, petals = 8) {
+        const p = new Path2D()
+        for (let i = 0; i < petals; i++) {
+          const a = (i / petals) * Math.PI * 2
+          const ax = cx + Math.cos(a) * r
+          const ay = cy + Math.sin(a) * r
+          const b1 = a - Math.PI / petals
+          const b2 = a + Math.PI / petals
+          p.moveTo(cx + Math.cos(b1) * r * 0.3, cy + Math.sin(b1) * r * 0.3)
+          p.quadraticCurveTo(cx + Math.cos(b1) * r * 0.85, cy + Math.sin(b1) * r * 0.85, ax, ay)
+          p.quadraticCurveTo(cx + Math.cos(b2) * r * 0.85, cy + Math.sin(b2) * r * 0.85, cx + Math.cos(b2) * r * 0.3, cy + Math.sin(b2) * r * 0.3)
+          p.closePath()
+        }
+        p.moveTo(cx + r * 0.26, cy)
+        p.arc(cx, cy, r * 0.26, 0, Math.PI * 2)
+        return p
+      }
+
+      function archPath(x0, y0, w, h, scallops = 0) {
+        // y0 = bottom; rounded arch top
+        const p = new Path2D()
+        const r = w / 2
+        p.moveTo(x0, y0)
+        p.lineTo(x0, y0 - h + r)
+        if (!scallops) p.arc(x0 + r, y0 - h + r, r, Math.PI, 0)
+        else {
+          const n = scallops
+          for (let i = 0; i < n; i++) {
+            const a0 = Math.PI + (i / n) * Math.PI
+            const a1 = Math.PI + ((i + 1) / n) * Math.PI
+            const mx = x0 + r + Math.cos((a0 + a1) / 2) * r * 1.08
+            const my = y0 - h + r + Math.sin((a0 + a1) / 2) * r * 1.08
+            p.quadraticCurveTo(mx, my, x0 + r + Math.cos(a1) * r, y0 - h + r + Math.sin(a1) * r)
+          }
+        }
+        p.lineTo(x0 + w, y0)
+        p.closePath()
+        return p
+      }
+
+      /* ---------------------------------------------------------------- pictures */
+      const TERRA = '#b4553f'
+      const TERRA_D = '#8e3c2a'
+      const PLASTER = '#e9dccb'
+
+      const PICTURES = {
+        // A · Bankura: horse and rider panel
+        'clay-a-01.jpg': [1200, 1680, (g, w, h) => {
+          clayGround(g, w, h, TERRA, 'a01')
+          // double incised border
+          incise(g, (() => { const p = new Path2D(); p.rect(70, 70, w - 140, h - 140); return p })(), 5)
+          incise(g, (() => { const p = new Path2D(); p.rect(110, 110, w - 220, h - 220); return p })(), 3)
+          // incised ground lines
+          const r = rng('a01l')
+          for (let y = 180; y < h - 160; y += 46) {
+            const p = new Path2D()
+            p.moveTo(140, y + r() * 6)
+            for (let x = 140; x <= w - 140; x += 60) p.lineTo(x, y + Math.sin(x * 0.02 + y) * 4 + r() * 4)
+            g.globalAlpha = 0.45
+            incise(g, p, 2)
+            g.globalAlpha = 1
+          }
+          const hx = w * 0.47
+          const hy = h * 0.78
+          relief(g, horsePath(hx, hy, h * 0.52), mix(TERRA, '#d98a6a', 0.35), 9)
+          relief(g, riderPath(hx - h * 0.02, hy - h * 0.015, h * 0.52), mix(TERRA, '#d98a6a', 0.45), 7)
+          // saddle cloth and bridle details
+          const d = new Path2D()
+          d.moveTo(hx - h * 0.12, hy - h * 0.16)
+          d.lineTo(hx + h * 0.05, hy - h * 0.16)
+          d.moveTo(hx + h * 0.12, hy - h * 0.43)
+          d.lineTo(hx + h * 0.2, hy - h * 0.44)
+          incise(g, d, 4)
+          for (let i = 0; i < 9; i++) {
+            const p = new Path2D()
+            p.arc(hx - h * 0.1 + i * h * 0.02, hy - h * 0.2, 5, 0, Math.PI * 2)
+            relief(g, p, mix(TERRA, '#e2a07c', 0.4), 2)
+          }
+          vignette(g, w, h, 0.4)
+        }],
+
+        // A · temple frieze: arches with figures over a lotus-petal band
+        'clay-a-02.jpg': [2000, 1000, (g, w, h) => {
+          clayGround(g, w, h, mix(TERRA, '#9c4632', 0.4), 'a02')
+          const n = 7
+          const cw = (w - 120) / n
+          for (let i = 0; i < n; i++) {
+            const x = 60 + i * cw
+            // tile joints
+            const j = new Path2D()
+            j.moveTo(x, 40)
+            j.lineTo(x, h - 40)
+            incise(g, j, 3)
+            relief(g, archPath(x + cw * 0.14, h * 0.7, cw * 0.72, h * 0.56, 5), mix(TERRA, '#cf7c5c', 0.3), 6)
+            const fig = new Path2D()
+            const fx = x + cw * 0.5
+            fig.arc(fx, h * 0.3, cw * 0.07, 0, Math.PI * 2)
+            fig.moveTo(fx - cw * 0.12, h * 0.66)
+            fig.lineTo(fx - cw * 0.08, h * 0.38)
+            fig.lineTo(fx + cw * 0.08, h * 0.38)
+            fig.lineTo(fx + cw * 0.12, h * 0.66)
+            fig.closePath()
+            relief(g, fig, mix(TERRA, '#e09a76', 0.4), 5)
+          }
+          // lotus band
+          for (let x = 70; x < w - 40; x += 70) {
+            const p = new Path2D()
+            p.moveTo(x, h * 0.92)
+            p.quadraticCurveTo(x + 35, h * 0.72, x + 70, h * 0.92)
+            relief(g, p, mix(TERRA, '#d4866a', 0.3), 3)
+          }
+          vignette(g, w, h, 0.38)
+        }],
+
+        // A · three lotus tiles
+        'clay-a-03.jpg': [2100, 900, (g, w, h) => {
+          g.fillStyle = '#d8c6b0'
+          g.fillRect(0, 0, w, h)
+          const s = 600
+          for (let i = 0; i < 3; i++) {
+            const x = 75 + i * (s + 75)
+            const y = (h - s) / 2
+            const [tc, tg] = canvas(s, s)
+            clayGround(tg, s, s, mix(TERRA, i === 1 ? '#c26a4e' : '#a54a35', 0.5), 'a03' + i)
+            relief(tg, lotusPath(s / 2, s / 2, s * 0.38, 8 + i * 2), mix(TERRA, '#e19c78', 0.35), 7)
+            const ring = new Path2D()
+            ring.arc(s / 2, s / 2, s * 0.44, 0, Math.PI * 2)
+            incise(tg, ring, 4)
+            vignette(tg, s, s, 0.3)
+            g.save()
+            g.shadowColor = 'rgba(40,20,10,0.45)'
+            g.shadowBlur = 24
+            g.shadowOffsetX = 10
+            g.shadowOffsetY = 12
+            g.drawImage(tc, x, y)
+            g.restore()
+          }
+        }],
+
+        // B · Molela: rider deity plaque, painted
+        'clay-b-01.jpg': [1200, 1500, (g, w, h) => plaque(g, w, h, 'b01', (pg, pw, ph) => {
+          relief(pg, horsePath(pw * 0.5, ph * 0.86, ph * 0.5), '#c9a04a', 8)
+          relief(pg, riderPath(pw * 0.49, ph * 0.845, ph * 0.5), '#e8dcc6', 7)
+          // painted trappings
+          pg.fillStyle = '#7a2e24'
+          for (let i = 0; i < 6; i++) pg.fillRect(pw * 0.36 + i * pw * 0.045, ph * 0.56, pw * 0.025, pw * 0.025)
+        })],
+
+        // B · serpent plaque
+        'clay-b-02.jpg': [1200, 1500, (g, w, h) => plaque(g, w, h, 'b02', (pg, pw, ph) => {
+          const p = new Path2D()
+          const cx = pw * 0.5
+          const cy = ph * 0.62
+          for (let k = 0; k < 3; k++) {
+            const r = pw * (0.26 - k * 0.07)
+            p.moveTo(cx + r, cy + k * 12)
+            p.ellipse(cx, cy + k * 12, r, r * 0.42, 0, 0, Math.PI * 2)
+          }
+          relief(pg, p, '#c9a04a', 6)
+          const hood = new Path2D()
+          hood.moveTo(cx - pw * 0.13, ph * 0.5)
+          hood.quadraticCurveTo(cx - pw * 0.18, ph * 0.26, cx, ph * 0.2)
+          hood.quadraticCurveTo(cx + pw * 0.18, ph * 0.26, cx + pw * 0.13, ph * 0.5)
+          hood.closePath()
+          relief(pg, hood, '#e8dcc6', 8)
+          pg.fillStyle = '#7a2e24'
+          pg.beginPath()
+          pg.arc(cx - pw * 0.04, ph * 0.3, 8, 0, Math.PI * 2)
+          pg.arc(cx + pw * 0.04, ph * 0.3, 8, 0, Math.PI * 2)
+          pg.fill()
+        })],
+
+        // B · four fragments on linen
+        'clay-b-03.jpg': [2000, 1050, (g, w, h) => {
+          linen(g, w, h, 'b03')
+          const shapes = [
+            (x, y, s) => { const p = new Path2D(); p.ellipse(x, y, s * 0.36, s * 0.46, 0, 0, Math.PI * 2); return p },
+            (x, y, s) => { const p = new Path2D(); p.moveTo(x - s * 0.3, y + s * 0.4); p.lineTo(x - s * 0.34, y - s * 0.1); for (let i = 0; i < 4; i++) { p.lineTo(x - s * 0.3 + i * s * 0.16, y - s * 0.45); p.lineTo(x - s * 0.24 + i * s * 0.16, y - s * 0.12) } p.lineTo(x + s * 0.32, y + s * 0.4); p.closePath(); return p },
+            (x, y, s) => { const p = new Path2D(); p.moveTo(x - s * 0.3, y + s * 0.35); p.quadraticCurveTo(x - s * 0.35, y - s * 0.3, x, y - s * 0.4); p.quadraticCurveTo(x + s * 0.35, y - s * 0.3, x + s * 0.3, y + s * 0.35); p.closePath(); return p },
+            (x, y, s) => { const p = new Path2D(); p.moveTo(x, y - s * 0.48); p.quadraticCurveTo(x + s * 0.42, y - s * 0.1, x, y + s * 0.48); p.quadraticCurveTo(x - s * 0.42, y - s * 0.1, x, y - s * 0.48); return p },
+          ]
+          shapes.forEach((f, i) => {
+            const s = 360
+            const x = 270 + i * 487
+            const y = h / 2
+            const [tc, tg] = canvas(w, h)
+            clayGround(tg, w, h, mix(TERRA, '#c27556', 0.5), 'b03f' + i)
+            g.save()
+            g.shadowColor = 'rgba(40,20,10,0.5)'
+            g.shadowBlur = 20
+            g.shadowOffsetX = 8
+            g.shadowOffsetY = 10
+            const path = f(x, y, s)
+            g.clip(path)
+            g.drawImage(tc, 0, 0)
+            g.restore()
+            relief(g, path, 'rgba(0,0,0,0)', 5)
+          })
+        }],
+
+        // C · Longpi: black kettle on a pale ground
+        'clay-c-01.jpg': [1200, 1470, (g, w, h) => {
+          studio(g, w, h)
+          blackPot(g, w * 0.5, h * 0.74, w * 0.56, h * 0.36, 'c01', { kettle: true })
+        }],
+
+        // C · nested bowls
+        'clay-c-02.jpg': [1600, 1230, (g, w, h) => {
+          studio(g, w, h)
+          blackBowl(g, w * 0.5, h * 0.74, w * 0.72, h * 0.3, 'c02a')
+          blackBowl(g, w * 0.5, h * 0.62, w * 0.5, h * 0.2, 'c02b')
+          blackBowl(g, w * 0.5, h * 0.53, w * 0.3, h * 0.12, 'c02c')
+        }],
+
+        // C · burnished surface
+        'clay-c-03.jpg': [1200, 1200, (g, w, h) => {
+          clayGround(g, w, h, '#26221f', 'c03', { mottle: 0.25, grit: 0.05, dark: '#000000', light: '#6d6a66' })
+          const r = rng('c03f')
+          for (let i = 0; i < 260; i++) {
+            g.fillStyle = `rgba(150,146,140,${0.2 + r() * 0.4})`
+            g.beginPath()
+            g.ellipse(r() * w, r() * h, 1 + r() * 4, 1 + r() * 2.5, r() * Math.PI, 0, Math.PI * 2)
+            g.fill()
+          }
+          // burnish strokes: soft long highlights
+          for (let i = 0; i < 40; i++) {
+            const y = r() * h
+            const grd = g.createLinearGradient(0, y - 30, 0, y + 30)
+            grd.addColorStop(0, 'rgba(255,255,255,0)')
+            grd.addColorStop(0.5, `rgba(220,215,205,${0.04 + r() * 0.07})`)
+            grd.addColorStop(1, 'rgba(255,255,255,0)')
+            g.save()
+            g.translate(w / 2, y)
+            g.rotate((r() - 0.5) * 0.5)
+            g.fillStyle = grd
+            g.fillRect(-w, -30, w * 2, 60)
+            g.restore()
+          }
+          vignette(g, w, h, 0.45)
+        }],
+      }
+
+      /** An arched plaque standing on a cream plaster ground, painted in earth colours. */
+      function plaque(g, w, h, seed, draw) {
+        g.fillStyle = PLASTER
+        g.fillRect(0, 0, w, h)
+        const r = rng(seed + 'p')
+        const img = g.getImageData(0, 0, w, h)
+        for (let i = 0; i < img.data.length; i += 4) {
+          const n = (r() - 0.5) * 14
+          img.data[i] += n
+          img.data[i + 1] += n
+          img.data[i + 2] += n
+        }
+        g.putImageData(img, 0, 0)
+        const pw = w * 0.74
+        const ph = h * 0.84
+        const [pc, pg] = canvas(pw, ph)
+        clayGround(pg, pw, ph, '#a8432f', seed)
+        const inner = archPath(pw * 0.08, ph * 0.94, pw * 0.84, ph * 0.86, 9)
+        pg.save()
+        pg.clip(inner)
+        pg.fillStyle = 'rgba(122,46,36,0.6)'
+        pg.fillRect(0, 0, pw, ph)
+        pg.restore()
+        incise(pg, inner, 5)
+        // dotted border
+        pg.fillStyle = '#efe4d0'
+        for (let i = 0; i < 30; i++) {
+          const t = i / 29
+          pg.beginPath()
+          pg.arc(pw * 0.04, ph * (0.2 + t * 0.76), 5, 0, Math.PI * 2)
+          pg.arc(pw * 0.96, ph * (0.2 + t * 0.76), 5, 0, Math.PI * 2)
+          pg.fill()
+        }
+        draw(pg, pw, ph)
+        vignette(pg, pw, ph, 0.3)
+        const outline = archPath((w - pw) / 2, (h + ph) / 2, pw, ph)
+        g.save()
+        g.shadowColor = 'rgba(40,20,10,0.5)'
+        g.shadowBlur = 30
+        g.shadowOffsetX = 12
+        g.shadowOffsetY = 16
+        g.fillStyle = '#a8432f'
+        g.fill(outline)
+        g.restore()
+        g.save()
+        g.clip(outline)
+        g.drawImage(pc, (w - pw) / 2, (h - ph) / 2)
+        g.restore()
+      }
+
+      function linen(g, w, h, seed) {
+        g.fillStyle = '#e4d8c6'
+        g.fillRect(0, 0, w, h)
+        const r = rng(seed)
+        g.globalAlpha = 0.08
+        for (let x = 0; x < w; x += 3) {
+          g.fillStyle = r() < 0.5 ? '#8a7a66' : '#ffffff'
+          g.fillRect(x, 0, 1, h)
+        }
+        for (let y = 0; y < h; y += 3) {
+          g.fillStyle = r() < 0.5 ? '#8a7a66' : '#ffffff'
+          g.fillRect(0, y, w, 1)
+        }
+        g.globalAlpha = 1
+      }
+
+      /** Pale studio sweep for the black pottery. */
+      function studio(g, w, h) {
+        const grd = g.createLinearGradient(0, 0, 0, h)
+        grd.addColorStop(0, '#ece6dc')
+        grd.addColorStop(0.62, '#ddd4c6')
+        grd.addColorStop(1, '#cfc4b4')
+        g.fillStyle = grd
+        g.fillRect(0, 0, w, h)
+      }
+
+      /** Shaded black clay body: dark core, burnished rim light on the left, soft reflection. */
+      function shadeBlack(g, path, x0, x1, y0, y1) {
+        const grd = g.createLinearGradient(x0, 0, x1, 0)
+        grd.addColorStop(0, '#3c3834')
+        grd.addColorStop(0.18, '#77716a')
+        grd.addColorStop(0.28, '#2a2623')
+        grd.addColorStop(0.7, '#151311')
+        grd.addColorStop(0.92, '#2f2b28')
+        grd.addColorStop(1, '#1a1715')
+        g.fillStyle = grd
+        g.fill(path)
+        const v = g.createLinearGradient(0, y0, 0, y1)
+        v.addColorStop(0, 'rgba(255,255,255,0.08)')
+        v.addColorStop(1, 'rgba(0,0,0,0.35)')
+        g.fillStyle = v
+        g.fill(path)
+      }
+
+      function floorShadow(g, x, y, rx) {
+        const s = g.createRadialGradient(x, y, 0, x, y, rx)
+        s.addColorStop(0, 'rgba(30,24,18,0.5)')
+        s.addColorStop(1, 'rgba(30,24,18,0)')
+        g.save()
+        g.scale(1, 0.18)
+        g.fillStyle = s
+        g.beginPath()
+        g.arc(x, y / 0.18, rx, 0, Math.PI * 2)
+        g.fill()
+        g.restore()
+      }
+
+      function blackPot(g, cx, by, w, h, seed, { kettle = false } = {}) {
+        floorShadow(g, cx, by, w * 0.62)
+        const p = new Path2D()
+        const rw = w / 2
+        p.moveTo(cx - rw * 0.42, by)
+        p.bezierCurveTo(cx - rw * 1.08, by - h * 0.15, cx - rw * 1.02, by - h * 0.8, cx - rw * 0.42, by - h * 0.92)
+        p.lineTo(cx + rw * 0.42, by - h * 0.92)
+        p.bezierCurveTo(cx + rw * 1.02, by - h * 0.8, cx + rw * 1.08, by - h * 0.15, cx + rw * 0.42, by)
+        p.closePath()
+        if (kettle) {
+          // spout
+          const s = new Path2D()
+          s.moveTo(cx + rw * 0.8, by - h * 0.55)
+          s.quadraticCurveTo(cx + rw * 1.25, by - h * 0.6, cx + rw * 1.4, by - h * 0.98)
+          s.lineTo(cx + rw * 1.32, by - h * 1.02)
+          s.quadraticCurveTo(cx + rw * 1.12, by - h * 0.74, cx + rw * 0.78, by - h * 0.72)
+          s.closePath()
+          shadeBlack(g, s, cx + rw * 0.7, cx + rw * 1.45, by - h, by - h * 0.5)
+          // cane handle
+          g.save()
+          g.strokeStyle = '#8a6a3e'
+          g.lineWidth = w * 0.035
+          g.lineCap = 'round'
+          g.beginPath()
+          g.moveTo(cx - rw * 0.42, by - h * 0.92)
+          g.bezierCurveTo(cx - rw * 0.5, by - h * 1.55, cx + rw * 0.5, by - h * 1.55, cx + rw * 0.42, by - h * 0.92)
+          g.stroke()
+          // cane binding: short dark wraps along the same curve
+          g.strokeStyle = 'rgba(60,40,20,0.7)'
+          g.lineWidth = w * 0.035
+          g.setLineDash([3, 11])
+          g.lineCap = 'butt'
+          g.beginPath()
+          g.moveTo(cx - rw * 0.42, by - h * 0.92)
+          g.bezierCurveTo(cx - rw * 0.5, by - h * 1.55, cx + rw * 0.5, by - h * 1.55, cx + rw * 0.42, by - h * 0.92)
+          g.stroke()
+          g.setLineDash([])
+          g.restore()
+        }
+        shadeBlack(g, p, cx - rw, cx + rw, by - h, by)
+        // rim
+        const rim = new Path2D()
+        rim.ellipse(cx, by - h * 0.92, rw * 0.42, h * 0.05, 0, 0, Math.PI * 2)
+        g.fillStyle = '#0d0c0b'
+        g.fill(rim)
+        g.strokeStyle = 'rgba(160,155,148,0.5)'
+        g.lineWidth = 3
+        g.stroke(rim)
+        if (kettle) {
+          const lid = new Path2D()
+          lid.ellipse(cx, by - h * 0.95, rw * 0.36, h * 0.06, 0, Math.PI, 0)
+          shadeBlack(g, lid, cx - rw * 0.4, cx + rw * 0.4, by - h, by - h * 0.9)
+        }
+        flecks(g, p, seed, cx - rw, by - h, w, h)
+      }
+
+      function blackBowl(g, cx, by, w, h, seed) {
+        floorShadow(g, cx, by, w * 0.55)
+        const rw = w / 2
+        const p = new Path2D()
+        p.moveTo(cx - rw, by - h)
+        p.bezierCurveTo(cx - rw, by - h * 0.2, cx - rw * 0.5, by, cx, by)
+        p.bezierCurveTo(cx + rw * 0.5, by, cx + rw, by - h * 0.2, cx + rw, by - h)
+        p.closePath()
+        shadeBlack(g, p, cx - rw, cx + rw, by - h, by)
+        const rim = new Path2D()
+        rim.ellipse(cx, by - h, rw, h * 0.16, 0, 0, Math.PI * 2)
+        g.fillStyle = '#100e0d'
+        g.fill(rim)
+        g.strokeStyle = 'rgba(170,165,158,0.45)'
+        g.lineWidth = 3
+        g.stroke(rim)
+        flecks(g, p, seed, cx - rw, by - h, w, h)
+      }
+
+      function flecks(g, path, seed, x, y, w, h) {
+        const r = rng(seed + 'f')
+        g.save()
+        g.clip(path)
+        for (let i = 0; i < 120; i++) {
+          g.fillStyle = `rgba(150,146,140,${0.15 + r() * 0.3})`
+          g.fillRect(x + r() * w, y + r() * h, 1 + r() * 2, 1 + r() * 2)
+        }
+        g.restore()
+      }
+
+      /* ---------------------------------------------------------------- brand */
+      const BRAND = {
+        'brand/og-image.jpg': [1200, 630, (g, w, h) => {
+          const grd = g.createRadialGradient(w * 0.72, h * 0.42, 20, w * 0.72, h * 0.42, w * 0.8)
+          grd.addColorStop(0, '#c96a58')
+          grd.addColorStop(0.45, '#7a2e24')
+          grd.addColorStop(1, '#2e1712')
+          g.fillStyle = grd
+          g.fillRect(0, 0, w, h)
+          // the oculus: concentric rings
+          g.strokeStyle = 'rgba(246,238,230,0.22)'
+          for (let i = 1; i <= 6; i++) {
+            g.lineWidth = i === 1 ? 3 : 1.5
+            g.beginPath()
+            g.arc(w * 0.78, h * 0.5, 40 * i, 0, Math.PI * 2)
+            g.stroke()
+          }
+          g.fillStyle = 'rgba(246,238,230,0.12)'
+          g.beginPath()
+          g.arc(w * 0.78, h * 0.5, 40, 0, Math.PI * 2)
+          g.fill()
+          g.fillStyle = 'rgba(246,238,230,0.78)'
+          g.font = '500 22px Inter'
+          g.letterSpacing = '6px'
+          g.fillText('A VIRTUAL PAVILION', 80, 220)
+          g.letterSpacing = '0px'
+          g.fillStyle = '#f6eee6'
+          g.font = '500 96px "Cormorant Garamond"'
+          g.fillText('Clay Traditions', 74, 330)
+          g.font = 'italic 400 38px "Cormorant Garamond"'
+          g.fillStyle = 'rgba(246,238,230,0.88)'
+          g.fillText('Earth, water, hand and fire', 80, 392)
+          g.font = '500 20px Inter'
+          g.fillStyle = 'rgba(246,238,230,0.7)'
+          g.fillText('Bankura terracotta · Molela plaques · Longpi black pottery', 80, 470)
+        }],
+        'brand/icon-512.png': [512, 512, (g, w, h) => {
+          g.fillStyle = '#f3e7dc'
+          g.fillRect(0, 0, w, h)
+          g.fillStyle = '#b4553f'
+          g.beginPath()
+          g.arc(256, 256, 176, 0, Math.PI * 2)
+          g.fill()
+          g.strokeStyle = '#f3e7dc'
+          g.lineWidth = 20
+          g.beginPath()
+          g.arc(256, 256, 120, 0, Math.PI * 2)
+          g.stroke()
+          g.fillStyle = '#7a2e24'
+          g.beginPath()
+          g.arc(256, 256, 64, 0, Math.PI * 2)
+          g.fill()
+        }],
+      }
+
+      window.PLACEHOLDER_SPECS = Object.keys(PICTURES)
+      window.BRAND_SPECS = Object.keys(BRAND)
+      const rendered = new Map()
+      /** Data URL of a picture: JPG (or PNG for .png names); `longEdge` + 'webp' = a responsive variant. */
+      window.renderPlaceholder = (file, quality = 0.9, longEdge = 0, type = '') => {
+        const spec = PICTURES[file] || BRAND[file]
+        if (!spec) throw new Error('unknown placeholder ' + file)
+        let c = rendered.get(file)
+        if (!c) {
+          const [w, h, draw] = spec
+          const [cc, g] = canvas(w, h)
+          draw(g, w, h)
+          rendered.set(file, (c = cc))
+        }
+        if (type === 'webp') {
+          const k = Math.min(1, longEdge / Math.max(c.width, c.height))
+          const [v, vg] = canvas(Math.round(c.width * k), Math.round(c.height * k))
+          vg.imageSmoothingQuality = 'high'
+          vg.drawImage(c, 0, 0, v.width, v.height)
+          return v.toDataURL('image/webp', 0.86)
+        }
+        return file.endsWith('.png') ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', quality)
+      }
+      document.fonts.load('500 20px "Cormorant Garamond"').then(() => document.fonts.load('500 20px Inter')).then(() => document.fonts.load('italic 400 20px "Cormorant Garamond"')).finally(() => {
+        window.placeholderReady = true
+      })
+    </script>
+  </body>
+</html>

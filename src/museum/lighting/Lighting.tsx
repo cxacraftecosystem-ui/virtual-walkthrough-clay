@@ -1,9 +1,11 @@
 /**
- * Lighting rig (PDF integrated lighting plan):
- *   1. Skylight daylight  — sun (SkyAndSun) + diffuse sky fill (RectAreaLight under the lantern)
- *   2. 3000K track lights — fixtures + accent spots are placed by each exhibit (TrackSpot)
- *   3. Accent spotlights  — see Artwork / Exhibit components
- *   4. Ambient cove light — RectAreaLights washing the perimeter walls + emissive LED strips
+ * Lighting rig of the clay pavilion (PDF: "warm white to neutral", exposed daylight):
+ *   1. Oculus daylight    — the sun (SkyAndSun) reaches the interior only through the open
+ *                           oculus; a diffuse sky fill (RectAreaLight) hangs in the light well
+ *   2. Track lights       — warm-white heads on the ring, oculus, entry and annex rails (TrackSpot)
+ *   3. Accent spotlights  — one per artwork / panel / podium (see exhibits/, architecture/Pavilion)
+ *   4. Cove glow          — RectAreaLights at the duplex band washing the upper drum, with the
+ *                           additive glow film of architecture/Pavilion's CoveWash on every tier
  * Plus a light-former environment for PBR reflections and soft global fill.
  */
 import { useFrame, useThree } from '@react-three/fiber'
@@ -13,7 +15,9 @@ import { visitor } from '../state/visitor'
 import * as THREE from 'three'
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js'
 import { kelvinToHex, LIGHTING } from '../config/lighting'
-import { KEY, MUSEUM } from '../config/museum'
+import { DEG, KEY, MUSEUM } from '../config/museum'
+import { OCULUS_STEPS } from '../architecture/CeilingAndSkylight'
+import { BAND_Y } from '../architecture/Wall'
 import { QUALITY_PRESETS, withDevOverrides } from '../config/quality'
 import { useMuseum } from '../state/store'
 import { ShadowUpdater, SkyAndSun } from './SkyAndSun'
@@ -28,9 +32,6 @@ import { isWebGPU } from '../utils/renderer'
 const probesRequested = () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('probes')
 
 RectAreaLightUniformsLib.init()
-
-const H = MUSEUM.gallery.ceilingHeight
-const sk = MUSEUM.skylight
 
 /** Quaternion so a RectAreaLight (emits along local -z) faces `dir`, with its height axis along `lengthAxis`. */
 function rectOrientation(dir: THREE.Vector3, lengthAxis: THREE.Vector3) {
@@ -61,19 +62,66 @@ function AreaLight({ position, dir, lengthAxis, width, height, intensity, color,
   return <rectAreaLight ref={ref} position={position} quaternion={q} width={width} height={height} intensity={intensity} color={color} />
 }
 
-const COVE = kelvinToHex(LIGHTING.cove.colorK, 0.2)
 const DAY = kelvinToHex(LIGHTING.skylightFill.colorK)
+/** Cove LEDs: 3500 K, between the track's warm white and the daylight. */
+const COVE = kelvinToHex(3500, 0.3)
 const SKY_DOWN: [number, number, number] = [0, -1, 0]
 const ALONG_Z: [number, number, number] = [0, 0, 1]
-const ALONG_X: [number, number, number] = [1, 0, 0]
+
+/** Clay bounce: a warm sky and a rose-earth ground for the hemisphere fill. */
+const HEMI_SKY = '#f0e3d8'
+const HEMI_GROUND = '#d3a18b'
+
+interface Cove {
+  /** Plan angle (deg) of the light's centre. */
+  aDeg: number
+  /** Interior face radius of the wall it washes. */
+  r: number
+  /** Length along the wall (m). */
+  length: number
+}
+
+/**
+ * Cove washes at the duplex band, one per large stretch of drum: gallery A, B, C on the ring
+ * wall and the entry ways on the lobe behind the description wall. Each sits just off the
+ * wall, aimed up and out, so it lights the upper drum and lifts the ceiling.
+ */
+const COVES: Cove[] = [
+  { aDeg: 8, r: KEY.ringR, length: 4.2 },
+  { aDeg: -55, r: KEY.ringR, length: 5.2 },
+  { aDeg: -118, r: KEY.ringR, length: 4.2 },
+  { aDeg: 90, r: KEY.lobeR, length: 6 },
+]
+
+function coveProps(c: Cove) {
+  const a = c.aDeg * DEG
+  const ox = Math.cos(a)
+  const oz = Math.sin(a)
+  const d = 0.6
+  return {
+    position: [ox * (c.r - d), BAND_Y + 0.05, oz * (c.r - d)] as [number, number, number],
+    dir: [ox * 0.35, 1, oz * 0.35] as [number, number, number],
+    lengthAxis: [-oz, 0, ox] as [number, number, number],
+  }
+}
+const COVE_LIGHTS = COVES.map((c) => ({ key: c.aDeg, length: c.length, ...coveProps(c) }))
 
 /**
  * Global fill (hemisphere + environment) is scaled per zone — e.g. the theatre is dark —
  * and eased as the visitor walks between rooms (no shader changes, just intensities).
  */
-const ZONE_AMBIENT: Record<string, number> = { theatre: 0.12, courtyard: 1.25, atrium: 1.1 }
+const ZONE_AMBIENT: Record<string, number> = {
+  'entrance-court': 1.25,
+  annex: 0.92,
+  'entry-e': 0.95,
+  'ring-a': 1,
+  'ring-b': 1,
+  'ring-c': 1,
+  'hallway-d': 0.85,
+  inner: 1.12,
+}
 /** Fraction of the hemisphere/env fill kept at full night (the rest is daylight bounce). */
-const NIGHT_FILL_FLOOR: Record<string, number> = { courtyard: 0.04, atrium: 0.22 }
+const NIGHT_FILL_FLOOR: Record<string, number> = { 'entrance-court': 0.04 }
 
 function ZoneAmbience({ base }: { base: number }) {
   const ref = useRef<THREE.HemisphereLight>(null)
@@ -93,16 +141,14 @@ function ZoneAmbience({ base }: { base: number }) {
     // Per-zone probes (ZoneProbes) already carry each room's real brightness and time of day.
     scene.environmentIntensity = LIGHTING.ambient.environmentIntensity * (probeState.active ? probeState.zoneGain : k.current * tod)
   })
-  return <hemisphereLight ref={ref} args={[LIGHTING.ambient.hemisphereSky, LIGHTING.ambient.hemisphereGround, base]} />
+  return <hemisphereLight ref={ref} args={[HEMI_SKY, HEMI_GROUND, base]} />
 }
 
 export function Lighting() {
   const tier = useMuseum((s) => s.tier)
   const preset = withDevOverrides(QUALITY_PRESETS[tier])
-  const skyLen = sk.startZ - sk.endZ
-  const skyMidZ = (sk.startZ + sk.endZ) / 2
-  const covInset = 0.14
-  const galleryMidZ = KEY.gzNorth / 2
+  const oculusSide = MUSEUM.oculus.r * 1.7
+  const wellY = OCULUS_STEPS[0].y - 0.02
   // Without area lights (low tier) lift the hemisphere fill to compensate.
   const hemi = LIGHTING.ambient.hemisphereIntensity * (preset.areaLights ? 1 : 2.4)
 
@@ -121,14 +167,12 @@ export function Lighting() {
 
       {preset.areaLights && (
         <>
-          {/* Diffuse daylight through the skylight */}
-          <AreaLight position={[0, H - 0.02, skyMidZ]} dir={SKY_DOWN} lengthAxis={ALONG_Z} width={sk.width} height={skyLen} intensity={LIGHTING.skylightFill.intensity} color={DAY} daylit />
-          {/* Perimeter cove washes */}
-          <AreaLight position={[-KEY.gx + covInset, H - 0.06, galleryMidZ]} dir={[-0.8, -1, 0]} lengthAxis={ALONG_Z} width={0.16} height={-KEY.gzNorth - 0.4} intensity={LIGHTING.cove.intensity * 6} color={COVE} />
-          <AreaLight position={[KEY.gx - covInset, H - 0.06, galleryMidZ]} dir={[0.8, -1, 0]} lengthAxis={ALONG_Z} width={0.16} height={-KEY.gzNorth - 0.4} intensity={LIGHTING.cove.intensity * 6} color={COVE} />
-          <AreaLight position={[0, H - 0.06, KEY.gzNorth + covInset]} dir={[0, -1, -0.8]} lengthAxis={ALONG_X} width={0.16} height={KEY.gx * 2 - 0.4} intensity={LIGHTING.cove.intensity * 6} color={COVE} />
-          {/* Reception: soft luminous ceiling */}
-          <AreaLight position={[0, MUSEUM.reception.ceilingHeight - 0.02, KEY.rzNorth + MUSEUM.reception.length / 2]} dir={SKY_DOWN} lengthAxis={ALONG_Z} width={MUSEUM.reception.width * 0.45} height={MUSEUM.reception.length * 0.7} intensity={3.2} color={kelvinToHex(3000, 0.35)} />
+          {/* Diffuse daylight through the oculus, from the mouth of the light well */}
+          <AreaLight position={[0, wellY, 0]} dir={SKY_DOWN} lengthAxis={ALONG_Z} width={oculusSide} height={oculusSide} intensity={LIGHTING.skylightFill.intensity * 1.15} color={DAY} daylit />
+          {/* Cove glow at the duplex band */}
+          {COVE_LIGHTS.map((c) => (
+            <AreaLight key={c.key} position={c.position} dir={c.dir} lengthAxis={c.lengthAxis} width={0.14} height={c.length} intensity={LIGHTING.cove.intensity * 4} color={COVE} />
+          ))}
         </>
       )}
     </>
