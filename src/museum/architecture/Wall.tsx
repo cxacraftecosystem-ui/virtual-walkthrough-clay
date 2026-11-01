@@ -80,8 +80,9 @@ export function wallFinish(w: WallBox): WallFinish {
     case 'satellite':
       // the north wing's walk-facing walls in smooth red lime like the serpentine's (p09l's red
       // canyon, never a dune-textured sheet); their owners line the interiors
-      return { lower: 'redLime', upper: 'redLime', top: 'redLime', caps: 'oxbloodLacquer' }
+      return { lower: 'parikramaWall', upper: 'parikramaWall', top: 'parikramaWall', caps: 'oxbloodLacquer' }
     case 'serpentine':
+      return { lower: 'parikramaWall', upper: 'parikramaWall', top: 'parikramaWall', caps: 'parikramaWall' }
     case 'red-room':
       return { lower: 'redLime', upper: 'redLime', top: 'redLime', caps: 'redLime' }
     case 'colonnade':

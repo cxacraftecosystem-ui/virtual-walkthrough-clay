@@ -425,6 +425,98 @@ export const SOURCED_REGISTRY: Record<string, SourcedEntry> = {
       "attribution": "Bust of a Singing Woman (Hunt Museum, Limerick) — Limerick3D, via Wikimedia Commons (CC0)"
     }
   },
+  "ph-marble-bust-01": {
+    "url": "/models/sourced/ph-marble-bust-01/ph-marble-bust-01.glb",
+    "lod1": "/models/sourced/ph-marble-bust-01/ph-marble-bust-01.lod1.glb",
+    "bbox": [
+      -0.1108,
+      0,
+      -0.1222,
+      0.1108,
+      0.42,
+      0.1222
+    ],
+    "tris": 10000,
+    "finish": "terracotta",
+    "role": "display",
+    "credit": {
+      "title": "Marble Bust 01",
+      "author": "Rico Cilliers",
+      "source": "https://polyhaven.com/a/marble_bust_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Marble Bust 01 by Rico Cilliers — Poly Haven (CC0)"
+    }
+  },
+  "ph-horse-head": {
+    "url": "/models/sourced/ph-horse-head/ph-horse-head.glb",
+    "lod1": "/models/sourced/ph-horse-head/ph-horse-head.lod1.glb",
+    "bbox": [
+      -0.0924,
+      0,
+      -0.1437,
+      0.0924,
+      0.36,
+      0.1437
+    ],
+    "tris": 10000,
+    "finish": "terracotta",
+    "role": "display",
+    "credit": {
+      "title": "Horse Head",
+      "author": "Tina",
+      "source": "https://polyhaven.com/a/horse_head",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Horse Head by Tina — Poly Haven (CC0)"
+    }
+  },
+  "ph-lion-head": {
+    "url": "/models/sourced/ph-lion-head/ph-lion-head.glb",
+    "lod1": "/models/sourced/ph-lion-head/ph-lion-head.lod1.glb",
+    "bbox": [
+      -0.125,
+      0.0004,
+      -0.0805,
+      0.125,
+      0.3399,
+      0.0805
+    ],
+    "tris": 10000,
+    "finish": "terracotta",
+    "role": "display",
+    "credit": {
+      "title": "Lion Head",
+      "author": "Tina",
+      "source": "https://polyhaven.com/a/lion_head",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Lion Head by Tina — Poly Haven (CC0)"
+    }
+  },
+  "ph-bull-head": {
+    "url": "/models/sourced/ph-bull-head/ph-bull-head.glb",
+    "lod1": "/models/sourced/ph-bull-head/ph-bull-head.lod1.glb",
+    "bbox": [
+      -0.1203,
+      0,
+      -0.1102,
+      0.1203,
+      0.34,
+      0.1102
+    ],
+    "tris": 10000,
+    "finish": "terracotta",
+    "role": "display",
+    "credit": {
+      "title": "Bull Head",
+      "author": "Tina",
+      "source": "https://polyhaven.com/a/bull_head",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Bull Head by Tina — Poly Haven (CC0)"
+    }
+  },
   "si-fugitives-story-figurine": {
     "url": "/models/sourced/si-fugitives-story-figurine/si-fugitives-story-figurine.glb",
     "lod1": "/models/sourced/si-fugitives-story-figurine/si-fugitives-story-figurine.lod1.glb",
@@ -1412,6 +1504,75 @@ export const SOURCED_REGISTRY: Record<string, SourcedEntry> = {
       "license": "CC0",
       "licenseUrl": "https://polyhaven.com/license",
       "attribution": "Lantern 01 by Rajil Jose Macatangay — Poly Haven (CC0)"
+    }
+  },
+  "ph-jacaranda-tree": {
+    "url": "/models/sourced/ph-jacaranda-tree/ph-jacaranda-tree.glb",
+    "lod1": "/models/sourced/ph-jacaranda-tree/ph-jacaranda-tree.lod1.glb",
+    "bbox": [
+      -6.993,
+      0.0002,
+      -5.3172,
+      7.3465,
+      11.4636,
+      5.6316
+    ],
+    "tris": 74492,
+    "finish": "asis",
+    "role": "tree",
+    "credit": {
+      "title": "Jacaranda Tree",
+      "author": "Rob Tuytel, Rico Cilliers",
+      "source": "https://polyhaven.com/a/jacaranda_tree",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Jacaranda Tree by Rob Tuytel, Rico Cilliers — Poly Haven (CC0)"
+    }
+  },
+  "ph-island-tree-02": {
+    "url": "/models/sourced/ph-island-tree-02/ph-island-tree-02.glb",
+    "lod1": "/models/sourced/ph-island-tree-02/ph-island-tree-02.lod1.glb",
+    "bbox": [
+      -2.1039,
+      0.0058,
+      -1.9882,
+      2.0097,
+      3.4334,
+      2.0364
+    ],
+    "tris": 50076,
+    "finish": "asis",
+    "role": "tree",
+    "credit": {
+      "title": "Island Tree 02",
+      "author": "Rob Tuytel, Rico Cilliers",
+      "source": "https://polyhaven.com/a/island_tree_02",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Island Tree 02 by Rob Tuytel, Rico Cilliers — Poly Haven (CC0)"
+    }
+  },
+  "ph-tree-small-02": {
+    "url": "/models/sourced/ph-tree-small-02/ph-tree-small-02.glb",
+    "lod1": "/models/sourced/ph-tree-small-02/ph-tree-small-02.lod1.glb",
+    "bbox": [
+      -1.5024,
+      0.0001,
+      -2.1316,
+      1.4608,
+      4.5563,
+      2.121
+    ],
+    "tris": 53481,
+    "finish": "asis",
+    "role": "tree",
+    "credit": {
+      "title": "Tree Small 02",
+      "author": "Rico Cilliers",
+      "source": "https://polyhaven.com/a/tree_small_02",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Tree Small 02 by Rico Cilliers — Poly Haven (CC0)"
     }
   }
 }

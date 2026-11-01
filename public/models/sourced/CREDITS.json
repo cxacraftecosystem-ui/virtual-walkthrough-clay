@@ -240,6 +240,62 @@
       "bytes": 206920
     },
     {
+      "slug": "ph-marble-bust-01",
+      "title": "Marble Bust 01",
+      "author": "Rico Cilliers",
+      "source": "https://polyhaven.com/a/marble_bust_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Marble Bust 01 by Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-marble-bust-01/ph-marble-bust-01.glb",
+        "/models/sourced/ph-marble-bust-01/ph-marble-bust-01.lod1.glb"
+      ],
+      "bytes": 339240
+    },
+    {
+      "slug": "ph-horse-head",
+      "title": "Horse Head",
+      "author": "Tina",
+      "source": "https://polyhaven.com/a/horse_head",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Horse Head by Tina — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-horse-head/ph-horse-head.glb",
+        "/models/sourced/ph-horse-head/ph-horse-head.lod1.glb"
+      ],
+      "bytes": 278444
+    },
+    {
+      "slug": "ph-lion-head",
+      "title": "Lion Head",
+      "author": "Tina",
+      "source": "https://polyhaven.com/a/lion_head",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Lion Head by Tina — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-lion-head/ph-lion-head.glb",
+        "/models/sourced/ph-lion-head/ph-lion-head.lod1.glb"
+      ],
+      "bytes": 375404
+    },
+    {
+      "slug": "ph-bull-head",
+      "title": "Bull Head",
+      "author": "Tina",
+      "source": "https://polyhaven.com/a/bull_head",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Bull Head by Tina — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-bull-head/ph-bull-head.glb",
+        "/models/sourced/ph-bull-head/ph-bull-head.lod1.glb"
+      ],
+      "bytes": 291988
+    },
+    {
       "slug": "si-fugitives-story-figurine",
       "title": "The Fugitive's Story (John Rogers group figurine)",
       "author": "Smithsonian Institution — National Museum of African American History and Culture",
@@ -489,7 +545,7 @@
         "/models/sourced/ph-searsia-lucida/ph-searsia-lucida.glb",
         "/models/sourced/ph-searsia-lucida/ph-searsia-lucida.lod1.glb"
       ],
-      "bytes": 1459524
+      "bytes": 1165916
     },
     {
       "slug": "ph-searsia-lucida-b",
@@ -503,7 +559,7 @@
         "/models/sourced/ph-searsia-lucida-b/ph-searsia-lucida-b.glb",
         "/models/sourced/ph-searsia-lucida-b/ph-searsia-lucida-b.lod1.glb"
       ],
-      "bytes": 1432976
+      "bytes": 1139368
     },
     {
       "slug": "ph-searsia-lucida-c",
@@ -517,7 +573,7 @@
         "/models/sourced/ph-searsia-lucida-c/ph-searsia-lucida-c.glb",
         "/models/sourced/ph-searsia-lucida-c/ph-searsia-lucida-c.lod1.glb"
       ],
-      "bytes": 1445964
+      "bytes": 1152356
     },
     {
       "slug": "ph-quiver-tree-01",
@@ -545,7 +601,7 @@
         "/models/sourced/ph-shrub-02/ph-shrub-02.glb",
         "/models/sourced/ph-shrub-02/ph-shrub-02.lod1.glb"
       ],
-      "bytes": 440540
+      "bytes": 301232
     },
     {
       "slug": "ph-shrub-03",
@@ -559,7 +615,7 @@
         "/models/sourced/ph-shrub-03/ph-shrub-03.glb",
         "/models/sourced/ph-shrub-03/ph-shrub-03.lod1.glb"
       ],
-      "bytes": 449000
+      "bytes": 269576
     },
     {
       "slug": "ph-shrub-04",
@@ -573,7 +629,7 @@
         "/models/sourced/ph-shrub-04/ph-shrub-04.glb",
         "/models/sourced/ph-shrub-04/ph-shrub-04.lod1.glb"
       ],
-      "bytes": 469384
+      "bytes": 324732
     },
     {
       "slug": "ph-wild-rooibos-bush",
@@ -587,7 +643,7 @@
         "/models/sourced/ph-wild-rooibos-bush/ph-wild-rooibos-bush.glb",
         "/models/sourced/ph-wild-rooibos-bush/ph-wild-rooibos-bush.lod1.glb"
       ],
-      "bytes": 635868
+      "bytes": 444200
     },
     {
       "slug": "ph-periwinkle-plant",
@@ -601,7 +657,7 @@
         "/models/sourced/ph-periwinkle-plant/ph-periwinkle-plant.glb",
         "/models/sourced/ph-periwinkle-plant/ph-periwinkle-plant.lod1.glb"
       ],
-      "bytes": 468964
+      "bytes": 385496
     },
     {
       "slug": "ph-fern-02",
@@ -615,7 +671,7 @@
         "/models/sourced/ph-fern-02/ph-fern-02.glb",
         "/models/sourced/ph-fern-02/ph-fern-02.lod1.glb"
       ],
-      "bytes": 324564
+      "bytes": 249468
     },
     {
       "slug": "ph-calathea-orbifolia-01",
@@ -840,6 +896,48 @@
         "/models/sourced/ph-lantern-01/ph-lantern-01.lod1.glb"
       ],
       "bytes": 697092
+    },
+    {
+      "slug": "ph-jacaranda-tree",
+      "title": "Jacaranda Tree",
+      "author": "Rob Tuytel, Rico Cilliers",
+      "source": "https://polyhaven.com/a/jacaranda_tree",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Jacaranda Tree by Rob Tuytel, Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-jacaranda-tree/ph-jacaranda-tree.glb",
+        "/models/sourced/ph-jacaranda-tree/ph-jacaranda-tree.lod1.glb"
+      ],
+      "bytes": 2848624
+    },
+    {
+      "slug": "ph-island-tree-02",
+      "title": "Island Tree 02",
+      "author": "Rob Tuytel, Rico Cilliers",
+      "source": "https://polyhaven.com/a/island_tree_02",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Island Tree 02 by Rob Tuytel, Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-island-tree-02/ph-island-tree-02.glb",
+        "/models/sourced/ph-island-tree-02/ph-island-tree-02.lod1.glb"
+      ],
+      "bytes": 1700632
+    },
+    {
+      "slug": "ph-tree-small-02",
+      "title": "Tree Small 02",
+      "author": "Rico Cilliers",
+      "source": "https://polyhaven.com/a/tree_small_02",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Tree Small 02 by Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-tree-small-02/ph-tree-small-02.glb",
+        "/models/sourced/ph-tree-small-02/ph-tree-small-02.lod1.glb"
+      ],
+      "bytes": 1775300
     }
   ],
   "materials": [

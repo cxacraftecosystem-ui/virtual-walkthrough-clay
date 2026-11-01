@@ -13,6 +13,7 @@ import { useMuseum } from '../state/store'
 import { disposeTextureSets, getFluteNormalMap, getTextureSet, type PBRTextureSet, type TextureKind } from './proceduralTextures'
 import { injectAtmosphere } from '../lighting/atmosphere/inject'
 import { applyPbr, pbrTint, type PbrSetId } from './pbrSets'
+import { limeBanded } from './limeBands'
 
 export type MaterialKey =
   | 'plaster'
@@ -103,6 +104,13 @@ export type MaterialKey =
   | 'clayStrata'
   /** Raw clay (Clay007): H's title panel, F's corridor face (the lippan's ground). */
   | 'clayPanel'
+  /**
+   * The Parikrama's walls (and the satellites' walk faces): red lime with a pale lime coping and
+   * string course, a darker oxblood plinth and a mottled limewash (materials/limeBands.ts).
+   */
+  | 'parikramaWall'
+  /** The Parikrama's walk: a darker polished oxblood lime, with a sheen that holds the sky. */
+  | 'parikramaFloor'
 
 export type MuseumMaterials = Record<MaterialKey, THREE.Material>
 
@@ -344,6 +352,8 @@ function buildMaterials(tier: QualityTier): MuseumMaterials {
     timberFloor: textured(oak, { name: 'timberFloor', color: '#a8754f', normalScale: 0.35, roughness: 0.75, envMapIntensity: 0.8 }),
     wineWall: clayFinish('wineWall', '#4f1d24', 0.5, 0.95, 0.4),
     redLime: clayFinish('redLime', '#a32a1f', 0.55, 0.95, 0.45),
+    parikramaWall: clayFinish('parikramaWall', '#a32a1f', 0.55, 0.95, 0.45),
+    parikramaFloor: clayFinish('parikramaFloor', '#5e1f1b', 0.3, 0.42, 1.0),
     groundSoil: textured(earth, { name: 'groundSoil', color: '#8a6a52', normalScale: 0.9, envMapIntensity: 0.35 }),
     bricks: new THREE.MeshStandardMaterial({ name: 'bricks', map: brick.map, normalMap: brick.normalMap, roughnessMap: brick.roughnessMap, normalScale: new THREE.Vector2(1, 1), roughness: 0.95, envMapIntensity: 0.45 }),
     clayStrata: textured(raw, { name: 'clayStrata', color: '#c27d5f', normalScale: 1.1, envMapIntensity: 0.35 }),
@@ -372,12 +382,17 @@ function buildMaterials(tier: QualityTier): MuseumMaterials {
     ['redLacquer', 'Clay005', '#8f2620', { normal: 0.25, rough: 0.62 }],
     ['whiteLime', 'Plaster001', '#f8f6f1', { normal: 0.35 }],
     // lifted so the wall reads ≈ #4a4644 in C's light (black ware on black read as a void)
-    ['charcoalClay', 'Clay005', '#7a7470', { normal: 0.7 }],
+    // (a troweled lime plaster's grain, so the C wall between the podiums is a surface, not a flat dark sheet)
+    ['charcoalClay', 'Plaster001', '#7a7470', { normal: 1.2, tile: 1.6 }],
     // a warm lime-and-brick terrazzo, never a grey granite counter
-    ['terrazzo', 'Terrazzo004', '#efcfb2', { normal: 0.2, rough: 0.7 }],
+    ['terrazzo', 'Terrazzo004', '#efcfb2', { normal: 0.12, rough: 0.8 }],
     ['timberFloor', 'Wood092', '#c8915f', { normal: 0.7, rough: 0.7, tile: 2.4 }],
-    ['wineWall', 'Clay005', '#4a1a22', { normal: 0.45 }],
+    // p08l's mauve wine, not a brick red under the warm light
+    ['wineWall', 'Clay005', '#4a2234', { normal: 0.45 }],
     ['redLime', 'Clay005', '#a3261c', { normal: 0.5 }],
+    // a touch less saturated than the Red Room's red: the walk is in daylight (p09l)
+    ['parikramaWall', 'Clay005', '#a3322a', { normal: 0.55 }],
+    ['parikramaFloor', 'Clay005', '#4e1a17', { normal: 0.25, rough: 0.34 }],
     ['groundSoil', 'Ground054', '#d9c8b4', { normal: 1.0 }],
     ['bricks', 'Bricks051', '#f2e2d8', { normal: 1.0, tile: 1.4 }],
     ['clayStrata', 'Clay009', '#c27a5e', { normal: 1.2 }],
@@ -393,8 +408,21 @@ function buildMaterials(tier: QualityTier): MuseumMaterials {
   // Gallery B's white limewash keeps reading white under a neutral room light: the bounce of its
   // own picture lights and the court's daylight off the opposite wall (p08r), never a grey sheet
   const white = mats.whiteLime as THREE.MeshStandardMaterial
+  // (scaled with the daylight each frame — `WHITE_LIME_GLOW` in architecture/Pavilion.tsx — so at
+  // night the wall falls dark and the niche spots carry the room)
   white.emissive.set('#fff3e8')
   white.emissiveIntensity = 0.1
+  // the court's terrazzo: a soft honed sheen, never blotchy mirror highlights
+  ;(mats.terrazzo as THREE.MeshStandardMaterial).envMapIntensity = 0.6
+  // The Parikrama's value structure (p09l in daylight: pale lime heads, a dark splash plinth, a
+  // limewash that drifts between rose and oxblood, never one flat red)
+  // (p09: plain red walls — no pale coping or string course; a dark splash plinth only)
+  limeBanded(mats.parikramaWall as THREE.MeshStandardMaterial, {
+    key: 'parikrama-plain',
+    dado: { y: 0.3, color: '#4a1714', mix: 0.6 },
+    mottle: { amount: 0.5, light: '#c8604f', dark: '#74201a', scale: 0.55 },
+  })
+  ;(mats.parikramaFloor as THREE.MeshStandardMaterial).envMapIntensity = 1.1
   // The shared light engine (oculus mask, lamps, glows, coves, wet floors): patched in before
   // anything compiles or StaticMerge bakes the architecture (SPECTACLE §3).
   for (const m of Object.values(mats)) injectAtmosphere(m, { coves: true })

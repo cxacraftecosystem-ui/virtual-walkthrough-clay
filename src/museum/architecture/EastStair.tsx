@@ -3,8 +3,8 @@
  * switchback in the east ambulatory, reached by the perch only (its door is P5's perch door at
  * the foot; WALLS 'stair-e' closes the footprint where the flight is below head height).
  *
- *   lower flight ... open glazed-terracotta treads cantilevered from the lobe wall, nothing under
- *                    them, climbing from the foot (by the annex) to the landing at the balcony's
+ *   lower flight ... open glazed-terracotta treads cantilevered from the lobe wall off a lacquered
+ *                    wall stringer, climbing from the foot (by the annex) to the landing at the balcony's
  *                    level; a glass balustrade with a brass rail on the open side
  *   landing ........ against the NE notch wall, spanning both flights; the bridge (Balcony.tsx)
  *                    leaves it through the E-east arch onto the balcony
@@ -13,16 +13,20 @@
  *   hatch .......... the slab is open over the flight where it would cut the headroom
  *                    (CeilingAndSkylight.tsx cuts it); a terracotta stair-house with a glazed
  *                    sloping lid closes it on the roof, its door opening towards the dome's rib
- *                    stair (domeGeometry.ts)
+ *                    stair (domeGeometry.ts). Under the glass a frosted diffuser: seen from the
+ *                    Earth Room and the ambulatory the hatch is a soft slot of daylight over the
+ *                    climbing flight (dim and cool at night), never a raw sliver of blue sky
  *
  * The two flights stand side by side (the spec's single centreline would stack them a metre
  * apart at the landing): the lower on EAST_STAIR.r, the upper one flight-width further in.
  */
+import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { DEG, MUSEUM } from '../config/museum'
 import { EAST_STAIR, EAST_STAIR_FOOT_DEG } from '../config/satellites'
 import { StaticMerge } from '../effects/StaticMerge'
+import { ambience } from '../lighting/timeOfDayState'
 import { useMaterials } from '../materials/materials'
 import { Mesh, revolve, type V2, type V3 } from './sweep'
 
@@ -142,6 +146,20 @@ function stairGeometry() {
     const a1 = L.fromDeg + ((L.toDeg - L.fromDeg) * k) / (nL - 1)
     tread(clay, L.r0, MUSEUM.drum.r + 0.1, a0, a1 + (L.toDeg < L.fromDeg ? -0.25 : 0.25), L.y0 + ((L.y1 - L.y0) * k) / nL, 0.14)
   }
+  // a lacquered wall stringer under the treads' wall ends, following the flight's slope: the
+  // cantilevered treads read as springing from it, never floating in front of the wall
+  for (let k = 1; k < nL; k++) {
+    const a0 = L.fromDeg + ((L.toDeg - L.fromDeg) * (k - 1)) / (nL - 1)
+    const a1 = L.fromDeg + ((L.toDeg - L.fromDeg) * k) / (nL - 1)
+    const y0 = L.y0 + ((L.y1 - L.y0) * k) / nL
+    const y1 = L.y0 + ((L.y1 - L.y0) * (k + 1)) / nL
+    const am = ((a0 + a1) / 2) * DEG
+    const c = Math.cos(am)
+    const sn = Math.sin(am)
+    const rs = MUSEUM.drum.r - 0.05
+    const going = Math.abs(a1 - a0) * DEG * rs
+    lacquer.box([rs * c, (y0 + y1) / 2 - 0.32, rs * sn], [c * 0.05, 0, sn * 0.05], [0, 0.26, 0], [-sn * (going / 2 + 0.01), 0, c * (going / 2 + 0.01)])
+  }
   balustrade(glass, brass, L.r0 + 0.03, L.fromDeg, L.y0 + (L.y1 - L.y0) / nL, L.toDeg, L.y1)
   // ── the landing: both flights wide, against the notch wall ──
   const landing = new Mesh()
@@ -174,6 +192,8 @@ function stairGeometry() {
   const house = new Mesh()
   // the house's inner skins, pale so the slot reads as a lit stairwell from the annex below
   const well = new Mesh()
+  // the frosted diffuser under the lid
+  const lid = new Mesh()
   const h = EAST_STAIR_HATCH
   const topY = (aDeg: number) => Math.max(ROOF_TOP + 0.35, upperY(Math.min(aDeg, U.toDeg)) + HEADROOM + 0.15)
   const n = 20
@@ -194,6 +214,7 @@ function stairGeometry() {
       house.quad([P(r, a0, topY(a0)), P(ro, a0, topY(a0)), P(ro, a1, topY(a1)), P(r, a1, topY(a1))], [[0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]], [[0, 0], [t, 0], [t, 1], [0, 1]])
       // the glazed lid between the walls
       glass.quad([P(h.r0, a0, topY(a0) - 0.04), P(h.r1, a0, topY(a0) - 0.04), P(h.r1, a1, topY(a1) - 0.04), P(h.r0, a1, topY(a1) - 0.04)], [[0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]], [[0, 0], [1, 0], [1, 1], [0, 1]])
+      if (face > 0) lid.quad([P(h.r0, a0, topY(a0) - 0.08), P(h.r1, a0, topY(a0) - 0.08), P(h.r1, a1, topY(a1) - 0.08), P(h.r0, a1, topY(a1) - 0.08)], [[0, -1, 0], [0, -1, 0], [0, -1, 0], [0, -1, 0]], [[0, 0], [1, 0], [1, 1], [0, 1]])
     }
   }
   // the end wall at the top, its door opening onto the roof towards the dome
@@ -236,15 +257,24 @@ function stairGeometry() {
     const P = (r: number, y: number): V3 => [r * c, y, r * s]
     house.flat([P(h.r0 - t, ROOF_TOP - 0.02), P(h.r1 + t, ROOF_TOP - 0.02), P(h.r1 + t, y1), P(h.r0 - t, y1)], n3, [[0, 0], [1, 0], [1, 1], [0, 1]])
   }
-  return { clay: clay.build(), landing: landing.build(), lacquer: lacquer.build(), brass: brass.build(), glass: glass.build(), house: house.build(), well: well.build() }
+  return { clay: clay.build(), landing: landing.build(), lacquer: lacquer.build(), brass: brass.build(), glass: glass.build(), house: house.build(), well: well.build(), lid: lid.build() }
 }
 
 const glassMat = new THREE.MeshPhysicalMaterial({ name: 'stairGlass', color: '#e3eef0', transparent: true, opacity: 0.14, roughness: 0.05, metalness: 0, envMapIntensity: 1.2, depthWrite: false, side: THREE.DoubleSide })
+
+const LID_DAY = new THREE.Color('#fff6ec').multiplyScalar(1.15)
+const LID_DUSK = new THREE.Color('#ffd6b4').multiplyScalar(0.7)
+const LID_NIGHT = new THREE.Color('#262c3c').multiplyScalar(0.5)
+const lidMat = new THREE.MeshBasicMaterial({ name: 'stairLaylight', color: LID_DAY.clone(), toneMapped: false, side: THREE.DoubleSide })
 
 export function EastStair() {
   const m = useMaterials()
   const geo = useMemo(stairGeometry, [])
   useEffect(() => () => Object.values(geo).forEach((g) => g?.dispose()), [geo])
+  useFrame(() => {
+    const d = ambience.daylight
+    lidMat.color.copy(LID_NIGHT).lerp(LID_DUSK, Math.min(1, d * 2)).lerp(LID_DAY, Math.max(0, d * 2 - 1))
+  })
   return (
     <group name="east-stair">
       <StaticMerge name="east-stair-shell">
@@ -255,6 +285,7 @@ export function EastStair() {
         {geo.house && <mesh geometry={geo.house} material={m.clayBuff} castShadow receiveShadow />}
         {geo.well && <mesh geometry={geo.well} material={m.clayCeiling} receiveShadow />}
       </StaticMerge>
+      {geo.lid && <mesh geometry={geo.lid} material={lidMat} raycast={() => null} />}
       {geo.glass && <mesh geometry={geo.glass} material={glassMat} raycast={() => null} renderOrder={2} />}
     </group>
   )

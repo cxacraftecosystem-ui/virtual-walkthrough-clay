@@ -144,6 +144,46 @@
    "instances": 1
   },
   {
+   "slug": "ph-marble-bust-01",
+   "src": "polyhaven/marble_bust_01/marble_bust_01.glb",
+   "role": "display",
+   "targetHeight": 0.42,
+   "finish": "terracotta",
+   "cap": 10000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "ph-horse-head",
+   "src": "polyhaven/horse_head/horse_head.glb",
+   "role": "display",
+   "targetHeight": 0.36,
+   "finish": "terracotta",
+   "cap": 10000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "ph-lion-head",
+   "src": "polyhaven/lion_head/lion_head.glb",
+   "role": "display",
+   "targetHeight": 0.34,
+   "finish": "terracotta",
+   "cap": 10000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "ph-bull-head",
+   "src": "polyhaven/bull_head/bull_head.glb",
+   "role": "display",
+   "targetHeight": 0.34,
+   "finish": "terracotta",
+   "cap": 10000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
    "slug": "si-fugitives-story-figurine",
    "src": "smithsonian/si-fugitives-story-figurine/si-fugitives-story-figurine.glb",
    "role": "display",
@@ -291,7 +331,9 @@
    ],
    "targetHeight": null,
    "finish": "asis",
-   "instances": 20
+   "instances": 20,
+   "leafAlpha": "polyhaven/searsia_lucida/searsia_lucida_leaves_alpha_1k.png",
+   "tex": 512
   },
   {
    "slug": "ph-searsia-lucida-b",
@@ -303,7 +345,9 @@
    ],
    "targetHeight": null,
    "finish": "asis",
-   "instances": 15
+   "instances": 15,
+   "leafAlpha": "polyhaven/searsia_lucida/searsia_lucida_leaves_alpha_1k.png",
+   "tex": 512
   },
   {
    "slug": "ph-searsia-lucida-c",
@@ -315,7 +359,9 @@
    ],
    "targetHeight": null,
    "finish": "asis",
-   "instances": 15
+   "instances": 15,
+   "leafAlpha": "polyhaven/searsia_lucida/searsia_lucida_leaves_alpha_1k.png",
+   "tex": 512
   },
   {
    "slug": "ph-quiver-tree-01",
@@ -334,7 +380,9 @@
    ],
    "targetHeight": null,
    "finish": "asis",
-   "instances": 12
+   "instances": 12,
+   "leafAlpha": "polyhaven/shrub_02/shrub_02_leaves_alpha_1k.png",
+   "tex": 512
   },
   {
    "slug": "ph-shrub-03",
@@ -345,7 +393,9 @@
    ],
    "targetHeight": null,
    "finish": "asis",
-   "instances": 20
+   "instances": 20,
+   "leafAlpha": "polyhaven/shrub_03/shrub_03_leaves_alpha_1k.png",
+   "tex": 512
   },
   {
    "slug": "ph-shrub-04",
@@ -353,7 +403,9 @@
    "role": "dressing",
    "targetHeight": null,
    "finish": "asis",
-   "instances": 20
+   "instances": 20,
+   "leafAlpha": "polyhaven/shrub_04/shrub_04_leaves_alpha_1k.png",
+   "tex": 512
   },
   {
    "slug": "ph-wild-rooibos-bush",
@@ -364,7 +416,9 @@
    ],
    "targetHeight": null,
    "finish": "asis",
-   "instances": 20
+   "instances": 20,
+   "leafAlpha": "polyhaven/wild_rooibos_bush/wild_rooibos_bush_leaves_alpha_1k.png",
+   "tex": 512
   },
   {
    "slug": "ph-periwinkle-plant",
@@ -375,7 +429,9 @@
    ],
    "targetHeight": null,
    "finish": "asis",
-   "instances": 20
+   "instances": 20,
+   "leafAlpha": "polyhaven/periwinkle_plant/periwinkle_plant_leaves_alpha_1k.png",
+   "tex": 512
   },
   {
    "slug": "ph-fern-02",
@@ -386,7 +442,9 @@
    ],
    "targetHeight": null,
    "finish": "asis",
-   "instances": 12
+   "instances": 12,
+   "leafAlpha": "polyhaven/fern_02/fern_02_leaves_alpha_1k.png",
+   "tex": 512
   },
   {
    "slug": "ph-calathea-orbifolia-01",
@@ -414,7 +472,7 @@
    "slug": "wc-hotei-water-basin",
    "src": "wikimedia/wc-hotei-water-basin/wc-hotei-water-basin.glb",
    "role": "display",
-   "targetHeight": 1.0,
+   "targetHeight": 1,
    "finish": "stone",
    "instances": 1
   },
@@ -531,6 +589,57 @@
    "targetHeight": null,
    "finish": "asis",
    "instances": 8
+  },
+  {
+   "slug": "ph-jacaranda-tree",
+   "src": "polyhaven/jacaranda_tree/jacaranda_tree.glb",
+   "role": "tree",
+   "cap": 60000,
+   "budget": 78000,
+   "capNote": "avenue hero tree beside the entrance: a full crown; distant copies use LOD1 (a quarter) and impostors",
+   "leaves": {
+    "share": 0.8,
+    "maxScale": 3.4
+   },
+   "targetHeight": 11.5,
+   "finish": "asis",
+   "instances": 10,
+   "tex": 512,
+   "leafAlpha": "polyhaven/jacaranda_tree/jacaranda_tree_leaves_alpha_1k.png"
+  },
+  {
+   "slug": "ph-island-tree-02",
+   "src": "polyhaven/island_tree_02/island_tree_02.glb",
+   "role": "tree",
+   "cap": 52000,
+   "budget": 53000,
+   "capNote": "forecourt framing tree seen close at the spawn: a full crown; distant copies use LOD1",
+   "leaves": {
+    "share": 0.85,
+    "maxScale": 3
+   },
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 60,
+   "tex": 512,
+   "leafAlpha": "polyhaven/island_tree_02/island_tree_02_leaves_alpha_1k.png"
+  },
+  {
+   "slug": "ph-tree-small-02",
+   "src": "polyhaven/tree_small_02/tree_small_02.glb",
+   "role": "tree",
+   "cap": 52000,
+   "budget": 56000,
+   "capNote": "forecourt framing tree seen close at the spawn: a full crown; distant copies use LOD1",
+   "leaves": {
+    "share": 0.85,
+    "maxScale": 3
+   },
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 60,
+   "tex": 512,
+   "leafAlpha": "polyhaven/tree_small_02/tree_small_02_leaves_alpha_1k.png"
   }
  ]
 }

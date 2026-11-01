@@ -14,7 +14,7 @@ import * as THREE from 'three'
 import { mergeAll } from '../architecture/shellGeometry'
 import { useMaterials } from '../materials/materials'
 import { useMuseum } from '../state/store'
-import { useModelMaterials } from './modelMaterials'
+import { tinted, useModelMaterials } from './modelMaterials'
 import { num, str, type ModelProps } from './types'
 
 const noRaycast = () => null
@@ -130,8 +130,10 @@ export function RoundTable({ config }: ModelProps) {
   }, [r, H, flutes, seg])
   useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo])
 
-  const topMat = finish === 'clay' ? core.clayTerracotta : m.teak
-  const drumMat = finish === 'clay' ? core.clayTerracotta : core.clayBlush
+  // 'pale' (p05): a pale lime-clay top on a pale fluted drum, catching the skylight
+  const pale = finish === 'pale'
+  const topMat = finish === 'clay' ? core.clayTerracotta : pale ? tinted(core.clayBlush, '#efe4d8', { roughness: 0.62 }) : m.teak
+  const drumMat = finish === 'clay' ? core.clayTerracotta : pale ? tinted(core.clayBlush, '#e6d5c4', { roughness: 0.86 }) : core.clayBlush
   return (
     <group name="round-table">
       <mesh geometry={geo.top} material={topMat} castShadow receiveShadow raycast={noRaycast} />

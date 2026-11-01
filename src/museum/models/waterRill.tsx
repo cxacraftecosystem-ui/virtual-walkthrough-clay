@@ -8,18 +8,22 @@
  * click on it still walks them there. Low: still water; Medium and up: the surface drifts slowly
  * towards the door. The two lines of diyas beside it belong to WP2's diya field (set 'path').
  */
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { DOME } from '../architecture/domeGeometry'
 import { KEY, MUSEUM } from '../config/museum'
 import { ambience } from '../lighting/timeOfDayState'
 import { useMaterials } from '../materials/materials'
+import { createPlanarMirror, tickPlanarMirrors } from '../materials/planarMirror'
 import { createWaterMaterial, waterUniforms } from '../materials/waterShader'
 import { useSpectacle } from '../spectacle/settings'
+import { planarWater } from './waterRing'
 import type { ModelProps } from './types'
 import { num } from './types'
 
 const noRaycast = () => null
+const noBeforeRender = () => {}
 
 export function WaterRill({ config }: ModelProps) {
   const sp = useSpectacle()
@@ -33,9 +37,22 @@ export function WaterRill({ config }: ModelProps) {
     // the entrance front this rill looks back at (world space)
     u.uFacade.value.set(KEY.annexOuterZ, KEY.annexOuterHalf, KEY.doorHalf, MUSEUM.annex.door.height)
     u.uDoor.value.set(MUSEUM.pavilion.height, 0)
+    // the drum and the dome behind it (materials/waterShader.ts): the rill holds the whole building
+    u.uBuilding.value.set(DOME.cy, DOME.RE, KEY.lobeOuterR, MUSEUM.dome.springY)
     return u
   }, [])
-  const water = useMemo(() => createWaterMaterial('rill', uniforms), [uniforms])
+  // Medium and up: a rendered mirror of the real front, door, drum, dome and sky; Low: analytic
+  const planarPx = planarWater(sp) ? Math.round(sp.caps.waterMirrorPx * 0.75) : 0
+  const camera = useThree((s) => s.camera)
+  const mirror = useMemo(() => (planarPx > 0 ? createPlanarMirror(0.003, planarPx, (c) => c === camera) : null), [planarPx, camera])
+  useEffect(() => () => mirror?.dispose(), [mirror])
+  const water = useMemo(() => {
+    if (mirror) {
+      uniforms.uMirror.value = mirror.texture
+      uniforms.uMirrorMat.value = mirror.matrix
+    }
+    return createWaterMaterial('rill', uniforms, !!mirror)
+  }, [uniforms, mirror])
   useEffect(() => () => water.dispose(), [water])
   const geo = useMemo(() => {
     const surf = new THREE.PlaneGeometry(width, length, 1, Math.ceil(length / 0.5))
@@ -67,10 +84,12 @@ export function WaterRill({ config }: ModelProps) {
   useFrame(({ clock }) => {
     const u = uniforms
     u.uTime.value = clock.elapsedTime
+    tickPlanarMirrors()
     u.uDay.value = ambience.daylight
     u.uNight.value = ambience.night
     u.uRoom.value = 0.4 + 0.6 * ambience.daylight
-    u.uSwell.value = sp.mode === 'still' ? 0 : 0.6
+    // a calm surface: the wide channel holds the building as a mirror, barely stirred
+    u.uSwell.value = sp.mode === 'still' ? 0 : 0.22
     // a slow drift towards the door (−z in world): the rill's local z is world z here
     u.uFlow.value.set(0, flowing ? -1.2 : 0)
     u.uSkyZenith.value.setRGB(0.12 + 0.2 * ambience.daylight, 0.28 + 0.3 * ambience.daylight, 0.62 + 0.25 * ambience.daylight).multiplyScalar(1 - 0.9 * ambience.night)
@@ -78,7 +97,7 @@ export function WaterRill({ config }: ModelProps) {
   })
   return (
     <group name="water-rill">
-      <mesh geometry={geo.surf} material={water} raycast={noRaycast} />
+      <mesh geometry={geo.surf} material={water} raycast={noRaycast} onBeforeRender={mirror?.onBeforeRender ?? noBeforeRender} />
       {geo.parts.map((g, i) => (
         <mesh key={i} geometry={g} material={m.clayTerracotta} receiveShadow raycast={noRaycast} />
       ))}

@@ -28,6 +28,11 @@ interface HeldView {
 
 let held: HeldView | null = null
 
+/** The held view's plan position, or null while the visitor has the camera (the HUD names its zone). */
+export function heldViewAt(): { x: number; z: number } | null {
+  return held ? { x: held.x, z: held.z } : null
+}
+
 /** Hold the camera at a pose (every zone is drawn while it is held). */
 export function holdView(v: HeldView | null) {
   held = v

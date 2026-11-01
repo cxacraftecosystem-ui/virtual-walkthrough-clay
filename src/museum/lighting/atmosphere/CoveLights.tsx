@@ -61,7 +61,8 @@ export const COVES: CoveDef[] = [
   annexRun('annex-east', 1, MUSEUM.annex.door.height, 2700, 1.0),
   annexRun('annex-west', -1, MUSEUM.annex.door.height, 2700, 1.0),
   { id: 'rooms', cx: 0, cz: 0, r: SAT_WALL.outerFace - SET_IN, y: roomsH - 0.45, a0: roomsFrom + 1, a1: roomsTo - 1, colorK: 3000, intensity: 1.2, reach: 3.2, dir: -1 },
-  { id: 'red-room', cx: RED_ROOM.cx, cz: RED_ROOM.cz, r: RED_ROOM.r - 0.3, y: RED_ROOM.height - 0.4, a0: -180, a1: 180, colorK: 2700, intensity: 0.7, reach: 3.0, dir: -1 },
+  // one soft graded wash from the ceiling's cove down over the shelving's cornice (no scallops)
+  { id: 'red-room', cx: RED_ROOM.cx, cz: RED_ROOM.cz, r: RED_ROOM.r - 0.3, y: RED_ROOM.height - 0.4, a0: -180, a1: 180, colorK: 3000, intensity: 0.85, reach: 4.6, dir: -1 },
 ]
 
 /** Curator overrides by cove id: colour temperature and intensity multiplier. */

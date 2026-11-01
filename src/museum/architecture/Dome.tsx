@@ -22,13 +22,19 @@ import { ambience } from '../lighting/timeOfDayState'
 import { useMaterials } from '../materials/materials'
 import { applyPbr } from '../materials/pbrSets'
 import { useMuseum } from '../state/store'
+import { MUSEUM } from '../config/museum'
 import { domeExterior, domeInterior, domeTrim } from './domeGeometry'
+import { makeSkyDisc } from './skyDisc'
 
 /** Concealed light colours: the warm cove strips by night, the sky's bounce in the well by day. */
 const COVE = new THREE.Color('#ffae6e')
-const SKY = new THREE.Color('#ffe6da')
+/** p07l: the reveal glows rose with the sky's bounce (a warm rose, never a pale beige). */
+const SKY = new THREE.Color('#ff8a80')
+/** The springing's uplight washing the lowest coffers (warm), fading up the vault. */
+const WASH = new THREE.Color('#ffc49a')
+const SPRING_Y = MUSEUM.dome.springY
 
-type GlowUniforms = { uWarm: { value: number }; uSky: { value: number }; uCoffer: { value: number }; uCoveColor: { value: THREE.Color }; uSkyColor: { value: THREE.Color } }
+type GlowUniforms = { uWarm: { value: number }; uSky: { value: number }; uCoffer: { value: number }; uWash: { value: number }; uCoveColor: { value: THREE.Color }; uSkyColor: { value: THREE.Color }; uWashColor: { value: THREE.Color } }
 
 /** The interior's material: Clay005 with vertex tints and the glow channel (one program). */
 function interiorMaterial(base: THREE.MeshStandardMaterial, tier: Parameters<typeof applyPbr>[2], u: GlowUniforms) {
@@ -47,8 +53,10 @@ function interiorMaterial(base: THREE.MeshStandardMaterial, tier: Parameters<typ
   applyPbr(m, 'Clay005', tier, { tile: 2.8 })
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, u)
-    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nattribute float glow;\nvarying float vGlow;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = glow;')
-    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uWarm;\nuniform float uSky;\nuniform float uCoffer;\nuniform vec3 uCoveColor;\nuniform vec3 uSkyColor;\nvarying float vGlow;').replace(
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float glow;\nvarying float vGlow;\nvarying float vDomeY;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = glow;\nvDomeY = (modelMatrix * vec4(transformed, 1.0)).y;')
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uWarm;\nuniform float uSky;\nuniform float uCoffer;\nuniform float uWash;\nuniform vec3 uCoveColor;\nuniform vec3 uSkyColor;\nuniform vec3 uWashColor;\nvarying float vGlow;\nvarying float vDomeY;').replace(
       '#include <emissivemap_fragment>',
       `#include <emissivemap_fragment>
 {
@@ -57,6 +65,10 @@ function interiorMaterial(base: THREE.MeshStandardMaterial, tier: Parameters<typ
   // the coffers' hairlines: faded out with distance, so a far line never breaks into dots
   float coffer = step(2.5, vGlow) * clamp((26.0 - length(vViewPosition)) / 10.0, 0.0, 1.0);
   totalEmissiveRadiance += uCoveColor * (cove * uWarm + coffer * uCoffer) + diffuseColor.rgb * uSkyColor * sky * uSky;
+  // the springing's uplight: the lowest coffers washed warm, fading up the vault, so the coffers
+  // read in gradation (lit below, dark above, glowing again at the oculus), never one flat brown
+  float up = max(vDomeY - ${SPRING_Y.toFixed(2)}, 0.0);
+  totalEmissiveRadiance += diffuseColor.rgb * uWashColor * uWash * exp(-up / 3.2) * step(vGlow, 0.5);
 }`,
     )
   }
@@ -68,7 +80,7 @@ function interiorMaterial(base: THREE.MeshStandardMaterial, tier: Parameters<typ
 export function Dome() {
   const mats = useMaterials()
   const tier = useMuseum((s) => s.tier)
-  const u = useMemo<GlowUniforms>(() => ({ uWarm: { value: 0 }, uSky: { value: 0 }, uCoffer: { value: 0 }, uCoveColor: { value: COVE.clone() }, uSkyColor: { value: SKY.clone() } }), [])
+  const u = useMemo<GlowUniforms>(() => ({ uWarm: { value: 0 }, uSky: { value: 0 }, uCoffer: { value: 0 }, uWash: { value: 0 }, uCoveColor: { value: COVE.clone() }, uSkyColor: { value: SKY.clone() }, uWashColor: { value: WASH.clone() } }), [])
   const inner = useMemo(() => interiorMaterial(mats.domeCoffer as THREE.MeshStandardMaterial, tier, u), [mats, tier, u])
   useEffect(() => () => inner.dispose(), [inner])
   const low = tier === 'low'
@@ -81,11 +93,22 @@ export function Dome() {
     [low],
   )
   useEffect(() => () => Object.values(geo).forEach((g) => g?.dispose()), [geo])
-  useFrame(() => {
+  // the sky in the oculus: a disc at the light-well's head, so it stays blue at noon (the open sky clipped
+  // to white under the court's exposure); culled from above, where the real sky is overhead
+  const sky = useMemo(() => makeSkyDisc(0, MUSEUM.dome.lightWell.y1 - 0.01, 0, MUSEUM.oculus.r + 0.02, 0.8), [])
+  useEffect(() => () => sky.dispose(), [sky])
+  useFrame(({ clock }) => {
+    sky.update(clock.elapsedTime)
     // the coves come up at dusk, as hairlines: the dome stays a dark vault at night, its oculus
     // the brightest thing in it; the well glows with the sky by day
     u.uWarm.value = 0.3 + 0.9 * ambience.night + 0.6 * ambience.twilight
-    u.uSky.value = 0.32 * ambience.daylight + 0.05
+    // the reveal and the terraces: rose with the sky by day; at dusk and night the terrace coves
+    // take over, warm, so the vault keeps its glowing crown without the festival
+    // (p07l's reveal is a glowing rose ring, the brightest surface in the vault after the sky)
+    u.uSky.value = 1.15 * ambience.daylight + 0.6 * ambience.twilight + 0.55 * ambience.night + 0.05
+    u.uSkyColor.value.copy(SKY).lerp(COVE, Math.min(1, ambience.night + 0.5 * ambience.twilight))
+    // the springing's uplight: always a little; strongest at dusk and night
+    u.uWash.value = 0.22 + 0.25 * ambience.twilight + 0.4 * ambience.night
     // the coffers' hairlines glint at dusk only: by night the vault is dark round its glowing oculus
     u.uCoffer.value = 0.5 * ambience.twilight * (1 - ambience.night)
   })
@@ -97,6 +120,7 @@ export function Dome() {
       {/* the lantern ring casts no shadow: the oculus's light stays the analytic mask */}
       {geo.crown && <mesh geometry={geo.crown} material={mats.glazedTerracotta} receiveShadow />}
       {geo.brass && <mesh geometry={geo.brass} material={mats.brass} />}
+      <mesh geometry={sky.geometry} material={sky.material} raycast={() => null} />
     </group>
   )
 }

@@ -98,9 +98,10 @@ const earthRoom: SceneObjectConfig[] = [
     // no footprint: the annex's axis stays an open line of sight from the portal to the mouth
     // (tests/unit/pavilion-geometry); the tour walks round the table (config/tour.ts waypoints)
     height: TABLE.h,
-    props: { r: TABLE.r, height: TABLE.h, flutes: 48, finish: 'timber' },
+    // p05: a pale fluted table under the skylight
+    props: { r: TABLE.r, height: TABLE.h, flutes: 48, finish: 'pale' },
     zone: 'annex',
-    alt: 'A round timber table on a fluted clay drum stands in a pool of daylight under a round skylight.',
+    alt: 'A round table of pale clay on a fluted drum stands in a pool of daylight under a round skylight.',
   },
   ...([1, -1] as const).map<SceneObjectConfig>((side, i) => {
     const aDeg = side > 0 ? 0 : 180
@@ -169,9 +170,10 @@ const gates: SceneObjectConfig[] = FIN.atDeg.flatMap((aDeg, g) => {
     position: at(p.r, aDeg),
     rotationDeg: facingIn(aDeg),
     // the gate's wall collider holds the visitor off; the pillar keeps within it
-    // the main pillar is the scanned rock face (Poly Haven, triplanar raw clay in the PDF's strata);
-    // the low stack stays procedural. Terracotta and rose: the ochre read as tan pancakes
-    props: { height: p.h, width: p.w, depth: p.d, seed: 200 + g * 10 + k, strata: Math.round(p.h * 1.3), palette: g === 0 ? 'rose' : 'terracotta', source: k === 0 ? 'ph-rock-face-01' : '' },
+    // both procedural, as the Earth Room's canyon (p05): wind-cut beds, ledges and a tapered,
+    // wind-planed crown (the stretched rock scan read as a smooth log with a sawn top). Terracotta
+    // and rose: the ochre read as tan pancakes
+    props: { height: p.h, width: p.w, depth: p.d, seed: 203 + g * 10 + k, strata: Math.round(p.h * 1.5), palette: g === 0 ? 'rose' : 'terracotta', source: '' },
     zone,
     alt: 'A pillar of eroded, banded clay standing between two galleries like a gate.',
   }))
@@ -210,7 +212,7 @@ const sphereWell: SceneObjectConfig[] = [
     kind: 'spiral-stair',
     position: [SW.cx, SW.floorY, SW.cz],
     rotationDeg: 0,
-    props: { r0: WELL_STAIR.r0, r1: WELL_STAIR.r1, turns: 1.25, rise: WELL_STAIR.rise, finish: 'red' },
+    props: { r0: WELL_STAIR.r0, r1: WELL_STAIR.r1, turns: 1.25, rise: WELL_STAIR.rise, finish: 'rose' },
     zone: 'entrance-court',
     alt: 'A red clay stair winds round the walls of a deep round room, up towards a stepped opening of sky.',
   },
@@ -218,8 +220,11 @@ const sphereWell: SceneObjectConfig[] = [
     id: 'well-sphere',
     title: 'Clay sphere',
     kind: 'clay-sphere',
-    position: [SW.cx, SW.sphereY, SW.cz],
-    props: { r: SW.sphereR, spinSec: 240, finish: 'red' },
+    // hung a metre above the room's middle (GRAND's −4.0): its crown rises into the throat, so from
+    // the rim at grade the rose sphere fills the opening over the depth (the well's wow from the
+    // forecourt), and from the floor it still hangs clear of the lowest terrace
+    position: [SW.cx, SW.sphereY + 1.0, SW.cz],
+    props: { r: SW.sphereR, spinSec: 240, finish: 'rose' },
     zone: 'entrance-court',
     alt: 'A great burnished sphere of red clay hangs from a slender rod at the centre of the round room, turning slowly.',
   },
@@ -376,17 +381,19 @@ const parapetIn = (aDeg: number) => serpentineR(aDeg) - SERP_OFFSET - S.t / 2
 
 /** Walled courtyards on the rooms' side (round the drum touches) and sunken gardens on the drum's side (round the doors). */
 const doorDeg = (id: 'atlas' | 'theatre' | 'library' | 'shop') => satellite(id).doorDeg
+// p09l: dense, round broadleaf canopies standing over the red walls (Poly Haven Island Tree 02 and
+// Tree Small 02), never the twiggy Searsia shrubs
 const COURTS = [
-  { aDeg: doorDeg('atlas') + 23, trees: 'ph-searsia-lucida|3.7\nph-quiver-tree-01|3.3', shrubs: 9, basin: false },
-  { aDeg: (doorDeg('atlas') + doorDeg('theatre')) / 2, trees: 'ph-searsia-lucida|4.2', shrubs: 7, basin: true },
-  { aDeg: doorDeg('theatre') - 23, trees: 'ph-searsia-lucida|3.7\nph-searsia-lucida|3.1', shrubs: 9, basin: false },
-  { aDeg: (doorDeg('library') + doorDeg('shop')) / 2, trees: 'ph-quiver-tree-01|3.0', shrubs: 5, basin: false },
+  { aDeg: doorDeg('atlas') + 23, trees: 'ph-island-tree-02|5.4\nph-tree-small-02|4.0', shrubs: 9, basin: false },
+  { aDeg: (doorDeg('atlas') + doorDeg('theatre')) / 2, trees: 'ph-island-tree-02|5.8', shrubs: 7, basin: true },
+  { aDeg: doorDeg('theatre') - 23, trees: 'ph-tree-small-02|4.6\nph-island-tree-02|5.0', shrubs: 9, basin: false },
+  { aDeg: (doorDeg('library') + doorDeg('shop')) / 2, trees: 'ph-island-tree-02|5.2', shrubs: 5, basin: false },
 ]
 const GARDENS = [
-  { aDeg: doorDeg('atlas') - 1, trees: 'ph-searsia-lucida|3.4\nph-searsia-lucida|2.8', shrubs: 12 },
-  { aDeg: doorDeg('theatre') - 6, trees: 'ph-searsia-lucida|3.6', shrubs: 10 },
-  { aDeg: doorDeg('library') + 4, trees: 'ph-searsia-lucida|3.2', shrubs: 10 },
-  { aDeg: doorDeg('shop') + 1.5, trees: 'ph-searsia-lucida|3.5\nph-quiver-tree-01|2.8', shrubs: 12 },
+  { aDeg: doorDeg('atlas') - 1, trees: 'ph-island-tree-02|5.4\nph-tree-small-02|3.8', shrubs: 12 },
+  { aDeg: doorDeg('theatre') - 6, trees: 'ph-island-tree-02|5.6', shrubs: 10 },
+  { aDeg: doorDeg('library') + 4, trees: 'ph-tree-small-02|4.4', shrubs: 10 },
+  { aDeg: doorDeg('shop') + 1.5, trees: 'ph-island-tree-02|5.2\nph-tree-small-02|3.6', shrubs: 12 },
 ]
 /** Five horse plinths per garden, a little apart, in from the parapet. */
 const HORSE = { r: 0.34, h: 0.28, pitch: 0.82, inset: 1.05 }
@@ -471,8 +478,12 @@ const HAAT_STANDS = [
 ]
 /** The round tables either side of the kiln-load table (deg from the door's axis). */
 const HAAT_TABLE_DEG = 6.2
-/** The bookcase model's depth and width (m). */
-const BOOKCASE = { w: 1.37, d: 0.58, h: 2.06 }
+/**
+ * The library wings' archive runs: thin floating blades of clay (the curved shelf's clay finish,
+ * p05) holding bound ledgers and fired test discs, in the bookcases' old places. Never a timber
+ * bookcase: that is the hand block museum's library, and this is a clay archive.
+ */
+const ARCHIVE = { w: 1.3, depth: 0.32, tiers: 4, gap: 0.44, curveR: 9 }
 /** The Kumartuli bench's place: in the theatre lobby, near its east end wall. */
 const KUMARTULI = { r: SAT_WALL.outerFace - 3.4, aDeg: satellite('theatre').toDeg - 2.2 }
 
@@ -660,25 +671,34 @@ const rooms: SceneObjectConfig[] = [
     zone: 'shop',
     alt: 'A small timber stool.',
   },
-  // bookcases on the library wings' end walls, beside the cabinet and the soil archive
+  // clay archive runs on the library wings' end walls, beside the cabinet and the soil archive
   // (the west wing's pair both stand beyond its cabinet: its stamp post is by the inner wall)
   ...[
     { end: LIB.fromDeg, sense: 1 as const, radii: [SAT_WALL.outerFace - 3.1, SAT_WALL.outerFace - 1.62] },
     { end: LIB.toDeg, sense: -1 as const, radii: [SAT_WALL.innerFace + 1.7, SAT_WALL.outerFace - 1.7] },
   ].flatMap(({ end, sense, radii }, w) =>
     radii.map<SceneObjectConfig>((r, k) => {
-      const aDeg = fromEnd(r, end, SAT_WALL.t / 2 + 0.04 + BOOKCASE.d / 2, sense)
+      const aDeg = fromEnd(r, end, SAT_WALL.t / 2 + 0.03 + ARCHIVE.depth / 2, sense)
       return {
-        id: `library-bookcase-${w * 2 + k + 1}`,
-        title: 'Bookcase',
-        kind: 'sourced-model',
+        id: `library-archive-${w * 2 + k + 1}`,
+        title: 'Archive shelf',
+        kind: 'curved-shelf',
         position: at(r, aDeg),
         rotationDeg: facingAlong(aDeg, sense),
-        footprint: [BOOKCASE.w, BOOKCASE.d],
-        height: BOOKCASE.h,
-        props: { slug: 'ph-wooden-bookshelf-worn', finish: 'asis', lod: true },
+        footprint: [ARCHIVE.w, ARCHIVE.depth],
+        height: 0.14 + ARCHIVE.tiers * ARCHIVE.gap,
+        props: {
+          curveR: ARCHIVE.curveR,
+          spanDeg: +((ARCHIVE.w / ARCHIVE.curveR / DEG).toFixed(2)),
+          tiers: ARCHIVE.tiers,
+          tierGap: ARCHIVE.gap,
+          depth: ARCHIVE.depth,
+          finish: 'clay',
+          items: (w + k) % 2 ? 'ph-book-encyclopedia-set-01|3\ntawa|6|buff\nbowl|3|grey' : 'tawa|7|mixed\nph-book-encyclopedia-set-01|2\nlidded|3|buff',
+          lit: true,
+        },
         zone: 'library',
-        alt: 'A worn timber bookcase against the end wall.',
+        alt: 'Thin blades of clay against the end wall, holding bound ledgers and fired clay test discs.',
       }
     }),
   ),

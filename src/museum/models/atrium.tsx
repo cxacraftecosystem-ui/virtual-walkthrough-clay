@@ -225,8 +225,12 @@ function ClayArcRow({ config }: ModelProps) {
   const [W] = fp(config, [4.8, 0.88])
   const n = Math.max(1, Math.round(num(config, 'seats', 8)))
   const R = num(config, 'arcR', 11.4)
-  const seat = useMemo(() => tinted(m.upholstery, '#8e3426', { roughness: 1 }), [m.upholstery])
-  const bolster = useMemo(() => tinted(m.upholstery, '#c4824a', { roughness: 1 }), [m.upholstery])
+  // saffron cloth on the seats, turmeric bolsters: they read against the red step in the dark house
+  const seat = useMemo(() => tinted(m.upholstery, '#c0582c', { roughness: 1 }), [m.upholstery])
+  const bolster = useMemo(() => tinted(m.upholstery, '#dca65a', { roughness: 1 }), [m.upholstery])
+  // the toe-kick light under each step's nosing (the aisle pools are drawn by the theatre house)
+  const kick = useMemo(() => new THREE.MeshBasicMaterial({ name: 'seatToeKick', color: new THREE.Color(2.0, 1.25, 0.6), toneMapped: false }), [])
+  useEffect(() => () => kick.dispose(), [kick])
   const parts = useBuilt(geoKey('theatre-seating-arc', config), () => {
     const b = new Builder()
     // the curve's centre lies behind the row (towards the drum), |position| away
@@ -243,16 +247,21 @@ function ClayArcRow({ config }: ModelProps) {
       const rot: [number, number, number] = [0, t, 0]
       const P = (lx: number, ly: number, lz: number): [number, number, number] => [x + lx * Math.cos(t) + lz * Math.sin(t), ly, z - lx * Math.sin(t) + lz * Math.cos(t)]
       b.add('step', rbox(segW, 0.36, depth, 0.01, 2, 'x'), { p: P(0, 0.18, 0), r: rot })
-      b.add('back', rbox(segW, 0.52, 0.1, 0.02, 2, 'x'), { p: P(0, 0.36 + 0.26, -depth / 2 + 0.05), r: rot })
-      b.add('cap', rbox(segW, 0.03, 0.14, 0.006, 2, 'x'), { p: P(0, 0.36 + 0.53, -depth / 2 + 0.05), r: rot })
-      b.add('seat', rbox(segW - 0.07, 0.07, depth - 0.16, 0.025, 3, 'x'), { p: P(0, 0.36 + 0.035, 0.03), r: rot })
-      b.add('bolster', rbox(segW - 0.12, 0.16, 0.12, 0.05, 3, 'x'), { p: P(0, 0.36 + 0.15, -depth / 2 + 0.16), r: [-0.2, t, 0] })
-      // a brass seat number stud on the step's face
+      // each place its own back, a hand's gap between them, so the row reads as seats, not a wall
+      b.add('back', rbox(segW - 0.05, 0.5, 0.09, 0.03, 2, 'x'), { p: P(0, 0.36 + 0.25, -depth / 2 + 0.05), r: rot })
+      b.add('cap', rbox(segW - 0.04, 0.03, 0.13, 0.01, 2, 'x'), { p: P(0, 0.36 + 0.51, -depth / 2 + 0.05), r: rot })
+      b.add('seat', rbox(segW - 0.08, 0.08, depth - 0.16, 0.03, 3, 'x'), { p: P(0, 0.36 + 0.04, 0.03), r: rot })
+      b.add('bolster', rbox(segW - 0.14, 0.17, 0.12, 0.055, 3, 'x'), { p: P(0, 0.36 + 0.16, -depth / 2 + 0.16), r: [-0.2, t, 0] })
+      // a teak armrest between places (and at both ends)
+      for (const e of i === 0 ? [-1, 1] : [1]) b.add('arm', rbox(0.045, 0.05, depth - 0.12, 0.012, 2, 'z'), { p: P((e * segW) / 2, 0.36 + 0.24, 0.0), r: rot })
+      for (const e of i === 0 ? [-1, 1] : [1]) b.add('arm', rbox(0.03, 0.22, 0.03, 0.006, 1, 'y'), { p: P((e * segW) / 2, 0.36 + 0.11, depth / 2 - 0.1), r: rot })
+      // a brass seat number stud on the step's face, and the toe-kick light under the nosing
       b.add('brass', rbox(0.04, 0.04, 0.006, 0.003, 1), { p: P(0, 0.24, depth / 2 + 0.003), r: rot })
+      b.add('kick', box(segW - 0.002, 0.014, 0.008), { p: P(0, 0.035, depth / 2 + 0.006), r: rot })
     }
     return b
   })
-  return <Parts parts={parts} materials={{ step: m.rammedEarth, back: m.oxblood, cap: m.oxbloodLacquer, seat, bolster, brass: m.brass }} />
+  return <Parts parts={parts} materials={{ step: m.rammedEarth, back: m.oxblood, cap: m.oxbloodLacquer, seat, bolster, brass: m.brass, arm: m.teak, kick }} />
 }
 
 function StraightRow({ config }: ModelProps) {

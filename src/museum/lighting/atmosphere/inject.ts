@@ -254,7 +254,10 @@ float atmosSunMask(vec3 P) {
       if (L.z > 0.01) {
         float t = (${f(KEY.annexEndZ)} - P.z) / L.z;
         vec3 d = P + L * t;
-        if (t > 0.0 && abs(d.x) < ${f(MUSEUM.annex.door.width / 2)} && d.y < ${f(MUSEUM.annex.door.height)}) m = 1.0;
+        // (soft-edged, and only while the sun is low: a high sun's patch inside the door is a hard,
+        // flat band on the floor where no shadow map softens it)
+        float door = (1.0 - smoothstep(${f(MUSEUM.annex.door.height - 0.4)}, ${f(MUSEUM.annex.door.height + 0.4)}, d.y)) * (1.0 - smoothstep(${f(MUSEUM.annex.door.width / 2 - 0.15)}, ${f(MUSEUM.annex.door.width / 2 + 0.15)}, abs(d.x))) * (1.0 - smoothstep(0.35, 0.6, L.y));
+        if (t > 0.0) m = max(m, door);
       }
       return m;
     }
@@ -265,9 +268,10 @@ float atmosSunMask(vec3 P) {
     if (atmosRoofCovers(q)) return 0.0;
   }
   if (atmosDomeShades(P, L)) return 0.0;
-  // the Red Room: its own drum, open to the sky through its oculus
+  // the Red Room: its own drum under a frosted laylight in its oculus (RedRoomShell): the sun is
+  // scattered into the room's soft daylight, never a hard sun ellipse climbing its red wall
   vec2 rq = P.xz - vec2(${f(RED_ROOM.cx)}, ${f(RED_ROOM.cz)});
-  if (P.y < ${f(RED_ROOM.height)} && dot(rq, rq) < ${f((RED_ROOM.r + 0.05) ** 2)}) return atmosOpen(P, L, ${f(RED_ROOM.height)}, vec2(${f(RED_ROOM.cx)}, ${f(RED_ROOM.cz)}), ${f(RED_ROOM.oculusR)});
+  if (P.y < ${f(RED_ROOM.height)} && dot(rq, rq) < ${f((RED_ROOM.r + 0.05) ** 2)}) return 0.0;
   for (int i = 0; i < ${ROOM_SLOTS}; i++) {
     float h = uAtmosRoomY[i];
     if (h <= 0.0 || P.y >= h) continue;
@@ -291,7 +295,8 @@ const PRE = /* glsl */ `
   float atmosSunM = atmosSunMask(atmosP);
   // the patch on the rotunda's walls is held below the floor's: a vertical face in the oculus's
   // sun (the white lime of B) reads as warm light on plaster, never a blown white wedge
-  if (dot(atmosP.xz, atmosP.xz) < ${f(KEY.ringR * KEY.ringR + 1.0)} && atmosP.y < ${f(DOME.springY)}) atmosSunM *= mix(0.55, 1.0, abs(atmosN.y));
+  bool atmosRotunda = dot(atmosP.xz, atmosP.xz) < ${f(KEY.ringR * KEY.ringR + 1.0)} && atmosP.y < ${f(DOME.springY)};
+  if (atmosRotunda) atmosSunM *= mix(0.55, 1.0, abs(atmosN.y));
   #ifdef STANDARD
   if (uAtmosWet.x + uAtmosWet.y > 0.0 && atmosN.y > 0.6 && atmosP.y < 0.8 && atmosP.y > -0.05) {
     float rr = length(atmosP.xz);
@@ -437,7 +442,12 @@ export function patchAtmosphereChunks(): boolean {
   C.lights_pars_begin = `${G.__atmosChunks.pars}\n${PARS}`
   C.lights_fragment_begin = `${begin
     .replace(VIEW_DIR, `${VIEW_DIR}\n${PRE}`)
-    .replace(DIR_INFO, `${DIR_INFO}\n#ifdef USE_ATMOS\n\t\tdirectLight.color *= atmosSunM;\n#endif`)}\n${POST}`
+    // golden hour through the oculus: inside the rotunda the low sun's orange is held to a warm
+    // white, so it never floods the galleries orange (the forecourt keeps the full colour)
+    .replace(
+      DIR_INFO,
+      `${DIR_INFO}\n#ifdef USE_ATMOS\n\t\tdirectLight.color *= atmosSunM;\n\t\tif (atmosRotunda) directLight.color = mix(directLight.color, vec3(dot(directLight.color, vec3(0.299, 0.587, 0.114))) * vec3(1.0, 0.92, 0.82), 0.55) * 0.85;\n#endif`,
+    )}\n${POST}`
   patched = true
   return true
 }

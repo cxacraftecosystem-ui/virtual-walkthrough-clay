@@ -6,9 +6,11 @@
  *   sky beam         the Earth Room's shaft of daylight from the skylight onto the table: a soft
  *                    additive column leaning with the sun, strongest at midday, gone at night
  *
- *   well washers    eight brass floor washers round the foot of the Sphere Well's sphere, each
- *                    with a glowing lens and a faint additive beam rising onto the sphere's
- *                    underside (the sphere's own uplit ramp is in models/claySphere.tsx)
+ *   well washers    eight in-ground uplights round the foot of the Sphere Well's sphere, flush
+ *                    with the floor: a brass trim and a glowing lens, no drawn beam (the
+ *                    sphere's own uplit ramp is in models/claySphere.tsx)
+ *   island shaft     Gallery C's one cool beam made visible: a faint haze column from its
+ *                    concealed head down onto the black ware island (accents.ts `c-island-beam`)
  *
  * The raw-clay fields are drawn by architecture/RawClayPatches.tsx (also P3), mounted with the
  * pavilion. Everything here is culled with its zone and takes no pointer hit.
@@ -17,7 +19,8 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { annulusFace, mergeAll } from '../../architecture/shellGeometry'
-import { DEG, KEY, MUSEUM } from '../../config/museum'
+import { buildAccents } from '../../config/accents'
+import { KEY, MUSEUM } from '../../config/museum'
 import { SPHERE_WELL } from '../../config/satellites'
 import { sunDirection } from '../../lighting/solar'
 import { ambience, sunState } from '../../lighting/timeOfDayState'
@@ -36,9 +39,14 @@ const inlay = new THREE.MeshStandardMaterial({ name: 'earthRingBrass', color: '#
 
 const BEAM_VERT = /* glsl */ `
 varying vec3 vLocal;
+varying vec3 vN;
+varying vec3 vV;
 void main() {
   vLocal = position;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vN = normalize(normalMatrix * normal);
+  vV = normalize(-mv.xyz);
+  gl_Position = projectionMatrix * mv;
 }
 `
 const BEAM_FRAG = /* glsl */ `
@@ -46,15 +54,18 @@ uniform float uStrength;
 uniform float uTime;
 uniform vec3 uColor;
 varying vec3 vLocal;
+varying vec3 vN;
+varying vec3 vV;
 float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n2(vec2 p) {
   vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 void main() {
-  // vLocal.y runs 0 (floor end) … 1 (skylight end); x, z across the unit column
-  float r = length(vLocal.xz);
-  float edge = smoothstep(1.0, 0.55, r);
+  // vLocal.y runs 0 (floor end) … 1 (skylight end). The column is an open shell, so its soft edge
+  // comes from the view: bright where the eye looks through the shaft's core, gone at its
+  // silhouette (a radius test on the shell itself was 1 everywhere, and drew nothing)
+  float edge = pow(abs(dot(normalize(vN), normalize(vV))), 1.6);
   float along = smoothstep(0.0, 0.18, vLocal.y) * (0.55 + 0.45 * vLocal.y);
   float dust = 0.75 + 0.25 * n2(vec2(atan(vLocal.z, vLocal.x) * 3.0, vLocal.y * 6.0 - uTime * 0.05));
   float a = uStrength * edge * along * dust;
@@ -127,99 +138,99 @@ function EarthRoom() {
 /* ------------------------------------------------------------------ */
 
 const SW = SPHERE_WELL
-const WASH = { n: 8, r: SW.sphereR + 0.75, can: 0.09, canH: 0.06 }
-
-const WASH_VERT = /* glsl */ `
-attribute float aAlong;
-varying float vAlong;
-varying vec3 vN;
-varying vec3 vV;
-void main() {
-  vAlong = aAlong;
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vN = normalize(normalMatrix * normal);
-  vV = normalize(-mv.xyz);
-  gl_Position = projectionMatrix * mv;
-}
-`
-const WASH_FRAG = /* glsl */ `
-uniform float uStrength;
-uniform vec3 uColor;
-varying float vAlong;
-varying vec3 vN;
-varying vec3 vV;
-void main() {
-  // a soft volume: bright where we look through the beam's core, gone at its silhouette
-  float core = pow(abs(dot(normalize(vN), normalize(vV))), 1.6);
-  float along = (1.0 - vAlong) * smoothstep(0.0, 0.08, vAlong);
-  gl_FragColor = vec4(uColor * uStrength * core * along, 1.0);
-}
-`
+/**
+ * In-ground uplights round the sphere, sunk flush into the floor: a thin brass trim ring and a
+ * warm lens, nothing standing proud of the floor (the fittings read as a smudge under the sphere
+ * from the stair) and no drawn beam (the additive cones read as five amber traffic cones). The
+ * sphere's underside glow is its own accent; these are the visible sources.
+ */
+const WASH = { n: 8, r: SW.sphereR + 0.75, can: 0.07, trim: 0.012 }
 
 function WellWashers() {
   const core = useMaterials()
   const geo = useMemo(() => {
-    const cans: THREE.BufferGeometry[] = []
+    const trims: THREE.BufferGeometry[] = []
     const lenses: THREE.BufferGeometry[] = []
-    const pos: number[] = []
-    const along: number[] = []
-    const idx: number[] = []
-    const centre = new THREE.Vector3(SW.cx, SW.sphereY - SW.sphereR * 0.35, SW.cz)
-    const segs = 18
-    const rings = 6
     for (let i = 0; i < WASH.n; i++) {
       const a = ((i + 0.5) / WASH.n) * Math.PI * 2
       const x = SW.cx + Math.cos(a) * WASH.r
       const z = SW.cz + Math.sin(a) * WASH.r
-      const can = new THREE.CylinderGeometry(WASH.can, WASH.can * 1.15, WASH.canH, 20)
-      can.translate(x, SW.floorY + WASH.canH / 2, z)
-      cans.push(can)
+      const trim = new THREE.RingGeometry(WASH.can * 0.78, WASH.can + WASH.trim, 24)
+      trim.rotateX(-Math.PI / 2)
+      trim.translate(x, SW.floorY + 0.003, z)
+      trims.push(trim)
       const lens = new THREE.CircleGeometry(WASH.can * 0.78, 20)
       lens.rotateX(-Math.PI / 2)
-      lens.translate(x, SW.floorY + WASH.canH + 0.002, z)
+      lens.translate(x, SW.floorY + 0.0035, z)
       lenses.push(lens)
-      // the beam: a cone from the lens to the sphere's underside, widening as it rises
-      const base = new THREE.Vector3(x, SW.floorY + WASH.canH, z)
-      const dir = centre.clone().sub(base)
-      const len = dir.length() - SW.sphereR * 0.6
-      dir.normalize()
-      const side = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize()
-      const up = new THREE.Vector3().crossVectors(side, dir).normalize()
-      const v0 = pos.length / 3
-      for (let j = 0; j <= rings; j++) {
-        const t = j / rings
-        const rad = WASH.can * 0.7 + t * len * Math.tan(13 * DEG)
-        for (let k = 0; k <= segs; k++) {
-          const ph = (k / segs) * Math.PI * 2
-          const p = base.clone().addScaledVector(dir, t * len).addScaledVector(side, Math.cos(ph) * rad).addScaledVector(up, Math.sin(ph) * rad)
-          pos.push(p.x, p.y, p.z)
-          along.push(t)
-        }
-      }
-      for (let j = 0; j < rings; j++)
-        for (let k = 0; k < segs; k++) {
-          const a0 = v0 + j * (segs + 1) + k
-          const b0 = a0 + segs + 1
-          idx.push(a0, b0, a0 + 1, a0 + 1, b0, b0 + 1)
-        }
     }
-    const beams = new THREE.BufferGeometry()
-    beams.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
-    beams.setAttribute('aAlong', new THREE.Float32BufferAttribute(along, 1))
-    beams.setIndex(idx)
-    beams.computeVertexNormals()
-    beams.computeBoundingSphere()
-    return { cans: mergeAll(cans.map((g) => g.toNonIndexed())), lenses: mergeAll(lenses.map((g) => g.toNonIndexed())), beams }
+    return { trims: mergeAll(trims.map((g) => g.toNonIndexed())), lenses: mergeAll(lenses.map((g) => g.toNonIndexed())) }
   }, [])
-  useEffect(() => () => [geo.cans, geo.lenses, geo.beams].forEach((g) => g?.dispose()), [geo])
-  const lensMat = useMemo(() => new THREE.MeshBasicMaterial({ name: 'washerLens', color: new THREE.Color('#ffc58a').multiplyScalar(3), toneMapped: false }), [])
-  const beamMat = useMemo(
+  useEffect(() => () => [geo.trims, geo.lenses].forEach((g) => g?.dispose()), [geo])
+  const lensMat = useMemo(() => new THREE.MeshBasicMaterial({ name: 'washerLens', color: new THREE.Color('#ffc58a').multiplyScalar(2.2), toneMapped: false }), [])
+  useEffect(() => () => lensMat.dispose(), [lensMat])
+  return (
+    <group name="well-washers">
+      {geo.trims && <mesh geometry={geo.trims} material={core.brass} receiveShadow raycast={noRaycast} />}
+      {geo.lenses && <mesh geometry={geo.lenses} material={lensMat} raycast={noRaycast} />}
+    </group>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Gallery C: the island's cool beam, seen in the air                   */
+/* ------------------------------------------------------------------ */
+
+const SHAFT_VERT = /* glsl */ `
+varying vec3 vN;
+varying vec3 vV;
+varying float vY;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vN = normalize(normalMatrix * normal);
+  vV = normalize(-mv.xyz);
+  vY = uv.y;
+  gl_Position = projectionMatrix * mv;
+}
+`
+const SHAFT_FRAG = /* glsl */ `
+uniform float uStrength;
+uniform vec3 uColor;
+varying vec3 vN;
+varying vec3 vV;
+varying float vY;
+void main() {
+  // a haze, not a cone: bright only through the column's core, gone at its silhouette and fading
+  // out towards the head
+  float core = pow(abs(dot(normalize(vN), normalize(vV))), 2.4);
+  float fade = smoothstep(0.0, 0.12, vY) * (1.0 - smoothstep(0.55, 1.0, vY));
+  gl_FragColor = vec4(uColor * uStrength * core * fade, 1.0);
+}
+`
+
+function IslandShaft() {
+  const beam = useMemo(() => buildAccents().find((a) => a.id === 'c-island-beam'), [])
+  const geo = useMemo(() => {
+    if (!beam) return null
+    const top = new THREE.Vector3(...beam.pos)
+    const foot = new THREE.Vector3(...beam.target)
+    const len = top.distanceTo(foot)
+    const r1 = Math.tan(beam.beamDeg * (Math.PI / 180)) * len
+    // uv.y 1 at the head (CylinderGeometry's top), 0 on the island
+    const g = new THREE.CylinderGeometry(0.08, r1, len, 40, 4, true)
+    g.translate(0, len / 2, 0)
+    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), top.clone().sub(foot).normalize()))
+    g.translate(foot.x, foot.y, foot.z)
+    return g
+  }, [beam])
+  useEffect(() => () => geo?.dispose(), [geo])
+  const mat = useMemo(
     () =>
       new THREE.ShaderMaterial({
-        name: 'washerBeam',
-        vertexShader: WASH_VERT,
-        fragmentShader: WASH_FRAG,
-        uniforms: { uStrength: { value: 0.16 }, uColor: { value: new THREE.Color('#ffb070') } },
+        name: 'islandShaft',
+        vertexShader: SHAFT_VERT,
+        fragmentShader: SHAFT_FRAG,
+        uniforms: { uStrength: { value: 0.06 }, uColor: { value: new THREE.Color('#dfe9ff') } },
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
@@ -228,21 +239,13 @@ function WellWashers() {
       }),
     [],
   )
-  useEffect(() => () => {
-    lensMat.dispose()
-    beamMat.dispose()
-  }, [lensMat, beamMat])
+  useEffect(() => () => mat.dispose(), [mat])
   useFrame(() => {
-    // the beams read against the dark room: strongest at night, faint under a bright sky
-    beamMat.uniforms.uStrength.value = 0.07 + 0.12 * (1 - ambience.daylight)
+    // the haze reads against the dark bay: a little stronger after dark
+    mat.uniforms.uStrength.value = 0.05 + 0.04 * (1 - ambience.daylight)
   })
-  return (
-    <group name="well-washers">
-      {geo.cans && <mesh geometry={geo.cans} material={core.brass} receiveShadow raycast={noRaycast} />}
-      {geo.lenses && <mesh geometry={geo.lenses} material={lensMat} raycast={noRaycast} />}
-      <mesh geometry={geo.beams} material={beamMat} renderOrder={3} raycast={noRaycast} />
-    </group>
-  )
+  if (!geo) return null
+  return <mesh geometry={geo} material={mat} renderOrder={3} raycast={noRaycast} />
 }
 
 export function InstallationsMount() {
@@ -253,6 +256,9 @@ export function InstallationsMount() {
       </ZoneGroup>
       <ZoneGroup zones={['entrance-court', 'sphere-well']}>
         <WellWashers />
+      </ZoneGroup>
+      <ZoneGroup zones={['ring-c']}>
+        <IslandShaft />
       </ZoneGroup>
     </>
   )

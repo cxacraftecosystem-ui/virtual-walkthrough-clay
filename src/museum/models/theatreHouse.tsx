@@ -16,7 +16,11 @@
  * the tour or a docent fires 'theatre:firing' ('theatre:kilnFilm' jumps to the film).
  *
  * The screen follows the outer wall's curve (radius = the wall face less a hand's breadth, over
- * THEATRE.screenFrom … screenTo, 24°), 2.1 m to its centre. Medium and up add ONE screen-spill
+ * THEATRE.screenFrom … screenTo, 24°), 2.1 m to its centre. The picture's light reaches the room
+ * on every tier as additive washes in the film's current colour (`kilnFilmSpill`): a halo on the
+ * wall round the frame, a pool thrown up the vault and along the floor, a soft glow on the back
+ * wall under the projection port. Amber aisle pucks with floor pools and a toe-kick glow before each
+ * row are always on, so the rows read in the dark. Medium and up also add ONE screen-spill
  * RectAreaLight, mounted for the whole visit with its intensity at 0 outside the theatre (a
  * light that came and went would recompile every material). Reduced motion: each chapter is a
  * single still frame and the lights change without fades.
@@ -28,10 +32,12 @@ import { useFrame } from '@react-three/fiber'
 import { useContext, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { DEG, polar, type Vec3 } from '../config/museum'
-import { SAT_WALL, THEATRE } from '../config/satellites'
+import { SAT_WALL, satellite, THEATRE } from '../config/satellites'
 import { VIDEOS } from '../config/videos'
 import { LIGHTING } from '../config/lighting'
-import { kilnFilmMaterial } from '../media/projection/kilnFilm'
+import { KILN_FILM_CHAPTERS, KILN_FILM_SPILL, kilnFilmMaterial, kilnFilmSpill, kilnFilmTitles } from '../media/projection/kilnFilm'
+import { useLang } from '../i18n'
+import { ensureWallFonts } from '../materials/wallGraphics'
 import { ProjectionTarget } from '../media/projection/projectionTarget'
 import { registerSpot, type SpotRequest } from '../lighting/SpotPool'
 import { isZoneVisible } from '../navigation/zoneCulling'
@@ -49,9 +55,13 @@ export const theatreHouseState = {
   /** 0 … 1 house light level (1 = up). */
   house: 1,
   phase: 'film' as 'firing' | 'dimming' | 'film',
-  /** 0 … 3 while the film runs. */
+  /** 0 … 4 while the film runs. */
   chapter: 0,
+  /** What the screen spills on the room: colour × level (linear, 0 … ~1.3), read by the vault each frame. */
+  spill: new THREE.Color(0, 0, 0),
 }
+
+const CH = KILN_FILM_CHAPTERS
 
 /** Screen: centre height, curve radius (a hand's breadth off the wall face) and span. */
 export const THEATRE_SCREEN = {
@@ -99,6 +109,78 @@ function curvedBand(R: number, cz: number, half: number, y0: number, y1: number,
   return g
 }
 
+/** Local point on the drum's polar grid: radius R, angle t (rad) off the theatre axis, height y. */
+const L = (R: number, t: number, y: number, cz: number): [number, number, number] => [R * Math.sin(t), y, cz - R * Math.cos(t)]
+
+/**
+ * A light-wash sheet: an (nu × nv) grid of points from `at(u, v)` (u, v in 0 … 1) whose vertex
+ * colours carry the falloff `w(u, v)` (0 … 1). Drawn additively in the screen's colour, it is the
+ * picture's light on the room without a light (so on every tier, and no material recompiles).
+ */
+function washGrid(nu: number, nv: number, at: (u: number, v: number) => [number, number, number], w: (u: number, v: number) => number) {
+  const pos: number[] = []
+  const col: number[] = []
+  const idx: number[] = []
+  for (let j = 0; j <= nv; j++)
+    for (let i = 0; i <= nu; i++) {
+      const u = i / nu
+      const v = j / nv
+      pos.push(...at(u, v))
+      const k = Math.max(0, Math.min(1, w(u, v)))
+      col.push(k, k, k)
+    }
+  for (let j = 0; j < nv; j++)
+    for (let i = 0; i < nu; i++) {
+      const a = j * (nu + 1) + i
+      idx.push(a, a + 1, a + nu + 1, a + 1, a + nu + 2, a + nu + 1)
+    }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+  g.setIndex(idx)
+  g.computeBoundingSphere()
+  return g
+}
+
+/** Merge wash grids (position + color + index) into one geometry; the parts are disposed. */
+function mergeGeos(gs: THREE.BufferGeometry[]) {
+  const pos: number[] = []
+  const col: number[] = []
+  const idx: number[] = []
+  let base = 0
+  for (const g of gs) {
+    const p = g.getAttribute('position')
+    const c = g.getAttribute('color')
+    for (let i = 0; i < p.count; i++) {
+      pos.push(p.getX(i), p.getY(i), p.getZ(i))
+      col.push(c.getX(i), c.getY(i), c.getZ(i))
+    }
+    const ix = g.getIndex()
+    if (ix) for (let i = 0; i < ix.count; i++) idx.push(ix.getX(i) + base)
+    base += p.count
+    g.dispose()
+  }
+  const out = new THREE.BufferGeometry()
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+  out.setIndex(idx)
+  out.computeBoundingSphere()
+  return out
+}
+
+/** The barrel vault's soffit height at radius R (architecture/Satellites.tsx `vault`, same constants). */
+function vaultY(R: number) {
+  const s = satellite('theatre')
+  const half = (SAT_WALL.outerFace - SAT_WALL.innerFace) / 2
+  const rise = (s.vaultApex ?? s.height + 0.6) - s.height
+  const Rv = (half * half + rise * rise) / (2 * rise)
+  const rm = (SAT_WALL.innerFace + SAT_WALL.outerFace) / 2
+  return s.height + Math.sqrt(Math.max(0, Rv * Rv - (R - rm) * (R - rm))) - (Rv - rise)
+}
+
+/** Half-angle (rad) of a seat row about the axis (0.6 m a place, config/spectacleObjects/rooms.ts). */
+const rowHalf = (r: { r: number; seats: number }) => (r.seats * 0.6) / 2 / r.r
+
 /** World points of the house lights: over each row's middle and its two ends, and over the lobby. */
 function houseLights(): { from: Vec3; to: Vec3 }[] {
   const y = 4.85
@@ -121,7 +203,7 @@ export function TheatreHouse({ config }: ModelProps) {
   const m = useModelMaterials()
   const sp = useSpectacle()
   const tier = useMuseum((s) => s.tier)
-  const dimTo = num(config, 'dimTo', 0.22)
+  const dimTo = num(config, 'dimTo', 0.38)
   const fadeSec = Math.max(0.2, num(config, 'fadeSec', 2))
   const firingSec = Math.max(2, num(config, 'firingSec', 20))
   const chapterSec = Math.max(4, num(config, 'chapterSec', 24))
@@ -151,17 +233,133 @@ export function TheatreHouse({ config }: ModelProps) {
   }, [S.r, cz, half, y0, y1])
   useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo])
 
+  const lang = useLang()
+  const titles = useMemo(() => kilnFilmTitles(lang, rtW / rtH, ensureWallFonts()), [lang, rtW, rtH])
+  useEffect(() => () => titles.dispose(), [titles])
   const film = useMemo(() => {
     const mat = kilnFilmMaterial(octaves, rtW / rtH)
     return new ProjectionTarget(mat, rtW, rtH)
   }, [octaves, rtW, rtH])
   useEffect(() => () => film.dispose(), [film])
-  // lifted: the film's dark firing frames read as a lit screen in the dim house, never a red smudge
-  const screenMat = useMemo(() => new THREE.MeshBasicMaterial({ name: 'kilnFilmScreen', map: film.texture, toneMapped: false, color: new THREE.Color(1.6, 1.5, 1.4) }), [film])
+  useEffect(() => {
+    film.material.uniforms.uTitles.value = titles
+    film.invalidate()
+  }, [film, titles])
+  // a projector's brightness: the picture reads as light in the dim house (not tone-mapped)
+  const screenMat = useMemo(() => new THREE.MeshBasicMaterial({ name: 'kilnFilmScreen', map: film.texture, toneMapped: false, color: new THREE.Color(1.3, 1.26, 1.2) }), [film])
   useEffect(() => () => screenMat.dispose(), [screenMat])
   const maskMat = useMemo(() => new THREE.MeshStandardMaterial({ name: 'screenMask', color: '#0c0807', roughness: 1, metalness: 0, envMapIntensity: 0.1 }), [])
   const frameMat = m.oxblood
   useEffect(() => () => maskMat.dispose(), [maskMat])
+
+  // the picture's light on the room: additive washes in the screen's colour (every tier)
+  const washes = useMemo(() => {
+    const sw = half
+    const R0 = SAT_WALL.innerFace + 0.03
+    const R1 = SAT_WALL.outerFace - 0.05
+    const gauss = (d: number, s: number) => Math.exp(-(d * d) / (s * s))
+    const outside = (a: number, lo: number, hi: number) => (a < lo ? lo - a : a > hi ? a - hi : 0)
+    const wallTop = vaultY(R1) - 0.06
+    // the wall round the screen: a halo just outside the frame
+    const haloA = sw + 0.24
+    const halo = washGrid(
+      48,
+      16,
+      (u, v) => L(SAT_WALL.outerFace - 0.012, -haloA + 2 * haloA * u, 0.02 + v * wallTop, cz),
+      (u, v) => {
+        const t = -haloA + 2 * haloA * u
+        const y = 0.02 + v * wallTop
+        const dx = outside(Math.abs(t) * S.r, 0, sw * S.r + 0.6)
+        const dy = outside(y, y0 - 0.6, y1 + 0.6)
+        return dx === 0 && dy === 0 ? 0 : 0.28 * gauss(Math.hypot(dx, dy), 1.1)
+      },
+    )
+    // the vault: the light thrown up and back along the barrel, falling off from the screen
+    const vA = 0.42
+    const vault = washGrid(
+      40,
+      24,
+      (u, v) => {
+        const R = R0 + (R1 - R0) * v
+        return L(R, -vA + 2 * vA * u, vaultY(R) - 0.035, cz)
+      },
+      (u, v) => {
+        const R = R0 + (R1 - R0) * v
+        const t = -vA + 2 * vA * u
+        const along = (S.r - R) / (S.r - R0)
+        return (0.3 * gauss(along, 0.5) + 0.05) * gauss(outside(Math.abs(t), 0, sw * 0.6), 0.22) * Math.min(1, (R1 - R) * 3 + 0.4)
+      },
+    )
+    // the floor in front of the screen
+    const fA = 0.36
+    const floor = washGrid(
+      36,
+      18,
+      (u, v) => L(R0 + 0.3 + (R1 - R0 - 0.3) * v, -fA + 2 * fA * u, 0.012, cz),
+      (u, v) => {
+        const R = R0 + 0.3 + (R1 - R0 - 0.3) * v
+        const t = -fA + 2 * fA * u
+        const along = (S.r - R) / (S.r - R0)
+        return 0.22 * gauss(along, 0.4) * gauss(outside(Math.abs(t), 0, sw * 0.8), 0.14)
+      },
+    )
+    // the back wall, facing the picture
+    const bA = 0.3
+    const backTop = vaultY(R0) - 0.06
+    const back = washGrid(
+      24,
+      12,
+      (u, v) => L(SAT_WALL.innerFace + 0.012, -bA + 2 * bA * u, 0.02 + v * backTop, cz),
+      (u, v) => {
+        const t = -bA + 2 * bA * u
+        const y = 0.02 + v * backTop
+        return 0.1 * gauss(t / bA, 0.6) * gauss((y - 2.6) / 2.6, 0.8)
+      },
+    )
+    // the projection booth's port, high in the back wall on the axis
+    const port = L(SAT_WALL.innerFace + 0.03, 0, 4.7, cz)
+    return { geos: { halo, vault, floor, back }, port }
+  }, [cz, half, S.r, y0, y1])
+  useEffect(() => () => Object.values(washes.geos).forEach((g) => g.dispose()), [washes])
+  const washMat = useMemo(() => new THREE.MeshBasicMaterial({ name: 'theatreWash', vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, fog: false }), [])
+  useEffect(() => () => washMat.dispose(), [washMat])
+  const portMat = useMemo(() => new THREE.MeshBasicMaterial({ name: 'projectorPort', color: new THREE.Color(1.8, 1.6, 1.3), toneMapped: false }), [])
+  useEffect(() => () => portMat.dispose(), [portMat])
+
+  // aisle lights, always on so the rows read in the dark: amber pucks at each row's ends and down
+  // both side aisles, each with its pool on the floor, and a toe-kick glow before every step
+  const aisle = useMemo(() => {
+    const rows = THEATRE.rows
+    const pucks: [number, number, number][] = []
+    const maxHalf = Math.max(...rows.map(rowHalf))
+    for (const r of rows) for (const sg of [-1, 1]) pucks.push(L(r.r, sg * (rowHalf(r) + 0.3 / r.r), 0.01, cz))
+    for (let R = SAT_WALL.innerFace + 0.8; R < S.r - 3.6; R += 0.8) for (const sg of [-1, 1]) pucks.push(L(R, sg * (maxHalf + 0.9 / R), 0.01, cz))
+    const glows = rows.map((r) => {
+      const h = rowHalf(r)
+      return washGrid(24, 4, (u, v) => L(r.r + 0.3 + v * 0.45, -h + 2 * h * u, 0.014, cz), (u, v) => 0.3 * (1 - v) * (1 - v) * Math.min(1, Math.min(u, 1 - u) * 12))
+    })
+    const pools = pucks.map((p) => washGrid(12, 3, (u, v) => [p[0] + Math.cos(u * Math.PI * 2) * (0.04 + v * 0.45), 0.013, p[2] + Math.sin(u * Math.PI * 2) * (0.04 + v * 0.45)], (_u, v) => 0.35 * (1 - v) * (1 - v)))
+    return { pucks, glow: mergeGeos([...glows, ...pools]) }
+  }, [cz, S.r])
+  useEffect(() => () => aisle.glow.dispose(), [aisle])
+  const aisleMat = useMemo(() => new THREE.MeshBasicMaterial({ name: 'aisleGlow', color: '#ffb066', vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), [])
+  const puckMat = useMemo(() => new THREE.MeshBasicMaterial({ name: 'aislePuck', color: new THREE.Color(2.2, 1.35, 0.6), toneMapped: false }), [])
+  useEffect(
+    () => () => {
+      aisleMat.dispose()
+      puckMat.dispose()
+    },
+    [aisleMat, puckMat],
+  )
+  const puckRef = useRef<THREE.InstancedMesh>(null)
+  useEffect(() => {
+    const im = puckRef.current
+    if (!im) return
+    const mx = new THREE.Matrix4()
+    aisle.pucks.forEach((p, i) => im.setMatrixAt(i, mx.makeTranslation(p[0], p[1], p[2])))
+    im.instanceMatrix.needsUpdate = true
+    im.computeBoundingSphere()
+  }, [aisle])
 
   // house lights: SpotPool requests whose intensity follows the house level
   const lights = useRef<SpotRequest[]>([])
@@ -194,7 +392,11 @@ export function TheatreHouse({ config }: ModelProps) {
     if ((e.data as { from?: string } | undefined)?.from !== 'theatre-house') start('firing', false)
   })
   useCue('theatre:kilnFilm', (e) => {
-    if ((e.data as { from?: string } | undefined)?.from !== 'theatre-house') start('film', false)
+    const d = e.data as { from?: string; at?: number } | undefined
+    if (d?.from === 'theatre-house') return
+    start('film', false)
+    // a docent (or the shot harness) may join the film part-way: `data.at` seconds in
+    if (typeof d?.at === 'number' && d.at > 0) clock.current.t = Math.min(d.at, chapterSec * CH - 0.5)
   })
 
   useFrame(({ gl }, rawDt) => {
@@ -205,7 +407,7 @@ export function TheatreHouse({ config }: ModelProps) {
     const seen = isZoneVisible('theatre')
     // the programme only advances while someone could see it
     if (seen) c.t += dt
-    const filmLen = chapterSec * 4
+    const filmLen = chapterSec * CH
     if (c.phase === 'firing' && c.t >= firingSec) {
       c.phase = 'dimming'
       c.t = 0
@@ -213,13 +415,13 @@ export function TheatreHouse({ config }: ModelProps) {
     } else if (c.phase === 'dimming' && c.t >= fadeSec) {
       start('film', true)
     } else if (c.phase === 'film') {
-      const ch = Math.min(3, Math.floor(c.t / chapterSec))
+      const ch = Math.min(CH - 1, Math.floor(c.t / chapterSec))
       if (ch !== c.lastChapter) {
         if (c.lastChapter >= 0) fireCue('theatre:chapterEnd', { source: 'system', data: { chapter: c.lastChapter } })
         c.lastChapter = ch
       }
       if (c.t >= filmLen) {
-        fireCue('theatre:chapterEnd', { source: 'system', data: { chapter: 3 } })
+        fireCue('theatre:chapterEnd', { source: 'system', data: { chapter: CH - 1 } })
         start('firing', true)
       }
     }
@@ -249,32 +451,38 @@ export function TheatreHouse({ config }: ModelProps) {
     theatreHouseState.house = c.house
     theatreHouseState.firing = c.firing
     theatreHouseState.phase = c.phase
-    theatreHouseState.chapter = c.phase === 'film' ? Math.min(3, Math.floor(c.t / chapterSec)) : 0
+    theatreHouseState.chapter = c.phase === 'film' ? Math.min(CH - 1, Math.floor(c.t / chapterSec)) : 0
     const base = LIGHTING.track.artworkIntensity * 0.8
     for (const r of lights.current) r.intensity = base * c.house
 
-    // the film: drawn only while the theatre can be seen
+    // the film: drawn only while the theatre can be seen. Between showings (the firing and the
+    // dimming) the screen holds the lit poster; the film fades up from black and out at its end.
     const u = film.material.uniforms
     u.uChapterSec.value = chapterSec
     u.uStill.value = still ? 1 : 0
-    // between films the screen holds a dim poster frame: the fired vessel, cooled to oxblood
-    const POSTER = 0.55
-    const level = c.phase === 'film' ? Math.max(POSTER * Math.max(0, 1 - c.t / 0.8), Math.min(1, c.t / 1.2, (filmLen - c.t) / 1.2)) : c.phase === 'dimming' ? POSTER * (1 - Math.min(1, c.t / fadeSec)) : POSTER
+    const POSTER = 0.8
+    let level: number
+    if (c.phase === 'film') {
+      u.uPoster.value = 0
+      level = Math.min(1, c.t / 1.2, (filmLen - c.t) / 1.2)
+      u.uTime.value = still ? (Math.floor(c.t / chapterSec) + 0.5) * chapterSec : c.t
+    } else {
+      u.uPoster.value = 1
+      level = c.phase === 'dimming' ? POSTER * (1 - Math.min(1, c.t / fadeSec)) : POSTER
+    }
     u.uLevel.value = Math.max(0.02, level)
-    u.uTime.value = c.phase === 'film' && c.t > 0.8 ? (still ? (Math.floor(c.t / chapterSec) + 0.5) * chapterSec : c.t) : chapterSec * 4 - 1.8
     film.tick(gl, dt, still ? 2 : hz, seen && kilnOn)
+    // what the picture spills on the room (the washes, the area light, the vault's joints)
+    const sc = theatreHouseState.spill
+    if (c.phase === 'film') kilnFilmSpill(c.t, chapterSec, sc)
+    else sc.setRGB(...KILN_FILM_SPILL[CH])
+    sc.multiplyScalar(kilnOn ? u.uLevel.value : 0)
+    // the washes read most when the house is down
+    washMat.color.copy(sc).multiplyScalar(0.55 + 0.45 * (1 - c.house))
     const l = spillRef.current
     if (l) {
-      // the picture's warmth spills onto the seats and the vault
-      const ch = theatreHouseState.chapter
-      const tint = [
-        [0.85, 0.55, 0.35],
-        [0.95, 0.75, 0.6],
-        [0.9, 0.55, 0.38],
-        [1.0, 0.5, 0.2],
-      ][ch]
-      l.color.setRGB(tint[0], tint[1], tint[2])
-      l.intensity = seen && kilnOn ? 6 * u.uLevel.value : 0
+      l.color.copy(sc)
+      l.intensity = seen && kilnOn ? 14 : 0
     }
   })
 
@@ -284,6 +492,21 @@ export function TheatreHouse({ config }: ModelProps) {
       <mesh geometry={geo.mask} material={maskMat} />
       <mesh geometry={geo.lip} material={m.brass} />
       {kilnOn && <mesh geometry={geo.screen} material={screenMat} />}
+      {kilnOn && (
+        <group>
+          {Object.entries(washes.geos).map(([k, g]) => (
+            <mesh key={k} geometry={g} material={washMat} raycast={() => null} renderOrder={2} />
+          ))}
+          {/* the projection booth's port in the back wall */}
+          <mesh position={washes.port} rotation={[0, Math.PI, 0]} material={portMat} raycast={() => null}>
+            <planeGeometry args={[0.34, 0.2]} />
+          </mesh>
+        </group>
+      )}
+      <mesh geometry={aisle.glow} material={aisleMat} raycast={() => null} renderOrder={2} />
+      <instancedMesh key={aisle.pucks.length} ref={puckRef} args={[undefined, undefined, aisle.pucks.length]} material={puckMat} raycast={() => null}>
+        <cylinderGeometry args={[0.045, 0.05, 0.02, 12]} />
+      </instancedMesh>
       {spill && inScene && kilnOn && <rectAreaLight ref={spillRef} position={[0, S.centerY, cz - S.r + 0.25]} rotation={[0, Math.PI, 0]} width={width * 0.9} height={height * 0.9} intensity={0} />}
     </group>
   )

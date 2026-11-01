@@ -2,16 +2,21 @@
  * 'programme-board' — the Agni Theatre's programme (F24): a slate on a timber easel in the
  * lobby, chalked by hand. It lists `props.films` (one title per line) once real films are
  * configured; until then it names only what the screen shows now, the Kiln Film ("Earth ·
- * Water · Hand · Fire", i18n `spectacle.kilnFilm`) — never a film that does not exist yet.
+ * Water · Hand · Fire · Ash", media/projection/kilnFilm.ts) and its five chapters — never a film
+ * that does not exist yet. A small brass lamp on an arm over the slate lights the chalk.
  *
  * Local space: origin at floor centre between the easel's feet, the slate faces +z.
  */
-import { useMemo } from 'react'
+import { useContext, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useLang, translate } from '../i18n'
+import { kilnFilmText } from '../media/projection/kilnFilm'
 import { ensureWallFonts } from '../materials/wallGraphics'
 import { useAsyncTexture } from '../utils/useAsyncTexture'
 import { box, Builder, Parts, rbox, useBuilt } from './kit'
+import { LIGHTING } from '../config/lighting'
+import { registerSpot } from '../lighting/SpotPool'
+import { InMuseumScene } from './sceneContext'
 import { useModelMaterials } from './modelMaterials'
 import { geoKey, str, type ModelProps } from './types'
 
@@ -118,8 +123,11 @@ export function ProgrammeBoard({ config }: ModelProps) {
   )
   // until real films are listed, the slate names only what the screen shows now
   const kicker = translate(lang, 'zone.theatre')
-  const heading = films.length ? title : translate(lang, 'spectacle.kilnFilm')
-  const tex = useAsyncTexture(() => slateTexture(kicker, heading, films, lang), [kicker, heading, films.join('|'), lang])
+  const kiln = kilnFilmText(lang)
+  const heading = films.length ? title : kiln.title
+  // the Kiln Film's five chapters, numbered, as the slate's programme
+  const lines = films.length ? films : kiln.chapters.map((c, i) => `${['I', 'II', 'III', 'IV', 'V'][i] ?? i + 1}  ·  ${c}`)
+  const tex = useAsyncTexture(() => slateTexture(kicker, heading, lines, lang), [kicker, heading, lines.join('|'), lang])
 
   const parts = useBuilt(geoKey('programme-board', config), () => {
     const b = new Builder()
@@ -137,20 +145,43 @@ export function ProgrammeBoard({ config }: ModelProps) {
     b.add('teak', rbox(SLATE.w + 2 * f, f, 0.03, 0.004, 2, 'x'), { p: [0, SLATE.y - SLATE.h / 2 - f / 2, z], r: R })
     for (const sx of [-1, 1]) b.add('teak', rbox(f, SLATE.h, 0.03, 0.004, 2, 'y'), { p: [sx * (SLATE.w / 2 + f / 2), SLATE.y, z], r: R })
     b.add('slate', box(SLATE.w, SLATE.h, 0.012), { p: [0, SLATE.y, z - 0.004], r: R })
+    // a brass picture lamp on a swan-neck arm over the slate
+    b.add('brass', rbox(0.02, 0.02, 0.2, 0.004, 1, 'z'), { p: [0, SLATE.y + SLATE.h / 2 + 0.06, 0.15], r: [-0.5, 0, 0] })
+    b.add('brass', rbox(0.3, 0.05, 0.06, 0.012, 2, 'x'), { p: [0, SLATE.y + SLATE.h / 2 + 0.11, 0.25], r: [0.5, 0, 0] })
+    b.add('lamp', box(0.27, 0.008, 0.03), { p: [0, SLATE.y + SLATE.h / 2 + 0.09, 0.265], r: [0.5, 0, 0] })
     // a stub of ochre chalk on the ledge
     b.add('chalk', box(0.05, 0.012, 0.012), { p: [0.12, SLATE.y - SLATE.h / 2 + 0.002, 0.13], r: R })
     return b
   })
   const slateMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#202422', roughness: 0.9 }), [])
   const chalkMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#e7ab6b', roughness: 1 }), [])
+  const lampMat = useMemo(() => new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 1.25, 0.9), toneMapped: false }), [])
+  useEffect(
+    () => () => {
+      slateMat.dispose()
+      chalkMat.dispose()
+      lampMat.dispose()
+    },
+    [slateMat, chalkMat, lampMat],
+  )
+  // the lamp's light on the slate: a narrow warm spot from just above and in front of it
+  const inScene = useContext(InMuseumScene)
+  const [px, , pz] = config.position
+  const rot = ((config.rotationDeg ?? 0) * Math.PI) / 180
+  useEffect(() => {
+    if (!inScene) return
+    const fx = Math.sin(rot)
+    const fz = Math.cos(rot)
+    return registerSpot({ position: [px + fx * 1.1, 2.6, pz + fz * 1.1], target: [px, SLATE.y, pz], intensity: LIGHTING.track.artworkIntensity * 0.6, angle: 0.32, penumbra: 0.7, color: '#ffd29a', tag: 'theatre-programme' })
+  }, [inScene, px, pz, rot])
   return (
     <group>
-      <Parts parts={parts} materials={{ teak: m.teak, slate: slateMat, chalk: chalkMat }} />
+      <Parts parts={parts} materials={{ teak: m.teak, slate: slateMat, chalk: chalkMat, brass: m.brass, lamp: lampMat }} />
       {tex && (
         // on the slate's face (the slate is 12 mm thick, tilted back about its centre)
         <mesh position={[0, SLATE.y + Math.sin(SLATE.tilt) * 0.0065, 0.066 + Math.cos(SLATE.tilt) * 0.0065]} rotation={[-SLATE.tilt, 0, 0]} raycast={() => null}>
           <planeGeometry args={[SLATE.w, SLATE.h]} />
-          <meshStandardMaterial map={tex} roughness={0.92} polygonOffset polygonOffsetFactor={-1} />
+          <meshStandardMaterial map={tex} emissiveMap={tex} emissive="#fff1dc" emissiveIntensity={1.1} roughness={0.92} polygonOffset polygonOffsetFactor={-1} />
         </mesh>
       )}
     </group>

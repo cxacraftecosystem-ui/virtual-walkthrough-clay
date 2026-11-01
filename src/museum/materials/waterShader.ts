@@ -49,11 +49,16 @@ export interface WaterUniforms {
   /** Rill: entrance front plane z, half width, door half width / height, wall top. */
   uFacade: { value: THREE.Vector4 }
   uDoor: { value: THREE.Vector2 }
+  /** The rill's building behind the facade: dome centre y, dome radius, drum radius, drum height (0 = none). */
+  uBuilding: { value: THREE.Vector4 }
   /** Warm light from inside the open door (rill reflection). */
   uDoorGlow: { value: THREE.Color }
   uReflect: { value: number }
   /** Ring: inner and outer radius of the water (its meniscus lines). */
   uRim: { value: THREE.Vector2 }
+  /** WATER_PLANAR: the rendered mirror (materials/planarMirror.ts) and its world → texture matrix. */
+  uMirror: { value: THREE.Texture | null }
+  uMirrorMat: { value: THREE.Matrix4 }
 }
 
 export function waterUniforms(): WaterUniforms {
@@ -81,9 +86,12 @@ export function waterUniforms(): WaterUniforms {
     uFlow: { value: new THREE.Vector2(0, 0) },
     uFacade: { value: new THREE.Vector4(19.85, 2.64, 1.05, 3.6) },
     uDoor: { value: new THREE.Vector2(6.1, 0) },
+    uBuilding: { value: new THREE.Vector4(0, 0, 0, 0) },
     uDoorGlow: { value: new THREE.Color('#ffb877') },
     uReflect: { value: 1 },
     uRim: { value: new THREE.Vector2(2.05, 2.95) },
+    uMirror: { value: null },
+    uMirrorMat: { value: new THREE.Matrix4() },
   }
 }
 
@@ -120,9 +128,14 @@ uniform float uSwell;
 uniform vec2 uFlow;
 uniform vec4 uFacade;
 uniform vec2 uDoor;
+uniform vec4 uBuilding;
 uniform vec3 uDoorGlow;
 uniform float uReflect;
 uniform vec2 uRim;
+#ifdef WATER_PLANAR
+uniform sampler2D uMirror;
+uniform mat4 uMirrorMat;
+#endif
 varying vec3 vWorld;
 
 float hash12(vec2 p) {
@@ -203,9 +216,40 @@ vec3 surroundings(vec3 p, vec3 r) {
     if (t > 0.0 && abs(q.x) < uFacade.y && q.y < uDoor.x) {
       float door = step(abs(q.x), uFacade.z) * step(q.y, uFacade.w);
       // the facade seen in dark water is darker than the facade itself (and the rill reads as water)
-      vec3 earth = vec3(0.78, 0.38, 0.24) * (0.1 + 0.42 * uDay) + vec3(0.06, 0.035, 0.02) * uNight;
-      vec3 inside = uDoorGlow * (0.9 + 1.4 * uNight);
+      // (shaded by height and course, so the reflected front is a darker wall, never a flat block)
+      float course = 0.82 + 0.18 * step(0.5, fract(q.y * 3.2));
+      vec3 earth = vec3(0.62, 0.3, 0.2) * (0.06 + 0.26 * uDay) * course * (0.7 + 0.3 * clamp(q.y / uFacade.w, 0.0, 1.5)) + vec3(0.04, 0.022, 0.014) * uNight;
+      vec3 inside = uDoorGlow * (0.45 + 0.9 * uNight);
       return mix(earth, inside, door);
+    }
+  }
+  // the drum and the dome rising behind the front (a cylinder and a sphere about the y axis), so
+  // the rill holds the whole building against the sky: terracotta by day, the dome's glow by night
+  if (uBuilding.y > 0.0) {
+    vec3 clay = vec3(0.74, 0.38, 0.25) * (0.1 + 0.5 * uDay);
+    vec3 glow = vec3(1.0, 0.6, 0.3) * uNight;
+    // the dome: nearest hit on the sphere
+    vec3 oc = p - vec3(0.0, uBuilding.x, 0.0);
+    float b = dot(oc, r);
+    float c = dot(oc, oc) - uBuilding.y * uBuilding.y;
+    float h = b * b - c;
+    if (h > 0.0) {
+      float t = -b - sqrt(h);
+      vec3 q = p + r * t;
+      if (t > 0.0 && q.y > uBuilding.w) {
+        float k = clamp((q.y - uBuilding.w) / (uBuilding.x + uBuilding.y - uBuilding.w), 0.0, 1.0);
+        return clay * (0.75 + 0.35 * k) + glow * 0.32 * (1.0 - 0.7 * k);
+      }
+    }
+    // the drum: nearest hit on the cylinder below its eaves
+    float a2 = dot(r.xz, r.xz);
+    float b2 = dot(p.xz, r.xz);
+    float c2 = dot(p.xz, p.xz) - uBuilding.z * uBuilding.z;
+    float h2 = b2 * b2 - a2 * c2;
+    if (h2 > 0.0 && a2 > 1e-6) {
+      float t = (-b2 - sqrt(h2)) / a2;
+      vec3 q = p + r * t;
+      if (t > 0.0 && q.y < uBuilding.w) return clay * 0.8 + glow * 0.22 * (1.0 - q.y / uBuilding.w);
     }
   }
   return sky(r);
@@ -264,7 +308,10 @@ void main() {
   float cosT = clamp(dot(-v, n), 0.0, 1.0);
   float F = 0.02 + 0.98 * pow(1.0 - cosT, 5.0);
   // still dark water holds its reflection: a dark body makes even 2 % read as a mirror
-#ifdef WATER_RILL
+#if defined(WATER_PLANAR)
+  // the rendered mirror: dark still water holds the scene almost whole, a little more at grazing
+  float mirror = clamp(F * 1.6 + 0.7, 0.0, 0.94) * uReflect;
+#elif defined(WATER_RILL)
   // a shallow channel over dark tile: it holds the doorway like a strip of glass
   float mirror = clamp(F * 1.8 + 0.42, 0.0, 0.92) * uReflect;
 #else
@@ -272,16 +319,32 @@ void main() {
   // (≥ 0.6 at grazing angles: the dome and the sky, never a matte floor)
   float mirror = clamp(F * 2.4 + 0.5, 0.0, 0.96) * uReflect;
 #endif
+#ifdef WATER_PLANAR
+  // the scene drawn from the mirrored eye, displaced by the surface's slope (swell, ripples, rain)
+  vec4 mc = uMirrorMat * vec4(vWorld, 1.0);
+  vec2 muv = mc.xy / mc.w + vec2(g.x, -g.y) * 0.22;
+  // a 5-tap soft sample (a slight ripple blur): the mirror's hard edges never stair-step
+  vec2 mo = vec2(0.0016, 0.0011);
+  vec2 mc0 = clamp(muv, vec2(0.003), vec2(0.997));
+  vec3 refl = texture2D(uMirror, mc0).rgb * 0.36
+    + (texture2D(uMirror, mc0 + mo).rgb + texture2D(uMirror, mc0 - mo).rgb
+     + texture2D(uMirror, mc0 + vec2(-mo.y, mo.x)).rgb + texture2D(uMirror, mc0 + vec2(mo.y, -mo.x)).rgb) * 0.16;
+#else
   vec3 refl = surroundings(vWorld, r);
+#endif
 #ifdef WATER_RILL
   vec3 body = uTint * (0.35 + 0.65 * uRoom) * (0.6 + 0.4 * uDay);
 #else
   // a dark basin: the body reads near black so the reflection carries the pool
-  vec3 body = uTint * (0.12 + 0.3 * uRoom) * (0.6 + 0.4 * uDay);
+  vec3 body = uTint * (0.06 + 0.16 * uRoom) * (0.6 + 0.4 * uDay);
 #endif
-#ifndef WATER_RILL
+#if !defined(WATER_RILL) && !defined(WATER_PLANAR)
   // still black water reads a shade cooler than what it holds
   refl *= vec3(0.86, 0.93, 1.0);
+#endif
+#ifdef WATER_PLANAR
+  // dark water: what it holds is a shade deeper and cooler than the room itself
+  refl *= vec3(0.8, 0.85, 0.9);
 #endif
   vec3 col = mix(body, refl, mirror);
 #ifndef WATER_RILL
@@ -303,13 +366,15 @@ void main() {
 `
 
 /** The water material: 'ring' (oculus court) or 'rill' (entrance). Shares its uniforms object. */
-export function createWaterMaterial(mode: 'ring' | 'rill', uniforms: WaterUniforms = waterUniforms()): THREE.ShaderMaterial {
+export function createWaterMaterial(mode: 'ring' | 'rill', uniforms: WaterUniforms = waterUniforms(), planar = false): THREE.ShaderMaterial {
+  const defines: Record<string, string> = mode === 'rill' ? { WATER_RILL: '' } : {}
+  if (planar) defines.WATER_PLANAR = ''
   const m = new THREE.ShaderMaterial({
     name: mode === 'rill' ? 'waterRill' : 'waterRing',
     uniforms,
     vertexShader: VERT,
     fragmentShader: FRAG,
-    defines: mode === 'rill' ? { WATER_RILL: '' } : {},
+    defines,
   })
   return m
 }

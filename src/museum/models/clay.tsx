@@ -25,6 +25,8 @@ import { MUSEUM } from '../config/museum'
 import { Builder, cyl, lathe, Parts, rbox, rng, tube, useBuilt } from './kit'
 import { tinted, useModelMaterials, type ModelMaterials } from './modelMaterials'
 import { decorMaterial, isDecor, type ClayDecor } from './clayDecor'
+import { fbm, sculptDetailFor, weldNormals } from './sculpt'
+import { useMuseum } from '../state/store'
 import { fp, geoKey, num, str, type ModelProps } from './types'
 
 /* ------------------------------------------------------------------ */
@@ -268,9 +270,30 @@ function decorLathe(b: Builder, key: string, insideKey: string, form: VesselForm
   if (prof.length > k) b.add(insideKey, lathe(prof.slice(k - 1), 40))
 }
 
+/**
+ * A pot shaped by hand on a board, not thrown (Longpi): the lathe's round eased out of true by a
+ * slow wobble round the body and the paddle's broad facets, the rim a little uneven.
+ */
+function handBuiltLathe(profile: [number, number][], R: number, H: number) {
+  const g = lathe(profile, 64)
+  const pos = g.getAttribute('position')
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i)
+    const y = pos.getY(i)
+    const z = pos.getZ(i)
+    const r = Math.hypot(x, z)
+    if (r < 1e-5) continue
+    const a = Math.atan2(z, x)
+    const h = y / H
+    const f = 1 + 0.018 * Math.sin(a * 2 + h * 2.4) + 0.012 * Math.sin(a * 5 + 1.3) * Math.sin(h * Math.PI) + 0.01 * fbm(Math.cos(a) * 2, Math.sin(a) * 2, h * 3, 2)
+    pos.setXYZ(i, x * f, y + (h > 0.9 ? 0.006 * R * Math.sin(a * 3) : 0), z * f)
+  }
+  return weldNormals(g)
+}
+
 /** Add a vessel (merged under `key`) at p, with rotation about y. */
-function addVessel(b: Builder, key: string, form: VesselForm, R: number, H: number, p: [number, number, number] = [0, 0, 0], ry = 0, extrasKey?: string) {
-  b.add(key, lathe(vesselProfile(form, R, H), 40), { p, r: [0, ry, 0] })
+function addVessel(b: Builder, key: string, form: VesselForm, R: number, H: number, p: [number, number, number] = [0, 0, 0], ry = 0, extrasKey?: string, handBuilt = false) {
+  b.add(key, handBuilt ? handBuiltLathe(vesselProfile(form, R, H), R, H) : lathe(vesselProfile(form, R, H), 40), { p, r: [0, ry, 0] })
   const ek = extrasKey ?? key
   const c = Math.cos(ry)
   const s = Math.sin(ry)
@@ -312,7 +335,7 @@ export function ClayVessel({ config }: ModelProps) {
   const R = (Math.min(fx, fz) / 2) * (form === 'kettle' ? 0.78 : form === 'diya' ? 0.82 : 1)
   const parts = useBuilt(geoKey('clay-vessel', config), () => {
     const b = new Builder()
-    if (decor === 'none') addVessel(b, 'body', form, R, H, [0, 0, 0], 0, 'cane')
+    if (decor === 'none') addVessel(b, 'body', form, R, H, [0, 0, 0], 0, 'cane', body === 'black')
     else {
       decorLathe(b, 'decor', 'body', form, R, H)
       // the kettle's spout, lid and handle and the diya's spout come from the plain builder
@@ -362,7 +385,8 @@ export function horseMaterials(m: ModelMaterials, style: HorseStyle): Record<str
   if (style === 'sonepur') return { clay: clayMaterial(m, 'terracotta', 0.2), slip: clayMaterial(m, 'red', 0.1), smoke: tinted(m.terracotta, '#2e2420', { roughness: 0.9 }) }
   // the body's red-to-chocolate slip and its baked occlusion are in the vertex colour; a burnished sheen
   // (a stone-polished red slip: tight highlights that run down the necks under a raking light)
-  return { clay: tinted(m.terracotta, '#ffffff', { roughness: 0.28, envMapIntensity: 1.35, vertexColors: true }), slip: tinted(m.terracotta, '#2a140e', { roughness: 0.42, envMapIntensity: 0.7 }) }
+  // matte fired terracotta (a soft sheen, never a lacquer highlight); the incised collars dark
+  return { clay: tinted(m.terracotta, '#ffffff', { roughness: 0.78, envMapIntensity: 0.55, vertexColors: true }), slip: tinted(m.terracotta, '#3a1a10', { roughness: 0.9, envMapIntensity: 0.3 }) }
 }
 
 /**
@@ -394,10 +418,11 @@ function horseBuilder(H: number, style: HorseStyle = 'bankura') {
         [0.105, 0.008],
         [0.142, 0.07],
         [0.158, 0.15],
-        [0.166, 0.214],
-        [0.2, 0.224],
-        [0.245, 0.19],
-        [0.272, 0.158],
+        [0.168, 0.212],
+        [0.198, 0.226],
+        [0.24, 0.204],
+        [0.278, 0.172],
+        [0.3, 0.15],
       ].map(([x, y]) => new THREE.Vector3(x * k, spineY + y * k, 0)),
       false,
       'centripetal',
@@ -405,14 +430,14 @@ function horseBuilder(H: number, style: HorseStyle = 'bankura') {
     // cross-section half-height / half-width along the spine (t 0 = rump, 1 = muzzle)
     const SEC: [number, number, number][] = [
       [0, 0.036, 0.034],
-      [0.1, 0.047, 0.044],
-      [0.28, 0.05, 0.046],
-      [0.4, 0.056, 0.05],
-      [0.5, 0.047, 0.041],
-      [0.62, 0.037, 0.032],
-      [0.72, 0.03, 0.026],
-      [0.8, 0.027, 0.022],
-      [0.92, 0.022, 0.019],
+      [0.1, 0.052, 0.05],
+      [0.28, 0.058, 0.054],
+      [0.38, 0.068, 0.06],
+      [0.48, 0.058, 0.05],
+      [0.6, 0.05, 0.043],
+      [0.7, 0.046, 0.038],
+      [0.78, 0.04, 0.032],
+      [0.9, 0.03, 0.025],
       [1, 0.026, 0.022],
     ]
     const secAt = (t: number) => {
@@ -428,11 +453,12 @@ function horseBuilder(H: number, style: HorseStyle = 'bankura') {
     {
       const NA = 72
       const NR = 28
-      // the open mouth: past the muzzle's rim the surface turns in and runs back into the head
+      // a closed, rounded muzzle: past the last section the surface runs on and closes to a point
+      // (no open mouth: seen head-on an open ring read as a "ring face")
       const LIP = [
-        { back: 0.0, s: 0.86 },
-        { back: 0.012, s: 0.72 },
-        { back: 0.034, s: 0.62 },
+        { back: -0.008, s: 0.82 },
+        { back: -0.013, s: 0.55 },
+        { back: -0.0155, s: 0 },
       ]
       const rows = NA + 1 + LIP.length
       const pos: number[] = []
@@ -463,7 +489,9 @@ function horseBuilder(H: number, style: HorseStyle = 'bankura') {
           // slip-burnished red, darkening to chocolate at the muzzle, the mouth and the belly (AO)
           const toFace = THREE.MathUtils.smoothstep(t, 0.7, 1)
           const under = THREE.MathUtils.clamp(-c, 0, 1)
-          const ao = lip ? 0.32 : 1 - 0.32 * Math.pow(under, 1.5)
+          // the mouth: an incised line round the lower muzzle, dark in the vertex colour
+          const mouthLine = !lip && t > 0.9 && c < -0.1 && c > -0.75 ? 0.45 : 1
+          const ao = (lip ? 0.8 : 1 - 0.32 * Math.pow(under, 1.5)) * mouthLine
           const cc = RED.clone().lerp(CHOC, 0.15 + 0.55 * toFace + 0.25 * under).multiplyScalar(ao)
           col.push(cc.r, cc.g, cc.b)
         }
@@ -499,7 +527,7 @@ function horseBuilder(H: number, style: HorseStyle = 'bankura') {
     // legs: thrown columns flaring to the hoof, chocolate towards the foot
     for (const lx of [-1, 1])
       for (const lz of [-1, 1]) {
-        const leg = cyl(0.015 * k, 0.021 * k, legH + 0.05 * k, 14, false, 4)
+        const leg = cyl(0.021 * k, 0.028 * k, legH + 0.05 * k, 14, false, 4)
         const lp = leg.getAttribute('position')
         const lc = new Float32Array(lp.count * 3)
         for (let i = 0; i < lp.count; i++) {
@@ -510,8 +538,38 @@ function horseBuilder(H: number, style: HorseStyle = 'bankura') {
         leg.setAttribute('color', new THREE.BufferAttribute(lc, 3))
         b.add('clay', leg, { p: [lx * (lx > 0 ? 0.09 : 0.085) * k, (legH + 0.05 * k) / 2, lz * 0.026 * k], r: [lz * 0.05, 0, -lx * 0.04] })
       }
-    // flared, upright ears: flattened cones, open to the front
-    for (const s of [-1, 1]) b.add('clay', cyl(0.003 * k, 0.017 * k, 0.09 * k, 12), { p: [poll.x - 0.004 * k, poll.y + 0.055 * k, s * 0.016 * k], r: [s * 0.24, 0, 0.1], s: [1, 1, 0.5], color: '#a8472b' })
+    // ears: tall leaf-shaped blades, cupped and flared forward and out above the poll
+    // (Bankura: tall, pricked high above the poll — the horse's signature), red-brown inside
+    const earH = (style === 'bankura' ? 0.12 : 0.085) * k
+    const leaf = lathe(
+      (
+        [
+          [0, 0],
+          [0.5, 0.06],
+          [0.9, 0.22],
+          [1, 0.42],
+          [0.82, 0.64],
+          [0.45, 0.86],
+          [0, 1],
+        ] as [number, number][]
+      ).map(([r, y]) => [r * 0.026 * k, y * earH] as [number, number]),
+      14,
+    )
+    leaf.scale(0.42, 1, 1)
+    for (const s of [-1, 1]) b.add('clay', leaf, { p: [poll.x + 0.004 * k, poll.y + 0.03 * k, s * 0.024 * k], r: [s * 0.28, 0, -0.22], color: '#a8472b' })
+    if (style === 'bankura') {
+      // incised collars: three dark rings round the thick neck
+      for (const t of [0.5, 0.555, 0.61]) {
+        const p = spine.getPointAt(t)
+        const T = spine.getTangentAt(t)
+        const N = new THREE.Vector3(-T.y, T.x, 0).normalize()
+        const [rh, rw] = secAt(t)
+        const ring = new THREE.TorusGeometry(1, 0.05, 6, 40)
+        ring.applyMatrix4(new THREE.Matrix4().makeBasis(N.multiplyScalar(rh * 1.01), new THREE.Vector3(0, 0, rw * 1.01), T.clone().multiplyScalar(rh)))
+        ring.translate(p.x, p.y, p.z)
+        b.add('slip', ring)
+      }
+    }
     // the crest: a scalloped mane standing up along the back of the neck
     const mane = new THREE.Shape()
     const M = 9
@@ -610,74 +668,264 @@ function extrude(shape: THREE.Shape, depth: number, bevel = depth * 0.3) {
   return g
 }
 
-const ellipse = (cx: number, cy: number, rx: number, ry: number) => {
-  const s = new THREE.Shape()
-  s.absellipse(cx, cy, rx, ry, 0, Math.PI * 2, false, 0)
-  return s
+/** The plaque's paints, worn: the fired body, red earth, ochre, chalk, soot. */
+type Paint = 'clay' | 'red' | 'ochre' | 'white' | 'dark'
+const PAINT: Record<Paint, THREE.Color> = {
+  clay: new THREE.Color('#b8633f'),
+  red: new THREE.Color('#8e3a26'),
+  ochre: new THREE.Color('#c48a4c'),
+  white: new THREE.Color('#dcc3a2'),
+  dark: new THREE.Color('#4e281c'),
 }
 
-/** Relief shapes (plaque-local, unit = plaque width 1, origin at the bottom centre) by paint colour. */
-function motifShapes(motif: PlaqueMotif): Record<'ochre' | 'white' | 'red' | 'dark', THREE.Shape[]> {
-  const out = { ochre: [] as THREE.Shape[], white: [] as THREE.Shape[], red: [] as THREE.Shape[], dark: [] as THREE.Shape[] }
+/**
+ * A relief element, modelled as Molela's makers build a plaque: rolled coils and pressed pads of
+ * clay laid on the slab and smoothed in. Plaque-local units (width 1, origin at the bottom
+ * centre, y up to ~1.1); `h` is the element's height in units of the plaque's relief depth
+ * (negative: an incision, a pressed eye).
+ */
+type Prim = { kind: 'pad'; x: number; y: number; rx: number; ry: number; h: number; c: Paint; rot?: number } | { kind: 'coil'; pts: [number, number][]; r: number; h: number; c: Paint }
+
+const pad = (x: number, y: number, rx: number, ry: number, h: number, c: Paint, rot = 0): Prim => ({ kind: 'pad', x, y, rx, ry, h, c, rot })
+const coil = (pts: [number, number][], r: number, h: number, c: Paint): Prim => ({ kind: 'coil', pts, r, h, c })
+const eye = (x: number, y: number, r: number): Prim[] => [pad(x, y, r, r * 0.7, 0.25, 'white'), pad(x, y, r * 0.45, r * 0.45, -0.35, 'dark')]
+
+/** A rider on a horse at (x, y), scale s (the procession's riders are small ones). */
+function riderPrims(x: number, y: number, s: number): Prim[] {
+  const P = (px: number, py: number): [number, number] => [x + px * s, y + py * s]
+  const out: Prim[] = []
+  // the horse: barrel, chest, arched neck, long head, ears, four legs, a tail
+  out.push(pad(...P(0, 0), 0.25 * s, 0.1 * s, 1, 'white'))
+  out.push(pad(...P(0.19, 0.03), 0.09 * s, 0.1 * s, 1, 'white'))
+  out.push(coil([P(0.2, 0.08), P(0.27, 0.2), P(0.3, 0.3)], 0.055 * s, 0.95, 'white'))
+  out.push(coil([P(0.29, 0.31), P(0.38, 0.27), P(0.44, 0.22)], 0.045 * s, 0.9, 'white'))
+  out.push(coil([P(0.27, 0.34), P(0.26, 0.41)], 0.016 * s, 0.7, 'white'))
+  out.push(coil([P(0.31, 0.34), P(0.31, 0.41)], 0.016 * s, 0.7, 'white'))
+  out.push(...eye(...P(0.34, 0.29), 0.022 * s))
+  for (const [lx, bend] of [
+    [-0.18, 0.02],
+    [-0.1, -0.03],
+    [0.12, 0.03],
+    [0.2, -0.02],
+  ])
+    out.push(coil([P(lx, -0.04), P(lx + bend, -0.14), P(lx, -0.25)], 0.025 * s, 0.8, 'white'))
+  out.push(coil([P(-0.24, 0.03), P(-0.31, -0.04), P(-0.3, -0.16)], 0.022 * s, 0.7, 'white'))
+  // trappings: a saddle cloth with a border, a collar of dots, a bridle
+  out.push(pad(...P(-0.03, 0.02), 0.11 * s, 0.075 * s, 1.3, 'red'))
+  out.push(coil([P(-0.14, -0.04), P(0.08, -0.04)], 0.012 * s, 1.45, 'ochre'))
+  for (let i = 0; i < 5; i++) out.push(pad(...P(0.2 + i * 0.022, 0.1 + i * 0.045), 0.012 * s, 0.012 * s, 1.25, 'ochre'))
+  out.push(coil([P(0.34, 0.33), P(0.41, 0.2)], 0.008 * s, 1.15, 'red'))
+  // the rider: a leg over the flank, the torso, a raised arm with a staff, the head, a turban
+  out.push(coil([P(0.0, 0.08), P(0.04, -0.02), P(0.02, -0.12)], 0.03 * s, 1.5, 'red'))
+  out.push(coil([P(-0.01, 0.1), P(0.0, 0.28)], 0.055 * s, 1.5, 'red'))
+  out.push(coil([P(0.02, 0.25), P(0.12, 0.3), P(0.15, 0.4)], 0.02 * s, 1.5, 'ochre'))
+  out.push(coil([P(0.16, 0.2), P(0.14, 0.58)], 0.01 * s, 1.4, 'dark'))
+  out.push(pad(...P(0.0, 0.36), 0.05 * s, 0.055 * s, 1.6, 'ochre'))
+  out.push(pad(...P(-0.01, 0.42), 0.06 * s, 0.03 * s, 1.7, 'red'))
+  out.push(...eye(...P(0.022, 0.365), 0.016 * s))
+  return out
+}
+
+/** The motif's relief elements. */
+function motifPrims(motif: PlaqueMotif): Prim[] {
+  const out: Prim[] = []
   if (motif === 'rider') {
-    out.white.push(ellipse(0, 0.5, 0.26, 0.11)) // horse body
-    out.white.push(ellipse(0.27, 0.66, 0.05, 0.15)) // neck
-    out.white.push(ellipse(0.33, 0.8, 0.09, 0.045)) // head
-    for (const x of [-0.18, -0.09, 0.1, 0.19]) out.white.push(ellipse(x, 0.33, 0.025, 0.1)) // legs
-    out.red.push(ellipse(-0.02, 0.72, 0.07, 0.13)) // rider body
-    out.ochre.push(ellipse(-0.02, 0.92, 0.055, 0.06)) // rider head
-    out.dark.push(ellipse(-0.08, 0.53, 0.12, 0.03)) // saddle cloth
+    out.push(...riderPrims(-0.04, 0.48, 1))
+    // a ground line of pressed dots under the hooves
+    for (let i = 0; i < 9; i++) out.push(pad(-0.36 + i * 0.09, 0.15, 0.022, 0.022, 0.6, 'ochre'))
   } else if (motif === 'deity') {
-    const canopy = new THREE.Shape()
-    canopy.moveTo(-0.36, 0.9)
-    canopy.quadraticCurveTo(0, 1.2, 0.36, 0.9)
-    canopy.lineTo(0.32, 0.86)
-    canopy.quadraticCurveTo(0, 1.12, -0.32, 0.86)
-    canopy.closePath()
-    out.ochre.push(canopy)
-    out.red.push(ellipse(0, 0.5, 0.2, 0.2)) // seated body / lap
-    out.white.push(ellipse(0, 0.78, 0.075, 0.085)) // head
-    out.ochre.push(ellipse(0, 0.885, 0.06, 0.03)) // crown
-    for (const s of [-1, 1]) out.white.push(ellipse(s * 0.2, 0.56, 0.035, 0.12)) // arms
-    out.dark.push(ellipse(0, 0.27, 0.27, 0.04)) // seat
-  } else if (motif === 'procession') {
-    // three small riders in a row under a band of dots (a frieze plaque)
-    for (const [i, x] of [-0.3, 0, 0.3].entries()) {
-      const y = 0.42 + (i === 1 ? 0.06 : 0)
-      out.white.push(ellipse(x, y, 0.11, 0.05))
-      out.white.push(ellipse(x + 0.1, y + 0.08, 0.025, 0.07))
-      out.white.push(ellipse(x + 0.13, y + 0.15, 0.04, 0.022))
-      for (const dx of [-0.07, 0.07]) out.white.push(ellipse(x + dx, y - 0.08, 0.014, 0.05))
-      out.red.push(ellipse(x - 0.01, y + 0.11, 0.035, 0.06))
-      out.ochre.push(ellipse(x - 0.01, y + 0.2, 0.026, 0.028))
+    // a seated figure under a canopy: a lotus seat, crossed legs, the torso, two arms raised, a crowned head
+    const arc: [number, number][] = []
+    for (let i = 0; i <= 14; i++) {
+      const a = Math.PI * (i / 14)
+      arc.push([Math.cos(a) * 0.36, 0.72 + Math.sin(a) * 0.3])
     }
-    for (let i = 0; i < 9; i++) out.ochre.push(ellipse(-0.36 + i * 0.09, 0.86, 0.022, 0.022))
-    out.dark.push(ellipse(0, 0.27, 0.42, 0.025))
+    out.push(coil(arc, 0.03, 0.9, 'ochre'))
+    for (let i = 0; i <= 12; i++) {
+      const a = Math.PI * (i / 12)
+      out.push(pad(Math.cos(a) * 0.43, 0.72 + Math.sin(a) * 0.36, 0.024, 0.024, 0.7, 'red'))
+    }
+    for (const sx of [-1, 1]) out.push(coil([[sx * 0.36, 0.72], [sx * 0.36, 0.22]], 0.026, 0.8, 'ochre'))
+    for (let i = 0; i < 7; i++) out.push(pad(-0.24 + i * 0.08, 0.22, 0.045, 0.03, 0.9, 'red', i % 2 ? 0.3 : -0.3))
+    out.push(pad(0, 0.33, 0.22, 0.075, 1.1, 'red'))
+    out.push(coil([[0, 0.38], [0, 0.6]], 0.085, 1.2, 'ochre'))
+    for (const sx of [-1, 1]) {
+      out.push(coil([[sx * 0.07, 0.56], [sx * 0.17, 0.5], [sx * 0.2, 0.62]], 0.025, 1.3, 'ochre'))
+      out.push(pad(sx * 0.2, 0.65, 0.03, 0.035, 1.35, 'white'))
+    }
+    out.push(pad(0, 0.71, 0.075, 0.085, 1.55, 'white'))
+    out.push(...eye(-0.028, 0.72, 0.018), ...eye(0.028, 0.72, 0.018))
+    out.push(coil([[-0.07, 0.8], [0, 0.86], [0.07, 0.8]], 0.03, 1.5, 'red'))
+    for (const dx of [-0.05, 0, 0.05]) out.push(pad(dx, 0.88 + (dx === 0 ? 0.03 : 0), 0.02, 0.035, 1.5, 'ochre'))
+    // a necklace of dots
+    for (let i = 0; i < 5; i++) out.push(pad(-0.06 + i * 0.03, 0.6 - Math.abs(i - 2) * 0.012, 0.012, 0.012, 1.4, 'white'))
+  } else if (motif === 'procession') {
+    // three riders, one a little ahead, between a band of dots and a ground line
+    for (const [i, x] of [-0.27, 0.02, 0.3].entries()) out.push(...riderPrims(x - 0.07, 0.5 + (i === 1 ? 0.04 : 0), 0.52))
+    for (let i = 0; i < 9; i++) out.push(pad(-0.36 + i * 0.09, 0.9, 0.022, 0.022, 0.8, 'ochre'))
+    out.push(coil([[-0.42, 0.34], [0.42, 0.34]], 0.014, 0.7, 'dark'))
   } else if (motif === 'canopy') {
-    // a standing figure in a shrine: two pillars, a stepped canopy, a lotus base
-    for (const sx of [-1, 1]) out.ochre.push(ellipse(sx * 0.3, 0.55, 0.035, 0.3))
-    const roof = new THREE.Shape()
-    roof.moveTo(-0.4, 0.86)
-    roof.lineTo(0.4, 0.86)
-    roof.lineTo(0.28, 0.96)
-    roof.lineTo(0.12, 0.98)
-    roof.quadraticCurveTo(0, 1.14, -0.12, 0.98)
-    roof.lineTo(-0.28, 0.96)
-    roof.closePath()
-    out.red.push(roof)
-    out.white.push(ellipse(0, 0.74, 0.06, 0.07))
-    out.red.push(ellipse(0, 0.52, 0.11, 0.17))
-    for (const sx of [-1, 1]) out.white.push(ellipse(sx * 0.13, 0.55, 0.025, 0.11))
-    out.dark.push(ellipse(0, 0.3, 0.2, 0.045))
-    for (let i = 0; i < 5; i++) out.ochre.push(ellipse(-0.16 + i * 0.08, 0.26, 0.035, 0.02))
+    // a standing figure in a shrine: two pillars, a stepped roof, a lotus base
+    for (const sx of [-1, 1]) {
+      out.push(coil([[sx * 0.3, 0.26], [sx * 0.3, 0.84]], 0.035, 0.9, 'ochre'))
+      for (const y of [0.3, 0.8]) out.push(pad(sx * 0.3, y, 0.055, 0.025, 1.0, 'red'))
+    }
+    out.push(coil([[-0.4, 0.88], [0.4, 0.88]], 0.025, 1.0, 'red'))
+    out.push(coil([[-0.3, 0.95], [0.3, 0.95]], 0.022, 1.0, 'red'))
+    out.push(coil([[-0.16, 1.0], [0, 1.1], [0.16, 1.0]], 0.024, 1.0, 'red'))
+    for (let i = 0; i < 5; i++) out.push(pad(-0.16 + i * 0.08, 0.27, 0.04, 0.025, 0.9, 'ochre', i % 2 ? 0.4 : -0.4))
+    out.push(coil([[0, 0.32], [0, 0.6]], 0.075, 1.2, 'red'))
+    out.push(pad(0, 0.36, 0.11, 0.06, 1.15, 'red'))
+    for (const sx of [-1, 1]) {
+      out.push(coil([[sx * 0.07, 0.58], [sx * 0.13, 0.48], [sx * 0.11, 0.38]], 0.022, 1.3, 'white'))
+      out.push(coil([[sx * 0.035, 0.32], [sx * 0.04, 0.28]], 0.02, 1.2, 'white'))
+    }
+    out.push(pad(0, 0.68, 0.06, 0.07, 1.5, 'white'))
+    out.push(...eye(-0.022, 0.69, 0.015), ...eye(0.022, 0.69, 0.015))
+    out.push(pad(0, 0.765, 0.065, 0.028, 1.5, 'ochre'))
   } else {
-    // hooded serpent: coils + raised hood
-    for (let i = 0; i < 3; i++) out.white.push(ellipse(0, 0.26 + i * 0.12, 0.28 - i * 0.06, 0.06))
-    out.red.push(ellipse(0, 0.72, 0.17, 0.2)) // hood
-    out.ochre.push(ellipse(0, 0.74, 0.08, 0.12)) // hood mark
-    out.white.push(ellipse(0, 0.93, 0.06, 0.05)) // head
+    // a hooded serpent: three coils, the body rising, a fan of five hoods
+    for (let i = 0; i < 3; i++) {
+      const pts: [number, number][] = []
+      const rx = 0.3 - i * 0.065
+      for (let j = 0; j <= 16; j++) {
+        const a = Math.PI * 2 * (j / 16)
+        pts.push([Math.cos(a) * rx, 0.27 + i * 0.1 + Math.sin(a) * 0.05])
+      }
+      out.push(coil(pts, 0.032, 1 + i * 0.1, i % 2 ? 'ochre' : 'white'))
+    }
+    out.push(coil([[0.12, 0.45], [0.05, 0.55], [0, 0.66]], 0.045, 1.3, 'white'))
+    for (let i = -2; i <= 2; i++) {
+      const a = Math.PI / 2 + i * 0.32
+      const cx = Math.cos(a) * 0.12
+      const cy = 0.72 + Math.sin(a) * 0.12
+      out.push(pad(cx, cy, 0.075, 0.1, 1.15, 'red', a - Math.PI / 2))
+      out.push(pad(cx, cy + 0.01, 0.03, 0.05, 1.35, 'ochre', a - Math.PI / 2))
+      out.push(...eye(cx + Math.cos(a) * 0.05 - 0.015, cy + Math.sin(a) * 0.05, 0.012), ...eye(cx + Math.cos(a) * 0.05 + 0.015, cy + Math.sin(a) * 0.05, 0.012))
+    }
+    // the scales: pressed dots along the body's coils
+    for (let i = 0; i < 14; i++) out.push(pad(-0.26 + i * 0.04, 0.27 + Math.sin(i) * 0.012, 0.01, 0.01, -0.2, 'dark'))
   }
   return out
+}
+
+/** Distance from (px, py) to the segment a–b. */
+function segDist(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
+  const dx = bx - ax
+  const dy = by - ay
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1)))
+  return Math.hypot(px - ax - dx * t, py - ay - dy * t)
+}
+
+/**
+ * The plaque's modelled face: a height field over the round-headed slab (W wide, ph tall), each
+ * element a rounded pad or coil, coloured by the paint of the element that stands highest
+ * there, a coil border inset from the edge. Vertex colours carry the paint; metre UVs.
+ */
+function plaqueFace(motif: PlaqueMotif, W: number, ph: number, relief: number, detail = 1) {
+  const prims = motifPrims(motif)
+  // the motifs are drawn on a unit-wide plan 1.1 high: fit it to the slab with at most a slight
+  // vertical stretch (a tall plaque gives the figures room above and below, never a giraffe's neck)
+  const sx = W * 0.82
+  const sy = Math.min(ph / 1.1, sx * 1.25)
+  const y0 = (ph - 1.1 * sy) * 0.42
+  // ~1 cm cells on a niche plaque at full detail, fewer for a small one and on the lower tiers
+  // (GRAND §10: a 136-column grid on every plaque was ~60k triangles each)
+  const nx = Math.max(28, Math.round(Math.min(136, 150 * W) * detail))
+  const ny = Math.min(220, Math.round((nx * ph) / W))
+  const spring = ph - W / 2
+  const pos: number[] = []
+  const col: number[] = []
+  const uv: number[] = []
+  const c = new THREE.Color()
+  for (let j = 0; j <= ny; j++)
+    for (let i = 0; i <= nx; i++) {
+      const u = (i / nx) * 2 - 1
+      const v = j / ny
+      let x = (u * W) / 2
+      let y = v * ph
+      if (y > spring) {
+        // the square above the springing mapped on to the half disc (elliptical grid mapping)
+        const a = u
+        const b = (y - spring) / (W / 2)
+        x = (a * Math.sqrt(Math.max(0, 1 - (b * b) / 2)) * W) / 2
+        y = spring + (b * Math.sqrt(Math.max(0, 1 - (a * a) / 2)) * W) / 2
+      }
+      const X = x / sx
+      const Y = (y - y0) / sy
+      let best = 0
+      let paint: Paint = 'clay'
+      let cut = 0
+      // the paint blends between neighbouring elements by their height (no stair-stepped edges)
+      let wSum = 0
+      const mix = new THREE.Color(0, 0, 0)
+      for (const p of prims) {
+        let d: number
+        if (p.kind === 'pad') {
+          const cr = Math.cos(p.rot ?? 0)
+          const sr = Math.sin(p.rot ?? 0)
+          const lx = (X - p.x) * cr + (Y - p.y) * sr
+          const ly = -(X - p.x) * sr + (Y - p.y) * cr
+          d = Math.hypot(lx / p.rx, ly / p.ry)
+        } else {
+          d = Infinity
+          for (let k = 0; k < p.pts.length - 1; k++) d = Math.min(d, segDist(X, Y, p.pts[k][0], p.pts[k][1], p.pts[k + 1][0], p.pts[k + 1][1]) / p.r)
+        }
+        if (d >= 1) continue
+        // a rounded pillow profile, steep at its edge as a pressed-on pad is
+        const z = p.h * Math.pow(1 - d * d, 1.15)
+        if (p.h < 0) cut = Math.min(cut, z)
+        else {
+          const w = z ** 6
+          wSum += w
+          mix.r += PAINT[p.c].r * w
+          mix.g += PAINT[p.c].g * w
+          mix.b += PAINT[p.c].b * w
+          if (z > best) {
+            best = z
+            paint = p.c
+          }
+        }
+      }
+      // the coil border, inset from the slab's edge
+      const edge = y <= spring ? Math.min(W / 2 - Math.abs(x), y) : W / 2 - Math.hypot(x, y - spring)
+      const rim = 0.8 * Math.exp(-(((edge - W * 0.045) / (W * 0.016)) ** 2))
+      if (rim > 0.02) {
+        const w = rim ** 6
+        wSum += w
+        mix.r += PAINT.red.r * w
+        mix.g += PAINT.red.g * w
+        mix.b += PAINT.red.b * w
+      }
+      if (rim > best) {
+        best = rim
+        paint = 'red'
+      }
+      const z = (best + cut) * relief + relief * 0.025 * fbm(x * 16, y * 16, 3, 2)
+      pos.push(x, y, Math.max(0, z))
+      uv.push(x, y)
+      c.copy(PAINT.clay)
+      if (wSum > 0) c.lerp(mix.multiplyScalar(1 / wSum), THREE.MathUtils.smoothstep(best, 0.01, 0.3))
+      if (cut < 0) c.lerp(PAINT.dark, THREE.MathUtils.smoothstep(-cut, 0.02, 0.15))
+      // worn paint: the fired body shows through on the high points and in flakes
+      const wear = 0.5 + 0.5 * fbm(x * 9, y * 9, 7, 2)
+      if (paint !== 'clay' && wear > 0.66) c.lerp(PAINT.clay, Math.min(0.5, (wear - 0.66) * 2.5))
+      col.push(c.r, c.g, c.b)
+    }
+  const idx: number[] = []
+  const R = nx + 1
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++) {
+      const a = j * R + i
+      idx.push(a, a + 1, a + R, a + 1, a + R + 1, a + R)
+    }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  return g
 }
 
 export function VotivePlaque({ config }: ModelProps) {
@@ -688,14 +936,15 @@ export function VotivePlaque({ config }: ModelProps) {
   const sizeP = config.props?.size
   const H = typeof sizeP === 'number' ? sizeP : (config.height ?? 0.38)
   const fx = typeof sizeP === 'number' ? sizeP * 0.7 : fp(config, [0.26, 0.26])[0]
-  const parts = useBuilt(geoKey('votive-plaque', config), () => {
+  const detail = sculptDetailFor(useMuseum((s) => s.tier))
+  const parts = useBuilt(`${geoKey('votive-plaque', config)}|${detail}`, () => {
     const b = new Builder()
     const W = fx * 0.9
     const ph = H - 0.03 // plaque height above its stand
-    // a real slab and real relief: modelled up 3 % of the plaque's height (≥ 15 mm on the niche
+    // a real slab and real relief: modelled up 5 % of the plaque's height (≥ 25 mm on the niche
     // wall's 0.6–1.1 m plaques), so raking light from the niche head models every figure
     const T = Math.max(0.025, H * 0.05)
-    const RELIEF = Math.max(0.005, H * 0.026)
+    const RELIEF = Math.max(0.008, H * 0.05)
     const lean = -0.12
     // arched slab
     const slab = new THREE.Shape()
@@ -707,8 +956,6 @@ export function VotivePlaque({ config }: ModelProps) {
     const SB = 0.003
     const slabG = extrude(slab, T - 2 * SB, SB)
     slabG.translate(0, 0, -T / 2)
-    // front face of the slab (painted parts sit just proud of it)
-    const front = T / 2 + 0.0004
     const tilt = (g: THREE.BufferGeometry, z: number) => {
       g.translate(0, 0, z)
       g.rotateX(lean)
@@ -716,50 +963,14 @@ export function VotivePlaque({ config }: ModelProps) {
       return g
     }
     b.add('clay', tilt(slabG, 0))
-    // painted border band
-    const border = new THREE.Shape()
-    border.moveTo(-W / 2 + 0.008, 0.008)
-    border.lineTo(W / 2 - 0.008, 0.008)
-    border.lineTo(W / 2 - 0.008, ph - W / 2)
-    border.absarc(0, ph - W / 2, W / 2 - 0.008, 0, Math.PI, false)
-    border.closePath()
-    const hole = new THREE.Path()
-    hole.moveTo(-W / 2 + 0.02, 0.02)
-    hole.lineTo(W / 2 - 0.02, 0.02)
-    hole.lineTo(W / 2 - 0.02, ph - W / 2)
-    hole.absarc(0, ph - W / 2, W / 2 - 0.02, 0, Math.PI, false)
-    hole.closePath()
-    border.holes.push(hole)
-    b.add('red', tilt(extrude(border, 0.0015, 0), front))
-    // relief
-    const shapes = motifShapes(motif)
-    const sc = W * 0.82
-    for (const [key, list] of Object.entries(shapes)) {
-      for (const sh of list) {
-        const g = extrude(sh, RELIEF * 0.55, RELIEF * 0.45)
-        g.scale(sc, ph / 1.1, 1)
-        g.translate(0, 0.01, 0)
-        b.add(key, tilt(g, front))
-      }
-    }
+    // the modelled, painted face, laid on the slab's front
+    b.add('face', tilt(plaqueFace(motif, W - 2 * SB, ph - SB, RELIEF, detail), T / 2 + 0.0012))
     // small stand behind the foot
     b.add('clay', rbox(W * 0.7, 0.03, 0.08, 0.006), { p: [0, 0.015, 0] })
     return b
   })
   const clay = clayMaterial(m, 'terracotta', 0.1)
-  // unpainted fired terracotta carries the relief; the slip colours are sparse and worn
-  return (
-    <Parts
-      parts={parts}
-      materials={{
-        clay,
-        red: tinted(m.terracotta, '#9a4630', { roughness: 0.9 }),
-        ochre: tinted(m.terracotta, '#c08a5c', { roughness: 0.9 }),
-        white: tinted(m.terracotta, '#c99a7c', { roughness: 0.9 }),
-        dark: tinted(m.terracotta, '#6a3a2a', { roughness: 0.9 }),
-      }}
-    />
-  )
+  return <Parts parts={parts} materials={{ clay, face: tinted(m.terracotta, '#ffffff', { vertexColors: true, roughness: 0.88, envMapIntensity: 0.55 }) }} />
 }
 
 /* ------------------------------------------------------------------ */
@@ -816,9 +1027,16 @@ export function Podium({ config }: ModelProps) {
     b.add('gap', rbox(fx - 0.02, 0.025, fz - 0.02, 0.002), { p: [0, 0.0125, 0] })
     b.add('body', rbox(fx, H - 0.025, fz, 0.004), { p: [0, 0.025 + (H - 0.025) / 2, 0] })
     if (vitrine) b.add('glass', rbox(fx - 0.01, fx * 1.1, fz - 0.01, 0.002), { p: [0, H + (fx * 1.1) / 2, 0] })
+    // `edge`: a polished brass lip round the top, so a lacquered plinth's edge catches the light
+    if (config.props?.edge === true) b.add('brass', rbox(fx + 0.012, 0.014, fz + 0.012, 0.003), { p: [0, H - 0.007, 0] })
+    // `label`: a brass label strip on the visitor's face (+z), under the top
+    if (config.props?.label === true) b.add('brass', rbox(Math.min(fx * 0.62, 0.42), 0.045, 0.006, 0.002), { p: [0, H - 0.11, fz / 2 + 0.003] })
     return b
   })
-  return <Parts parts={parts} materials={{ body: m.oxblood, gap: m.shadowGap, glass: m.glass }} />
+  // `finish`: an optional body colour over the oxblood lacquer (the Herd's rose-lime steps, C's charcoal)
+  const finish = str(config, 'finish', '')
+  const body = /^#[0-9a-f]{6}$/i.test(finish) ? tinted(m.oxblood, finish, { roughness: num(config, 'roughness', 0.7) }) : m.oxblood
+  return <Parts parts={parts} materials={{ body, gap: m.shadowGap, glass: m.glass, brass: m.brass }} />
 }
 
 /* ------------------------------------------------------------------ */

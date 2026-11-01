@@ -127,7 +127,8 @@ function titleLayout(lang: Lang): CarvedLayout {
   return {
     width: P.width,
     height: P.height,
-    pad: 0.42,
+    // a generous margin: the running intro sits well inside the panel's frame, seen from any angle
+    pad: 0.62,
     align: 'center',
     pxPerM: 520,
     lines: [
@@ -147,9 +148,20 @@ function TitlePanel() {
   const aMid = P.aDeg * DEG
   const geo = useMemo(() => curvedStrip(front, aMid, P.width, P.height, P.y0), [aMid, front, P.y0, P.height, P.width])
   useEffect(() => () => geo.dispose(), [geo])
-  // pale raw clay, the letters cut dark into it: a monumental title, never orange on orange
-  const maps = useMaps(() => carvedMaps(titleLayout(lang), { ground: '#dcc4a8', floor: '#2a120a', grain: 0.55, seed: 11 }), [lang])
-  const face = useMapped(maps, { color: '#ffffff', roughness: 0.94, normalScale: new THREE.Vector2(2.2, 2.2) })
+  // a thin bronze frame standing just proud of the face: a crisp, straight edge all round the
+  // panel (the recess's cut edge never shows as a ragged line)
+  const frame = useMemo(() => {
+    const t = 0.045
+    const r = front + 0.01
+    const side = (s: number) => curvedStrip(r, aMid + (s * (P.width / 2 + t / 2)) / r, t, P.height + 2 * t, P.y0 - t)
+    return [curvedStrip(r, aMid, P.width + 2 * t, t, P.y0 - t), curvedStrip(r, aMid, P.width + 2 * t, t, P.y0 + P.height), side(-1), side(1)]
+  }, [aMid, front, P.y0, P.height, P.width])
+  useEffect(() => () => frame.forEach((g) => g.dispose()), [frame])
+  const m = useMaterials()
+  // a smooth pale lime-clay inlay, the letters cut crisply dark into it: flat and true, never a
+  // warped sheet (a faint grain only, a shallow normal)
+  const maps = useMaps(() => carvedMaps(titleLayout(lang), { ground: '#e4d5c1', floor: '#2a120a', grain: 0.12, seed: 11 }), [lang])
+  const face = useMapped(maps, { color: '#ffffff', roughness: 0.86, normalScale: new THREE.Vector2(0.9, 0.9) })
 
   // one head off to the side and above, close in to the wall: a single raking light across the
   // pale panel that throws every cut letter's edge into shadow (the wall round it is oxblood)
@@ -168,6 +180,9 @@ function TitlePanel() {
   return (
     <group name="h-title-panel">
       {maps && <mesh geometry={geo} material={face} receiveShadow raycast={() => null} />}
+      {frame.map((g, i) => (
+        <mesh key={i} geometry={g} material={m.brass} raycast={() => null} />
+      ))}
       <TrackSpot position={spot.mount} target={spot.target} angle={spot.angle} intensity={spot.intensity} />
     </group>
   )

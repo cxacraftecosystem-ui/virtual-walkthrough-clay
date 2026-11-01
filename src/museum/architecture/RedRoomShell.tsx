@@ -8,6 +8,9 @@
  *   oculus ....... r 1.5 open to the sky at the head of a stepped light-well of pale plaster
  *                  (as the dome's), rising 1.6 m through and above the roof cap
  *   roof cap ..... a glazed terracotta ring over the drum's head, a slim fascia round it
+ *   sky disc ..... the sky at the light-well's head, framed by the stepped reveal: clear blue
+ *                  by day, peach at a low sun, starry dark blue at night; a soft shaft of
+ *                  daylight falls from it onto the plinth
  */
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
@@ -16,6 +19,7 @@ import { RED_ROOM } from '../config/satellites'
 import { StaticMerge } from '../effects/StaticMerge'
 import { ambience } from '../lighting/timeOfDayState'
 import { useMaterials } from '../materials/materials'
+import { makeSkyDisc } from './skyDisc'
 import { Mesh, revolve, type V2 } from './sweep'
 
 const RR = RED_ROOM
@@ -57,14 +61,70 @@ function shellGeometry() {
   return { red: red.build(), cap: cap.build(), cove: cove.build(), well: well.build() }
 }
 
+/**
+ * A soft shaft of daylight from the oculus down onto the plinth: a faint additive column, brightest
+ * where the eye looks through its core and gone at its silhouette, so it is a haze, never a cone.
+ */
+function shaftGeometry() {
+  const top = RED_ROOM.height + RED_ROOM_WELL.stepH
+  const g = new THREE.CylinderGeometry(RED_ROOM.oculusR * 0.86, RED_ROOM.oculusR * 1.0, top - 0.9, 48, 6, true)
+  g.translate(RED_ROOM.cx, 0.9 + (top - 0.9) / 2, RED_ROOM.cz)
+  return g
+}
+const shaftMat = new THREE.ShaderMaterial({
+  name: 'redRoomShaft',
+  uniforms: { uStrength: { value: 0.05 }, uColor: { value: new THREE.Color('#fff1dc') } },
+  vertexShader: /* glsl */ `
+    varying vec3 vN;
+    varying vec3 vV;
+    varying float vY;
+    void main() {
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vN = normalize(normalMatrix * normal);
+      vV = normalize(-mv.xyz);
+      vY = uv.y;
+      gl_Position = projectionMatrix * mv;
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform float uStrength;
+    uniform vec3 uColor;
+    varying vec3 vN;
+    varying vec3 vV;
+    varying float vY;
+    void main() {
+      float core = pow(abs(dot(normalize(vN), normalize(vV))), 2.2);
+      float fade = smoothstep(0.0, 0.45, vY) * (0.55 + 0.45 * vY);
+      gl_FragColor = vec4(uColor * uStrength * core * fade, 1.0);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  side: THREE.DoubleSide,
+  toneMapped: false,
+})
+
 const coveMat = new THREE.MeshStandardMaterial({ name: 'redRoomCove', color: '#5a1410', emissive: new THREE.Color('#ff6a3c'), emissiveIntensity: 1.4, roughness: 0.7 })
 
 export function RedRoomShell() {
   const m = useMaterials()
   const geo = useMemo(shellGeometry, [])
   useEffect(() => () => Object.values(geo).forEach((g) => g?.dispose()), [geo])
-  useFrame(() => {
+  // the sky at the light-well's head, framed by the stepped reveal
+  const sky = useMemo(() => makeSkyDisc(RR.cx, RR.height - 0.004 + RED_ROOM_WELL.rise - 0.02, RR.cz, RR.oculusR + 0.01), [])
+  const shaft = useMemo(shaftGeometry, [])
+  useEffect(
+    () => () => {
+      sky.dispose()
+      shaft.dispose()
+    },
+    [sky, shaft],
+  )
+  useFrame(({ clock }) => {
     coveMat.emissiveIntensity = 0.9 + 1.4 * ambience.night
+    sky.update(clock.elapsedTime)
+    shaftMat.uniforms.uStrength.value = 0.055 * ambience.daylight
   })
   return (
     <group name="red-room-shell">
@@ -74,6 +134,8 @@ export function RedRoomShell() {
         {geo.well && <mesh geometry={geo.well} material={m.blushPlaster} receiveShadow />}
       </StaticMerge>
       {geo.cove && <mesh geometry={geo.cove} material={coveMat} raycast={() => null} />}
+      <mesh geometry={sky.geometry} material={sky.material} raycast={() => null} />
+      <mesh geometry={shaft} material={shaftMat} renderOrder={3} raycast={() => null} />
     </group>
   )
 }

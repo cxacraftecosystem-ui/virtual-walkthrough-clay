@@ -29,6 +29,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { SOURCED_REGISTRY } from '../config/sourcedRegistry.generated'
 import { injectAtmosphere } from '../lighting/atmosphere/inject'
+import { cutOutTwigCards, foliageMaterial, foliageNormals, isLeaf } from '../materials/foliage'
 import { useMaterials } from '../materials/materials'
 import { makeTriplanar } from '../materials/triplanar'
 import { TEXTURE_TILE_METRES } from '../materials/proceduralTextures'
@@ -372,6 +373,7 @@ export function resolveSlug(slug: string | undefined, nth = 0): string | undefin
 }
 
 const mergedSourced = new Map<string, THREE.BufferGeometry[] & { materials?: THREE.Material[] }>()
+const leafMats = new Map<THREE.Material, THREE.Material>()
 
 /** All meshes of a loaded GLB baked into one geometry per material (cached per url). */
 function bakeScene(url: string, scene: THREE.Object3D): { geometry: THREE.BufferGeometry; material: THREE.Material }[] {
@@ -382,8 +384,21 @@ function bakeScene(url: string, scene: THREE.Object3D): { geometry: THREE.Buffer
   scene.traverse((o) => {
     const mesh = o as THREE.Mesh
     if (!mesh.isMesh) return
-    const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
-    const g = mesh.geometry.clone()
+    const src = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+    // leaf cards: a cut-out canopy lit as one mass (materials/foliage.ts), one material per source
+    const leaf = isLeaf(src)
+    let mat: THREE.Material
+    if (leaf) {
+      mat = leafMats.get(src) ?? foliageMaterial(src, 1.3, 0.42)
+      leafMats.set(src, mat)
+    } else if (!leafMats.has(src)) {
+      // twig cards authored opaque: cut out by their texture's alpha (a clone, the GLB's own stays)
+      const c = src.clone()
+      mat = cutOutTwigCards(c) ? c : src
+      if (mat !== src) leafMats.set(src, mat)
+      else c.dispose()
+    } else mat = leafMats.get(src)!
+    let g = mesh.geometry.clone()
     // a scan whose material reads vertex colours keeps them: without the attribute WebGL feeds
     // the shader black, and the rock renders as a hole in the ground
     const keep = (mat as THREE.MeshStandardMaterial).vertexColors ? ['position', 'normal', 'uv', 'color'] : ['position', 'normal', 'uv']
@@ -402,6 +417,11 @@ function bakeScene(url: string, scene: THREE.Object3D): { geometry: THREE.Buffer
     if (!g.getAttribute('normal')) g.computeVertexNormals()
     if (keep.length === 4 && !g.getAttribute('color')) g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.getAttribute('position').count * 3).fill(1), 3))
     g.applyMatrix4(mesh.matrixWorld)
+    if (leaf) {
+      const f = foliageNormals(g)
+      g.dispose()
+      g = f
+    }
     const list = groups.get(mat) ?? []
     list.push(g.index ? g : g)
     groups.set(mat, list)
@@ -596,10 +616,12 @@ export function ErodedFormation({ config }: ModelProps) {
   const entry = sourcedEntry(source)
   const scanDepth = entry ? ((entry.bbox[5] - entry.bbox[2]) * h) / Math.max(1e-3, entry.bbox[4] - entry.bbox[1]) : d
   const cutZ = uniform && keepFront > 0 ? scanDepth / 2 - keepFront : undefined
-  // a scan's own UVs are a photo atlas's: any scan samples the raw clay triplanar, in metres
+  // a scan's own UVs are a photo atlas's, and a procedural pillar's run round its cross-section by
+  // angle (stretched where the erosion cuts deep, the streaks seen up close): every formation
+  // samples the raw clay triplanar, in metres
   const scanned = !!entry
   const mat = useMemo(
-    () => strataMaterial(core.rawClay, palette, seed + hashStr(config.id) % 13, scanned ? { triplanar: 1.4, cutZ } : {}),
+    () => strataMaterial(core.rawClay, palette, seed + hashStr(config.id) % 13, scanned ? { triplanar: 1.4, cutZ } : { triplanar: 1.4 }),
     [core.rawClay, palette, seed, config.id, scanned, cutZ],
   )
   const geo = useMemo(() => formationGeometry({ h, w, d, seed, strata }, tier), [h, w, d, seed, strata, tier])

@@ -59,8 +59,12 @@ const LINE = 0.01
 export const SAT_ROOF = { thick: 0.22, over: 0.16, coping: { batter: 0.35, w: 0.32, rise: 0.18 } }
 /** Where the Red Room's drum passes through the Library's ceiling and roof (its outer face, a hair clear). */
 export const LIBRARY_ROOF_LIGHT = { r: Math.hypot(RED_ROOM.cx, RED_ROOM.cz), aDeg: RED_ROOM.aDeg, radius: RED_ROOM.r + RED_ROOM.t + 0.01 }
-/** The berm behind the crescents: how far it runs out past the rooms' outer wall, and its end ramps (deg). */
-export const CRESCENT_BERM = { run: 9, rampDeg: 7 } as const
+/**
+ * The berm behind the crescents: how far it runs out past the rooms' outer wall, and its end ramps
+ * (deg). Beyond the plinth's edge each end ramp flares by up to `flareDeg` as the berm runs out, so
+ * the mound's ends roll away into the land as long shoulders, never a pyramid's ridge.
+ */
+export const CRESCENT_BERM = { run: 15, rampDeg: 7, flareDeg: 16 } as const
 
 /* ------------------------------------------------------------------ */
 /* Geometry helpers (world space, plan angles in radians)              */
@@ -213,9 +217,9 @@ function useNorthWingMaterials(): NorthWingMaterials {
     let set = byPx.get(px)
     if (!set) {
       set = buildNorthWingMaterials(m, px)
-      // the meadow takes Ground054 where the tier loads it, tinted to the terrain's dry grass so
-      // the earth-sheltered wing disappears into the landscape
-      if (applyPbr(set.meadow, 'Ground054', tier, { tile: 3 })) set.meadow.color.set('#b8ae88')
+      // the meadow takes Ground054 where the tier loads it, tinted to the landscape's meadow green
+      // (over the soil's warm albedo) so the earth-sheltered wing disappears into the land
+      if (applyPbr(set.meadow, 'Ground054', tier, { tile: 3 })) set.meadow.color.set('#a3b465')
       byPx.set(px, set)
     }
     return set
@@ -246,10 +250,10 @@ function buildNorthWingMaterials(m: ReturnType<typeof useMaterials>, px: number)
   const clere = jaali(256, 'clerestory')
   const clerestory = new THREE.MeshStandardMaterial({ name: 'libraryClerestory', color: '#a9704f', roughness: 0.9, emissive: new THREE.Color('#ffe2b8'), emissiveMap: invertedMask(clere), emissiveIntensity: 1.2 })
   const cove = new THREE.MeshStandardMaterial({ name: 'satCove', color: '#f3d2b4', emissive: new THREE.Color('#ff9a5a'), emissiveIntensity: 1.2, roughness: 0.7 })
-  // the planted roofs and the berm: Ground054 tinted towards a dry meadow (its own copy, so the
+  // the planted roofs and the berm: Ground054 tinted to the landscape's meadow green (its own copy, so the
   // library's maps reach it when they arrive)
   const soil = m.groundSoil as THREE.MeshStandardMaterial
-  const meadow = new THREE.MeshStandardMaterial({ name: 'crescentMeadow', color: '#a39b74', map: soil.map, normalMap: soil.normalMap, normalScale: new THREE.Vector2(1, 1), roughnessMap: soil.roughnessMap, roughness: 1, envMapIntensity: 0.3 })
+  const meadow = new THREE.MeshStandardMaterial({ name: 'crescentMeadow', color: '#7f8d4e', map: soil.map, normalMap: soil.normalMap, normalScale: new THREE.Vector2(1, 1), roughnessMap: soil.roughnessMap, roughness: 1, envMapIntensity: 0.3 })
   const pendant = new THREE.MeshStandardMaterial({ name: 'atlasPendant', color: '#f6f3ee', emissive: new THREE.Color(kelvinToHex(4000)), emissiveIntensity: 2.2, roughness: 0.5 })
   const skylight = new THREE.MeshStandardMaterial({ name: 'libSkylight', color: '#eef3f6', emissive: new THREE.Color('#e9f1ff'), emissiveIntensity: 1.4, roughness: 0.2 })
   const dapple = new THREE.MeshBasicMaterial({ name: 'haatDapple', color: '#ffd7a4', alphaMap: softDapple(), transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -3 })
@@ -424,13 +428,13 @@ function roofParts(s: SatelliteSpec) {
 }
 
 /** Height of the berm's crest at plan angle aDeg: the rooms' roofs, ramping down at both ends. */
-export function bermCrest(aDeg: number): number {
+export function bermCrest(aDeg: number, rampDeg: number = CRESCENT_BERM.rampDeg): number {
   const rooms = [...SATELLITES].sort((a, b) => a.fromDeg - b.fromDeg)
   const from = rooms[0].fromDeg
   const to = rooms[rooms.length - 1].toDeg
   const room = rooms.find((r) => aDeg >= r.fromDeg - 1 && aDeg <= r.toDeg + 1)
   const top = (room ? room.height : 6) + SAT_ROOF.thick - 0.05
-  const ramp = Math.min(1, Math.max(0, (aDeg - from + CRESCENT_BERM.rampDeg) / CRESCENT_BERM.rampDeg), Math.max(0, (to + CRESCENT_BERM.rampDeg - aDeg) / CRESCENT_BERM.rampDeg))
+  const ramp = Math.min(1, Math.max(0, (aDeg - from + rampDeg) / rampDeg), Math.max(0, (to + rampDeg - aDeg) / rampDeg))
   // a rounded shoulder (the square root of the smoothstep): the mound swells out of the ground and
   // rolls over into the roofs, never a straight-sided pyramid
   return top * Math.sqrt(ramp * ramp * (3 - 2 * ramp))
@@ -440,17 +444,21 @@ export function bermCrest(aDeg: number): number {
 export function bermY(aDeg: number, r: number): number {
   const r0 = S.outerOuter + SAT_ROOF.over
   const t = Math.min(1, Math.max(0, (r - r0) / CRESCENT_BERM.run))
-  return bermCrest(aDeg) * (1 - t * t * (3 - 2 * t)) - 0.2 * t
+  // the ends flare as the berm runs out (none at the plinth's edge, where the end mounds meet it)
+  const fall = 1 - t * t * (3 - 2 * t)
+  return bermCrest(aDeg, CRESCENT_BERM.rampDeg + CRESCENT_BERM.flareDeg * Math.sqrt(t)) * fall - 0.2 * t
 }
 
 /** The berm: one earth mound behind all four rooms (a grid in angle × radius). */
 function bermGeometry() {
   const rooms = [...SATELLITES].sort((a, b) => a.fromDeg - b.fromDeg)
-  const A0 = rooms[0].fromDeg - CRESCENT_BERM.rampDeg
-  const A1 = rooms[rooms.length - 1].toDeg + CRESCENT_BERM.rampDeg
-  const r0 = S.outerOuter + SAT_ROOF.over - 0.02
+  const A0 = rooms[0].fromDeg - CRESCENT_BERM.rampDeg - CRESCENT_BERM.flareDeg
+  const A1 = rooms[rooms.length - 1].toDeg + CRESCENT_BERM.rampDeg + CRESCENT_BERM.flareDeg
+  // (starting 0.3 m in under the roofs' edge: it overlaps the end mounds there, so no seam of sky
+  // shows between them along the ramps' crest)
+  const r0 = S.outerOuter + SAT_ROOF.over - 0.3
   const nA = Math.ceil(A1 - A0) * 2
-  const nR = 14
+  const nR = 22
   const pos: number[] = []
   const uv: number[] = []
   const idx: number[] = []
@@ -508,10 +516,12 @@ function endBerms(): THREE.BufferGeometry[] {
     for (let i = 0; i <= nA; i++) {
       const a = a0 + ((a1 - a0) * i) / nA
       for (let j = 0; j <= nR; j++) {
-        const r = rIn + ((rOut - rIn) * j) / nR
+        // a little past the roofs' edge, tucked under the main berm (no seam between the two)
+        const r = rIn + ((rOut + 0.4 - rIn) * j) / nR
         const t = Math.min(1, Math.max(0, (r - rIn) / BATTER))
         const [x, z] = polar(r, a)
-        pos.push(x, bermCrest(a) * t * t * (3 - 2 * t) - 0.04, z)
+        const yIn = bermCrest(a) * t * t * (3 - 2 * t) - 0.04
+        pos.push(x, r > rOut ? Math.min(yIn, bermY(a, r) - 0.04) : yIn, z)
         uv.push(a * DEG * rOut, r - rIn)
       }
     }
@@ -703,12 +713,13 @@ function plaqueUV(g: THREE.BufferGeometry) {
 function RoofPlanting() {
   const tier = useMuseum((st) => st.tier)
   const on = tier !== 'low'
-  const sets = useMemo(() => roofPlantings(tier === 'ultra' ? 380 : tier === 'high' ? 280 : 150), [tier])
+  const sets = useMemo(() => roofPlantings(tier === 'ultra' ? 380 : tier === 'high' ? 170 : 110), [tier])
   if (!on) return null
   return (
     <group name="roof-planting">
-      <SourcedInstances slug="ph-shrub-02" items={sets.shrubs} castShadow />
-      <SourcedInstances slug="ph-wild-rooibos-bush" items={sets.rooibos} castShadow />
+      {/* LOD1 below Ultra (GRAND §10): seen from the forecourt and the parikrama, never at arm's length */}
+      <SourcedInstances slug="ph-shrub-02" lod1={tier !== 'ultra'} items={sets.shrubs} castShadow />
+      <SourcedInstances slug="ph-wild-rooibos-bush" lod1={tier !== 'ultra'} items={sets.rooibos} castShadow />
     </group>
   )
 }
@@ -922,6 +933,11 @@ function TheatreFittings() {
     const film = theatreHouseState.phase === 'film' ? 1 - theatreHouseState.house : 0
     const pulse = film * (0.28 + 0.2 * Math.sin(clock.elapsedTime * 0.9))
     mats.vault.emissiveIntensity = Math.max(theatreHouseState.firing * 2.4, pulse)
+    // the joints take the picture's colour while the film runs, ember-orange when fired
+    const sp = theatreHouseState.spill
+    const lit = Math.max(sp.r, sp.g, sp.b)
+    if (theatreHouseState.firing > 0.05 || lit < 0.01) mats.vault.emissive.set(0xff5a1c)
+    else mats.vault.emissive.setRGB(sp.r / lit, (sp.g / lit) * 0.85, (sp.b / lit) * 0.8)
     mats.cove.emissiveIntensity = 0.15 + 1.25 * theatreHouseState.house + 0.5 * pulse
   })
   return (

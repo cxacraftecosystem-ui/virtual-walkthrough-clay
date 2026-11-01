@@ -293,7 +293,7 @@ export const TOUR_STOPS: TourStop[] = [
   {
     id: 'hallway',
     chapter: 'air',
-    place: 'Hallway',
+    place: 'Wine Hall',
     title: 'Clay elsewhere',
     text: 'The hallway is a wine-red hall with a timber floor. On stepped plinths stand pieces of clay from other parts of the world, each credited to the collection that recorded it.',
     view: polarPose(KEY.ambMidR, MUSEUM.drum.dNotchDeg - 4, 220, 2),
@@ -302,7 +302,7 @@ export const TOUR_STOPS: TourStop[] = [
   {
     id: 'threshold',
     chapter: 'air',
-    place: 'Hallway',
+    place: 'Wine Hall',
     title: 'The door to the Parikrama',
     text: 'From the head of the hallway, a doorway in the notch wall leads out to the Parikrama, an open walk between red walls round the north side of the pavilion.',
     view: polarLook(NOTCH_DOOR.rC, ARCH.d.midDeg, ...polar(NOTCH_DOOR.rC, MUSEUM.drum.dNotchDeg), 2),

@@ -183,12 +183,12 @@ function medallion(id: string, surface: SurfaceId, at: number, y: number, motif:
 
 // Each surface below faces within ~10° of a compass point (the medallion is drawn on that point).
 export const TRAIL: TrailMedallion[] = [
-  medallion('m1', 'g-west', 1.2, 0.9, 'rosette', INK.terracotta, 'annex', 'Entrance Hall'),
+  medallion('m1', 'g-west', 1.2, 0.9, 'rosette', INK.terracotta, 'annex', 'The Earth Room'),
   medallion('m2', 'f-outer-3', 0.35, 1.25, 'teardrop', INK.oxblood, 'entry-e', 'Entry Ways'),
   medallion('m3', 'a-outer-2', 0.3, 0.75, 'diamond', INK.ochre, 'ring-a', 'Gallery A'),
   medallion('m4', 'b-outer-4', 2.2, 0.75, 'leaf-trail', INK.terracotta, 'ring-b', 'Gallery B'),
   medallion('m5', 'c-south-2', 2.25, 0.65, 'star-lattice', INK.black, 'ring-c', 'Gallery C'),
-  medallion('m6', 'd-hallway-4', 0.25, 0.7, 'rosette', INK.oxblood, 'hallway-d', 'Hallway'),
+  medallion('m6', 'd-hallway-4', 0.25, 0.7, 'rosette', INK.oxblood, 'hallway-d', 'Wine Hall'),
   medallion('m7', 'h-inner-3', 1.25, 1.0, 'diamond', INK.black, 'entry-e', 'Entry Ways'),
   medallion('m8', 'f-inner-main', 0.25, 0.8, 'teardrop', INK.ochre, 'inner', 'Oculus Court'),
 ]

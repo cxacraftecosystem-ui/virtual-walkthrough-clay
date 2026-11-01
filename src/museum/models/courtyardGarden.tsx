@@ -30,7 +30,7 @@ import { useMaterials } from '../materials/materials'
 import { useMuseum } from '../state/store'
 import { fbm3, resolveSlug, SourcedInstances, SourcedOr, type InstanceSpot } from './erodedFormation'
 import { rng } from './kit'
-import { useModelMaterials } from './modelMaterials'
+import { tinted, useModelMaterials } from './modelMaterials'
 import { fp, num, str, type ModelProps } from './types'
 
 const noRaycast = () => null
@@ -411,7 +411,8 @@ export function CourtyardGarden({ config }: ModelProps) {
 
   return (
     <group name="courtyard-garden">
-      <mesh geometry={layout.bed} material={core.groundSoil} receiveShadow raycast={noRaycast} />
+      {/* p09l: the courts are paved in grey stone round the trees, not bare soil */}
+      <mesh geometry={layout.bed} material={tinted(core.stone, '#a7a29b', { roughness: 0.82 })} receiveShadow raycast={noRaycast} />
       {layout.pebbles.length > 0 && <Clumps spots={layout.pebbles} material={pebbleMat} seed={3} detail={0} colors={layout.pebbleColors} />}
       {layout.boulders.length > 0 && (
         <SourcedInstances slug={boulderSlug} spots={layout.boulders} fallback={<Clumps spots={layout.boulders} material={core.stone} seed={9} detail={1} />} />

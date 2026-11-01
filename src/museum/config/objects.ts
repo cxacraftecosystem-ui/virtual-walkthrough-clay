@@ -92,6 +92,7 @@ export type ProceduralModelId =
   | 'theatre-house'
   | 'living-alpana'
   | 'clay-chimes'
+  | 'vessel-constellation'
   /** Oculus court, mandalas, duplex band (WP3). */
   | 'water-ring'
   | 'ghost-potter'
@@ -192,6 +193,7 @@ const KIND_SET: Record<ProceduralModelId, true> = {
   'theatre-house': true,
   'living-alpana': true,
   'clay-chimes': true,
+  'vessel-constellation': true,
   'water-ring': true,
   'ghost-potter': true,
   'kulhad-helix': true,

@@ -67,6 +67,25 @@ function placeable(item: unknown): boolean {
  */
 export const LAYOUT_EPOCH = 2
 
+/**
+ * Building fittings re-imagined after a content set was seeded (the art direction's pass): for
+ * these ids the bundled definition wins over a stored copy, and the retired ids are dropped, so a
+ * server seeded earlier never shows the old fitting (or both). Curated exhibits are never here.
+ *   the library wings' walnut and timber bookcases (the hand block museum's library) → clay
+ *   archive runs; the Sphere Well's stair and sphere → p07r's rose clay; the forecourt's rill
+ *   widened into a reflecting channel that holds the whole building; the theatre's house level
+ *   raised for the five-part Kiln Film (0.22 → 0.38), so a seeded store does not keep the dark house
+ */
+const BUNDLED_WINS = new Set(['library-shelves-1', 'library-shelves-2', 'well-stair', 'well-sphere', 'water-rill', 'theatre-house'])
+/**
+ * Fittings re-imagined in art round 4, by id prefix: the Parikrama's courts and sunken gardens
+ * (broadleaf canopies over grey stone, p09l), the formation gates (procedural wind-cut strata,
+ * p05), the Herd's rose-lime steps, C's slate island and the Earth Room's pale table.
+ */
+const BUNDLED_WINS_PREFIX = ['courtyard-', 'garden-', 'gate-formation-', 'herd-plinth-', 'black-ware-island', 'earth-table']
+const bundledWins = (id: string) => BUNDLED_WINS.has(id) || BUNDLED_WINS_PREFIX.some((p) => id.startsWith(p))
+const RETIRED_IDS = new Set(['library-bookcase-1', 'library-bookcase-2', 'library-bookcase-3', 'library-bookcase-4'])
+
 /** Does this content's object list carry the current layout epoch? */
 export function hasLayoutEpoch(objects: unknown): boolean {
   if (!Array.isArray(objects)) return false
@@ -99,9 +118,18 @@ export function applyContent(c: Partial<MuseumContent>) {
   // building: keep them when a server content set predates them (server versions win by id).
   // The spectacle installations (config/spectacleObjects/*) are kept the same way.
   // The grand plan's lists (config/grandObjects/*) too.
-  if (Array.isArray(c.objects) && !stale)
-    for (const o of [...AMENITY_OBJECTS, ...ROOM_OBJECTS, ...COURT_OBJECTS, ...ATMOS_OBJECTS, ...CRAFT_OBJECTS, ...EXPERIENCE_OBJECTS, ...GRAND_CRAFTS_OBJECTS, ...GRAND_INSTALLATIONS_OBJECTS, ...GRAND_EXPERIENCE_OBJECTS])
-      if (!SCENE_OBJECTS.some((x) => x.id === o.id)) SCENE_OBJECTS.push(structuredClone(o))
+  if (Array.isArray(c.objects) && !stale) {
+    const bundled = [...AMENITY_OBJECTS, ...ROOM_OBJECTS, ...COURT_OBJECTS, ...ATMOS_OBJECTS, ...CRAFT_OBJECTS, ...EXPERIENCE_OBJECTS, ...GRAND_CRAFTS_OBJECTS, ...GRAND_INSTALLATIONS_OBJECTS, ...GRAND_EXPERIENCE_OBJECTS]
+    for (let i = SCENE_OBJECTS.length - 1; i >= 0; i--) {
+      const id = SCENE_OBJECTS[i].id
+      if (RETIRED_IDS.has(id)) SCENE_OBJECTS.splice(i, 1)
+      else if (bundledWins(id)) {
+        const b = bundled.find((o) => o.id === id)
+        if (b) SCENE_OBJECTS[i] = structuredClone(b)
+      }
+    }
+    for (const o of bundled) if (!SCENE_OBJECTS.some((x) => x.id === o.id)) SCENE_OBJECTS.push(structuredClone(o))
+  }
   if (c.exhibition) Object.assign(EXHIBITION_TITLE, c.exhibition)
   if (c.welcome) Object.assign(RECEPTION_WELCOME, c.welcome)
   if (typeof c.version === 'number') contentVersion = c.version

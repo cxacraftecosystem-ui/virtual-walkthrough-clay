@@ -15,6 +15,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { DEG, MUSEUM, polar } from '../config/museum'
 import { injectAtmosphere } from '../lighting/atmosphere/inject'
+import { mergeAll } from '../architecture/shellGeometry'
+import { useMuseum } from '../state/store'
 import { bendToCylinder, wallGrid } from './bend'
 import { rng } from './kit'
 import { tinted, useModelMaterials } from './modelMaterials'
@@ -289,6 +291,8 @@ export function LippanWall({ config }: ModelProps) {
   const to = a1 - 1.2
   const mid = (from + to) / 2
   const len = ((to - from) * DEG) * R
+  const tier = useMuseum((st) => st.tier)
+  const coilSides = tier === 'low' ? 4 : 6
 
   const geo = useMemo(() => {
     const ground = bendToCylinder(wallGrid(-len / 2, len / 2, Y0, Y1, 0.25), { r: R, aMidDeg: mid, concave: false })
@@ -302,9 +306,40 @@ export function LippanWall({ config }: ModelProps) {
       }
       return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), n, 0.028, 8, false)
     }
-    return { ground, top: coil(Y1 + 0.03), bottom: coil(Y0 - 0.03) }
-  }, [len, mid, from, to])
-  useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo])
+    // the lattice's coils as raised geometry (the relief map alone read as a printed wallpaper):
+    // half-round rolls of clay along the drawing's diagonals u − v = k/4 and u + v = k/4 (tile
+    // units, the colour map's own lines), clipped to the band; the map keeps the fine doubled coils
+    let lattice: THREE.BufferGeometry | null = null
+    if (pattern === 'lattice') {
+      const tubes: THREE.BufferGeometry[] = []
+      const x0 = -len / 2
+      const x1 = len / 2
+      const step = TILE / 4
+      for (const dir of [1, -1]) {
+        // a line y = dir·x − dir·c (x − y = c for dir 1; x + y = c for dir −1), c on the 1/4-tile grid
+        const kLo = Math.floor((dir === 1 ? x0 - Y1 : x0 + Y0) / step) - 1
+        const kHi = Math.ceil((dir === 1 ? x1 - Y0 : x1 + Y1) / step) + 1
+        for (let k = kLo; k <= kHi; k++) {
+          const c = k * step
+          // clip the segment to the band
+          let xa = dir === 1 ? Y0 + c : c - Y1
+          let xb = dir === 1 ? Y1 + c : c - Y0
+          xa = Math.max(xa, x0 + 0.03)
+          xb = Math.min(xb, x1 - 0.03)
+          if (xb - xa < 0.05) continue
+          const yAt = (x: number) => (dir === 1 ? x - c : c - x)
+          const pa = new THREE.Vector3(xa, yAt(xa), 0.004)
+          const pb = new THREE.Vector3(xb, yAt(xb), 0.004)
+          const n = Math.max(2, Math.ceil(pa.distanceTo(pb) / 0.18))
+          tubes.push(new THREE.TubeGeometry(new THREE.LineCurve3(pa, pb), n, 0.012, coilSides, false))
+        }
+      }
+      const merged = mergeAll(tubes)
+      lattice = merged ? bendToCylinder(merged, { r: R, aMidDeg: mid, concave: false }) : null
+    }
+    return { ground, top: coil(Y1 + 0.03), bottom: coil(Y0 - 0.03), lattice }
+  }, [len, mid, from, to, pattern, coilSides])
+  useEffect(() => () => Object.values(geo).forEach((g) => g?.dispose()), [geo])
 
   const groundMat = useMemo(() => {
     const { bump, color } = patternMaps(pattern)
@@ -312,7 +347,8 @@ export function LippanWall({ config }: ModelProps) {
     mat.color.set('#ffffff')
     mat.map = color
     mat.bumpMap = bump
-    mat.bumpScale = 9
+    // the lattice's main coils are geometry: the map carries only the fine relief
+    mat.bumpScale = pattern === 'lattice' ? 4 : 9
     mat.normalMap = null
     mat.roughness = 0.97
     mat.envMapIntensity = 0.45
@@ -328,6 +364,19 @@ export function LippanWall({ config }: ModelProps) {
     const list: { x: number; y: number; s: number }[] = []
     const tiles = Math.ceil(len / TILE)
     const rows = Math.ceil((Y1 - Y0) / TILE)
+    if (pattern === 'lattice') {
+      // on the coils' crossings (x, y on the quarter-tile grid, i + j even), bigger at the tile's knots
+      const q = TILE / 4
+      for (let i = Math.ceil(-len / 2 / q); i <= Math.floor(len / 2 / q); i++)
+        for (let j = Math.ceil(Y0 / q); j <= Math.floor(Y1 / q); j++) {
+          if ((((i + j) % 2) + 2) % 2 !== 0) continue
+          const x = i * q
+          const y = j * q
+          if (x < -len / 2 + 0.05 || x > len / 2 - 0.05 || y < Y0 + 0.05 || y > Y1 - 0.05) continue
+          if (r() < share) list.push({ x, y, s: i % 4 === 0 || j % 4 === 0 ? 0.022 : 0.032 })
+        }
+      return list
+    }
     for (let tx = 0; tx < tiles; tx++)
       for (let ty = 0; ty < rows; ty++)
         for (const [u, v, s] of ks) {
@@ -354,7 +403,8 @@ export function LippanWall({ config }: ModelProps) {
     const o = new THREE.Object3D()
     mirrors.forEach((mm, i) => {
       const a = mid * DEG - mm.x / R
-      const [x, z] = polar(R + 0.016, a / DEG)
+      // proud of the coils' crowns (the coils rise 1.6 cm), so each mirror sits in its knot
+      const [x, z] = polar(R + (pattern === 'lattice' ? 0.019 : 0.016), a / DEG)
       o.position.set(x, mm.y, z)
       // the disc's +z faces out of the wall (away from the drum centre)
       o.rotation.set(0, Math.atan2(Math.cos(a), Math.sin(a)), 0)
@@ -371,7 +421,7 @@ export function LippanWall({ config }: ModelProps) {
       im.instanceMatrix.needsUpdate = true
       im.computeBoundingSphere()
     }
-  }, [mirrors, mid])
+  }, [mirrors, mid, pattern])
   useEffect(
     () => () => {
       disc.dispose()
@@ -386,6 +436,7 @@ export function LippanWall({ config }: ModelProps) {
       <mesh geometry={geo.ground} material={groundMat} receiveShadow />
       <mesh geometry={geo.top} material={coilMat} castShadow receiveShadow />
       <mesh geometry={geo.bottom} material={coilMat} castShadow receiveShadow />
+      {geo.lattice && <mesh geometry={geo.lattice} material={coilMat} receiveShadow />}
       <instancedMesh ref={inst} args={[disc, mirrorMat, mirrors.length]} />
       <instancedMesh ref={rims} args={[rim, coilMat, mirrors.length]} />
     </group>

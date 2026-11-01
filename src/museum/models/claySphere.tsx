@@ -6,7 +6,8 @@
  *             paddle, a joining seam at the equator, a hand-pressed unevenness and burnish marks
  *             (baked into the vertex colour), turning once every `spinSec` (0 or reduced motion:
  *             still)
- *   finish    red (deep red slip, burnished), terracotta or grey (unfired)
+ *   finish    rose (rose slip, burnished: p07r), red (deep red slip, burnished), terracotta or
+ *             grey (unfired)
  *   uplit     the floor washers' warm light on its underside (an emissive ramp)
  *   hanging   a slender bronze rod from the sphere's crown straight up to grade (world y 0), so
  *             it hangs from the well's opening
@@ -25,6 +26,7 @@ import { num, str, type ModelProps } from './types'
 const noRaycast = () => null
 
 const FINISH: Record<string, { color: string; rough: number }> = {
+  rose: { color: '#c47a6c', rough: 0.36 },
   red: { color: '#9a2a1d', rough: 0.3 },
   terracotta: { color: '#b8603f', rough: 0.6 },
   grey: { color: '#8c857c', rough: 0.85 },
@@ -71,10 +73,13 @@ function uplightRamp(): THREE.DataTexture {
   const d = new Uint8Array(N * 4)
   for (let i = 0; i < N; i++) {
     const v = i / (N - 1)
-    // warm washers from beneath; the sky from the opening above on the crown (blush, p07r)
-    const k = Math.pow(Math.max(0, 1 - v / 0.55), 1.6)
+    // warm washers from beneath, reaching past the equator; the sky from the opening above on the
+    // crown (blush, p07r); a little of the red room's own bounce everywhere, so the ball is never
+    // a dark disc against the pale terraces
+    const k = Math.pow(Math.max(0, 1 - v / 0.72), 1.3)
     const t = 0.55 * Math.pow(Math.max(0, (v - 0.6) / 0.4), 1.4)
-    d.set([Math.min(255, Math.round(255 * k + 255 * t)), Math.min(255, Math.round(150 * k + 196 * t)), Math.min(255, Math.round(90 * k + 182 * t)), 255], i * 4)
+    const b = 0.16
+    d.set([Math.min(255, Math.round(255 * (k + t + b))), Math.min(255, Math.round(170 * k + 196 * t + 150 * b)), Math.min(255, Math.round(130 * k + 182 * t + 130 * b)), 255], i * 4)
   }
   uplightTex = new THREE.DataTexture(d, 1, N)
   uplightTex.colorSpace = THREE.SRGBColorSpace
@@ -126,7 +131,7 @@ export function ClaySphere({ config }: ModelProps) {
     let m = matCache.get(k)
     if (!m) {
       // smooth burnished slip (no crack map): the room reads in its sheen and a rim of sky light
-      m = new THREE.MeshStandardMaterial({ name: 'claySphere', color: new THREE.Color(f.color), vertexColors: true, roughness: f.rough, metalness: 0, envMapIntensity: 1.2, emissive: new THREE.Color('#ff9a5a'), emissiveMap: uplightRamp(), emissiveIntensity: 0.7 })
+      m = new THREE.MeshStandardMaterial({ name: 'claySphere', color: new THREE.Color(f.color), vertexColors: true, roughness: f.rough, metalness: 0, envMapIntensity: 1.2, emissive: new THREE.Color('#ffb59a'), emissiveMap: uplightRamp(), emissiveIntensity: 0.95 })
       m.onBeforeCompile = (shader) => {
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <emissivemap_fragment>',

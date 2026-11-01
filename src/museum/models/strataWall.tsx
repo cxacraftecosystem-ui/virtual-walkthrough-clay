@@ -10,7 +10,11 @@
  * plate says what it is: a typical river-plain section, not a survey. The layers are not named
  * (placeholder silence).
  *
- * The panel is a bent grid (models/bend.ts) 4 mm proud of the plaster.
+ * The panel is a bent grid (models/bend.ts) standing off the plaster, DISPLACED by the beds'
+ * differential erosion (genStrata's `strataRelief`): the hard laterite and the clay band weather
+ * out by a few centimetres, the sand is scoured back, the topsoil overhangs, every step a soft
+ * shoulder; the relief dies away towards the panel's edges, which are ragged (the section is dug
+ * out of the plaster, never a framed sheet), and every contact bleeds over a few centimetres.
  *   Low      3 noise octaves, bump relief, the sweep band
  *   Medium   5 octaves
  *   High     + a parallax step into the relief (strataPOM > 0); Ultra 6 octaves
@@ -39,6 +43,8 @@ const Y = { y0: 0.1, y1: 3.5 }
 /** Relief depth for parallax (m). */
 const DEPTH = 0.02
 const PROUD = 0.004
+/** The displaced panel's stand-off at full relief (the sand's scour stays in front of the plaster). */
+const STANDOFF = 0.026
 
 const LABEL: Record<'en' | 'hi' | 'bn', [string, string]> = {
   en: ['Earth section', 'A typical river-plain section, not a survey.'],
@@ -53,7 +59,7 @@ type StrataU = { uDigY: { value: number }; uDig: { value: number }; uParallax: {
  * (materials/decorTextures.ts genStrata) in wall coordinates: bump from the height's screen
  * derivatives on every tier, a parallax offset along the view on High and Ultra (`parallax`).
  */
-function strataMaterial(glsl: string, key: string, parallax: boolean, u: StrataU) {
+function strataMaterial(glsl: string, key: string, parallax: boolean, u: StrataU, lengthM: number) {
   const m = new THREE.MeshStandardMaterial({ name: 'strata', roughness: 0.94, metalness: 0, envMapIntensity: 0.45 })
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, u)
@@ -62,8 +68,10 @@ function strataMaterial(glsl: string, key: string, parallax: boolean, u: StrataU
         '#include <common>',
         `#include <common>
 varying vec2 vWallP;
-varying vec3 vWallT;`,
+varying vec3 vWallT;
+varying vec2 vSUv;`,
       )
+      .replace('#include <common>', `#include <common>\n${glsl}`)
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
@@ -72,6 +80,10 @@ varying vec3 vWallT;`,
   vWallP = vec2(atan(wp.z, wp.x) * ${FACE_R.toFixed(4)}, wp.y);
   float a = atan(wp.z, wp.x);
   vWallT = normalize(normalMatrix * vec3(-sin(a), 0.0, cos(a)));
+  vSUv = uv;
+  // the beds' relief, dying away towards the panel's edges
+  float tap = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x) * smoothstep(0.0, 0.09, uv.y) * smoothstep(1.0, 0.88, uv.y);
+  transformed += normalize(objectNormal) * (${STANDOFF.toFixed(3)} + strataRelief(vWallP)) * tap;
 }`,
       )
     shader.fragmentShader = shader.fragmentShader
@@ -83,6 +95,7 @@ uniform float uDig;
 uniform float uParallax;
 varying vec2 vWallP;
 varying vec3 vWallT;
+varying vec2 vSUv;
 ${glsl}
 vec3 strataAlbedo;
 float strataH;
@@ -111,10 +124,18 @@ ${
   vec3 vt = vec3(dot(vv, vWallT), dot(vv, bb), dot(vv, nn));
   vec3 a0; float h0;
   strata(wp, a0, h0);
-  wp -= vt.xy / max(vt.z, 0.3) * (1.0 - h0) * uParallax;`
+  // (faded out at grazing angles: a long offset there smeared the beds into streaks)
+  wp -= vt.xy / max(vt.z, 0.5) * (1.0 - h0) * uParallax * smoothstep(0.3, 0.65, vt.z);`
     : ''
 }
   strata(wp, strataAlbedo, strataH);
+  // the edges are dug, not cut: ragged where the section meets the plaster round it
+  float ragT = ${Y.y1.toFixed(3)} - 0.03 - 0.16 * sFbm(vec2(vWallP.x * 1.6, 2.0));
+  float ragB = ${Y.y0.toFixed(3)} + 0.02 + 0.07 * sFbm(vec2(vWallP.x * 2.3, 7.0));
+  float ragS = 0.03 + 0.12 * sFbm(vec2(vWallP.y * 2.0, 9.0));
+  if (vWallP.y > ragT || vWallP.y < ragB || min(vSUv.x, 1.0 - vSUv.x) * ${lengthM.toFixed(3)} < ragS) discard;
+  // the weathered steps between the beds light as relief
+  strataH += strataRelief(vWallP) * 28.0;
 }`,
       )
       .replace('#include <map_fragment>', 'diffuseColor.rgb *= strataAlbedo;')
@@ -134,7 +155,7 @@ ${
 }`,
       )
   }
-  m.customProgramCacheKey = () => `strata|${key}|${parallax ? 1 : 0}`
+  m.customProgramCacheKey = () => `strata|${key}|${parallax ? 1 : 0}|${lengthM.toFixed(3)}`
   return m
 }
 
@@ -186,17 +207,21 @@ export function StrataWall({ config }: ModelProps) {
   const heightM = Y.y1 - Y.y0
   const caps = sp.caps
   const layers = useMemo(() => (layersText ? parseStrata(layersText) : DEFAULT_STRATA), [layersText])
-  const octaves = caps.spectacleTexPx >= 2048 ? 6 : caps.spectacleTexPx >= 1024 ? 5 : 3
+  // (one more octave than the texture tier suggests from Medium up: the section reads sharp up close)
+  const octaves = caps.spectacleTexPx >= 2048 ? 7 : caps.spectacleTexPx >= 1024 ? 6 : 3
   const shaderSrc = useMemo(() => genStrata(layers, 3, Y.y0, Y.y1, octaves), [layers, octaves])
   const parallax = caps.strataPOM > 0
   const u = useMemo<StrataU>(() => ({ uDigY: { value: -10 }, uDig: { value: 0 }, uParallax: { value: DEPTH } }), [])
-  const mat = useMemo(() => strataMaterial(shaderSrc.glsl, shaderSrc.key, parallax, u), [shaderSrc, parallax, u])
+  const mat = useMemo(() => strataMaterial(shaderSrc.glsl, shaderSrc.key, parallax, u, lengthM), [shaderSrc, parallax, u, lengthM])
   useEffect(() => () => mat.dispose(), [mat])
 
+  // fine enough to carry the beds' weathered steps (a few cm shoulders); coarser below High, where
+  // the bump does the fine work (GRAND §10: the full grid alone is ~100k triangles)
+  const coarse = caps.strataPOM > 0 ? 1 : 1.8
   const geo = useMemo(() => {
-    const g = wallGrid(-lengthM / 2, lengthM / 2, Y.y0, Y.y1, 0.12, { unit: true })
+    const g = wallGrid(-lengthM / 2, lengthM / 2, Y.y0, Y.y1, 0.05 * coarse, { unit: true, rows: Math.ceil(heightM / (0.03 * coarse)) })
     return bendToCylinder(g, { r: FACE_R - PROUD, aMidDeg: (span.a0 + span.a1) / 2, concave: true })
-  }, [lengthM, span.a0, span.a1])
+  }, [lengthM, heightM, span.a0, span.a1, coarse])
   useEffect(() => () => geo.dispose(), [geo])
 
   // the plate, at the west end near the floor

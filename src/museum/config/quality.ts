@@ -64,6 +64,8 @@ export interface SpectacleCaps {
   rainDrops: number
   outdoorRain: boolean
   poolMirror: boolean
+  /** Rendered planar mirror for the pool and the rill (render-target px on the long side; 0 = the analytic reflection). */
+  waterMirrorPx: number
   caustics: boolean
   /** Pit firing: smoke billboards, sparks, ember particles. */
   smoke: number
@@ -129,6 +131,7 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
       rainDrops: 150,
       outdoorRain: false,
       poolMirror: false,
+      waterMirrorPx: 0,
       caustics: false,
       smoke: 0,
       sparks: 0,
@@ -187,6 +190,7 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
       rainDrops: 600,
       outdoorRain: true,
       poolMirror: false,
+      waterMirrorPx: 512,
       caustics: true,
       smoke: 12,
       sparks: 0,
@@ -244,6 +248,8 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
       rainDrops: 1500,
       outdoorRain: true,
       poolMirror: true,
+      // 1024 takes the mirror's MSAA (materials/planarMirror.ts): the pool's edges never stair-step
+      waterMirrorPx: 1024,
       caustics: true,
       smoke: 32,
       sparks: 40,
@@ -301,6 +307,7 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
       rainDrops: 2500,
       outdoorRain: true,
       poolMirror: true,
+      waterMirrorPx: 1024,
       caustics: true,
       smoke: 32,
       sparks: 40,

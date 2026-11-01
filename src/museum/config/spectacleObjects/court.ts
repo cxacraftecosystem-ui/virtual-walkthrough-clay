@@ -85,9 +85,9 @@ export const COURT_OBJECTS: SceneObjectConfig[] = [
     title: 'Threshold of Earth',
     kind: 'water-rill',
     position: [0, 0, (RILL.z0 + RILL.z1) / 2],
-    props: { length: RILL.z0 - RILL.z1, width: 0.4 },
+    props: { length: RILL.z0 - RILL.z1, width: 1.2 },
     zone: 'entrance-court',
-    alt: 'A narrow channel of still water lined with terracotta tiles runs on the path towards the entrance door and reflects it.',
+    alt: 'A long channel of still water lined with terracotta tiles runs on the path towards the entrance door and reflects the door, the drum and the dome.',
   },
   {
     id: 'duplex-frieze',

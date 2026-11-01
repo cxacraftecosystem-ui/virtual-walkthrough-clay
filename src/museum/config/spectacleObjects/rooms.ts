@@ -53,6 +53,8 @@ const MAP = { width: 7.0, height: 4.45, bottom: 0.75 }
 const PARTNERS = { width: 1.8, height: 3.0 }
 const MAP_DEG = ATLAS.doorDeg - 0.4
 const PARTNERS_DEG = MAP_DEG + ((MAP.width / 2 + 0.6 + PARTNERS.width / 2) / OUTER_STAND) / DEG
+/** The vessel constellation's arc: 1.5 m in front of the map wall, a crown just over it, high enough to clear both panels. */
+const CONSTELLATION = { arcR: SAT_WALL.outerFace - 1.5 }
 /** The Red Room's wings either side of it in the library crescent (plan angles, deg). */
 const RR_HALF_DEG = Math.asin((RED_ROOM.r + RED_ROOM.t) / Math.hypot(RED_ROOM.cx, RED_ROOM.cz)) / DEG
 const WING_W = (LIB.fromDeg + RED_ROOM.aDeg - RR_HALF_DEG) / 2
@@ -108,6 +110,23 @@ export const ROOM_OBJECTS: SceneObjectConfig[] = [
     zone: 'atlas',
     alt: 'A round compass inlaid in the floor, with eight pointed rays and a brass needle turned to the north.',
   },
+  {
+    // the Atlas's signature: 21 vessels in a rising arc over the map and the partners, an ember
+    // running along them; overhead only (no footprint, no click), clear of both panels
+    id: 'atlas-constellation',
+    title: 'Twenty-One Vessels',
+    kind: 'vessel-constellation',
+    position: at(CONSTELLATION.arcR, ATLAS.doorDeg),
+    rotationDeg: facingIn(ATLAS.doorDeg),
+    height: ATLAS.height,
+    props: { arcR: CONSTELLATION.arcR, fromDeg: ATLAS.fromDeg + 2.5, toDeg: ATLAS.toDeg - 2.5, ceiling: ATLAS.height, period: 28, ember: '#ff7a32' },
+    zone: 'atlas',
+    alt: 'Twenty-one clay vessels of different forms and clays hung on fine cords in a long arc over the map, a warm glow passing slowly from one to the next.',
+    i18n: {
+      hi: { title: 'इक्कीस पात्र', alt: 'अलग-अलग आकार और मिट्टी के इक्कीस पात्र, महीन डोरियों पर मानचित्र के ऊपर एक लंबे चाप में टँगे, एक गर्म चमक धीरे-धीरे एक से दूसरे तक जाती हुई।' },
+      bn: { title: 'একুশটি পাত্র', alt: 'নানা গড়ন আর মাটির একুশটি পাত্র, সরু দড়িতে মানচিত্রের ওপর একটি লম্বা বাঁকে ঝোলানো, একটি উষ্ণ আভা ধীরে ধীরে একটি থেকে পরেরটিতে যায়।' },
+    },
+  },
 
   // ══ The Agni Theatre (F24) ════════════════════════════════════════════════════════
   {
@@ -118,14 +137,14 @@ export const ROOM_OBJECTS: SceneObjectConfig[] = [
     rotationDeg: facingIn(AX),
     footprint: [2 * SAT_WALL.outerFace * Math.sin(((THEATRE.screenTo - THEATRE.screenFrom) / 2) * DEG) + 0.2, 0.16],
     height: 4.6,
-    props: { dimTo: 0.22, fadeSec: 2, firingSec: 20, kilnFilm: true, chapterSec: 24 },
+    props: { dimTo: 0.38, fadeSec: 2, firingSec: 20, kilnFilm: true, chapterSec: 24 },
     interactive: true,
-    description: 'A long room under a brick vault, with a screen that follows the curve of the wall. Between films the joints of the vault glow as a kiln does when it is fired. Until the pavilion’s films are ready, the screen shows a short abstract piece in four parts: earth, water, hand and fire.',
+    description: 'A long room under a brick vault, with a screen that follows the curve of the wall. Between films the joints of the vault glow as a kiln does when it is fired. Until the pavilion’s films are ready, the screen shows a short abstract piece in five parts: earth, water, hand, fire and ash.',
     zone: 'theatre',
-    alt: 'A dim red hall with two curved rows of seats facing a wide curved screen under a brick barrel vault.',
+    alt: 'A red hall under a brick barrel vault, three curved rows of seats lit by amber aisle lights, facing a wide curved screen whose light washes the vault.',
     i18n: {
-      hi: { title: 'अग्नि रंगमंच', description: 'ईंटों की मेहराबदार छत के नीचे एक लंबा कक्ष, जिसका परदा दीवार के घुमाव के साथ मुड़ता है। फ़िल्मों के बीच छत के जोड़ वैसे ही दहकते हैं जैसे आँवा पकाते समय। मंडप की फ़िल्में तैयार होने तक परदे पर चार भागों की एक छोटी अमूर्त रचना चलती है: मिट्टी, पानी, हाथ और आग।', alt: 'ईंटों की मेहराबदार छत के नीचे एक धीमी रोशनी वाला लाल कक्ष, जिसमें सीटों की दो घुमावदार पंक्तियाँ एक चौड़े घुमावदार परदे की ओर हैं।' },
-      bn: { title: 'অগ্নি প্রেক্ষাগৃহ', description: 'ইটের খিলান-ছাদের নিচে একটি লম্বা ঘর, যার পর্দা দেয়ালের বাঁক ধরে বেঁকে আছে। ছবির ফাঁকে ছাদের জোড়গুলি ভাটি পোড়ানোর মতো জ্বলে ওঠে। প্যাভিলিয়নের ছবি তৈরি না হওয়া পর্যন্ত পর্দায় চার পর্বের একটি ছোট বিমূর্ত রচনা চলে: মাটি, জল, হাত আর আগুন।', alt: 'ইটের খিলান-ছাদের নিচে একটি আবছা লাল ঘর, যেখানে দুটি বাঁকা সারির আসন একটি চওড়া বাঁকা পর্দার দিকে মুখ করে।' },
+      hi: { title: 'अग्नि रंगमंच', description: 'ईंटों की मेहराबदार छत के नीचे एक लंबा कक्ष, जिसका परदा दीवार के घुमाव के साथ मुड़ता है। फ़िल्मों के बीच छत के जोड़ वैसे ही दहकते हैं जैसे आँवा पकाते समय। मंडप की फ़िल्में तैयार होने तक परदे पर पाँच भागों की एक छोटी अमूर्त रचना चलती है: मिट्टी, पानी, हाथ, आग और राख।', alt: 'ईंटों की मेहराबदार छत के नीचे एक लाल कक्ष, जिसमें सीटों की तीन घुमावदार पंक्तियाँ एम्बर रंग की गलियारा-बत्तियों से रोशन हैं और एक चौड़े घुमावदार परदे की ओर हैं, जिसकी रोशनी छत पर फैलती है।' },
+      bn: { title: 'অগ্নি প্রেক্ষাগৃহ', description: 'ইটের খিলান-ছাদের নিচে একটি লম্বা ঘর, যার পর্দা দেয়ালের বাঁক ধরে বেঁকে আছে। ছবির ফাঁকে ছাদের জোড়গুলি ভাটি পোড়ানোর মতো জ্বলে ওঠে। প্যাভিলিয়নের ছবি তৈরি না হওয়া পর্যন্ত পর্দায় পাঁচ পর্বের একটি ছোট বিমূর্ত রচনা চলে: মাটি, জল, হাত, আগুন আর ছাই।', alt: 'ইটের খিলান-ছাদের নিচে একটি লাল ঘর, যেখানে তিনটি বাঁকা সারির আসন অ্যাম্বার রঙের পথবাতিতে আলোকিত, একটি চওড়া বাঁকা পর্দার দিকে মুখ করে, যার আলো খিলানে ছড়িয়ে পড়ে।' },
     },
   },
   ...ROWS.map<SceneObjectConfig>((r, i) => ({
@@ -155,16 +174,27 @@ export const ROOM_OBJECTS: SceneObjectConfig[] = [
 
   // ══ The Kothi Library (F25) ═══════════════════════════════════════════════════════
   ...[WING_W, WING_E].map<SceneObjectConfig>((a, i) => ({
+    // a clay-tablet archive, never the hand block museum's walnut bookcase: thin floating blades of
+    // clay along the outer wall, holding fired test discs, lidded jars and a few bound ledgers
     id: `library-shelves-${i + 1}`,
-    title: 'Library shelves',
-    kind: 'bookcase',
-    position: at(SAT_WALL.outerFace - 0.25, a),
+    title: 'Clay archive',
+    kind: 'curved-shelf',
+    position: at(SAT_WALL.outerFace - 0.2, a),
     rotationDeg: facingIn(a),
-    footprint: [2.1, 0.4],
-    height: 2.45,
-    props: { seed: 41 + i, curveR: SAT_WALL.outerFace, finish: 'clay' },
+    footprint: [2.1, 0.36],
+    height: 0.14 + 5 * 0.44,
+    props: {
+      curveR: SAT_WALL.outerFace - 0.2,
+      spanDeg: +((2.1 / (SAT_WALL.outerFace - 0.2) / DEG).toFixed(2)),
+      tiers: 5,
+      tierGap: 0.44,
+      depth: 0.34,
+      finish: 'clay',
+      items: i ? 'tawa|14|mixed\nph-book-encyclopedia-set-01|3\nlidded|5|buff\nkulhad|8|grey' : 'tawa|12|buff\nlidded|6|mixed\nph-book-encyclopedia-set-01|3\nbowl|6|grey',
+      lit: true,
+    },
     zone: 'library',
-    alt: 'Curved shelves of dark timber set in clay niches along the outer wall, filled with books.',
+    alt: 'Thin curved blades of clay along the outer wall, lit from beneath, holding fired clay test discs, lidded jars and a few bound ledgers.',
   })),
   {
     id: 'library-soils',

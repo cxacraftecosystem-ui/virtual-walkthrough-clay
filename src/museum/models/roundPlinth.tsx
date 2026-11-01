@@ -48,6 +48,7 @@ export function RoundPlinth({ config }: ModelProps) {
   const r = Math.max(0.2, num(config, 'r', 1.4))
   const h = Math.max(0.05, num(config, 'h', 0.6))
   const color = str(config, 'color', '#7d1a17')
+  const rough = num(config, 'roughness', 0.42)
   const seg = tier === 'low' ? 40 : r > 1 ? 96 : 56
 
   const geo = useMemo(() => {
@@ -80,15 +81,15 @@ export function RoundPlinth({ config }: ModelProps) {
 
   const src = core.oxbloodLacquer as THREE.MeshStandardMaterial
   const lacquer = useMemo(() => {
-    const k = `${src.uuid}|${color}`
+    const k = `${src.uuid}|${color}|${rough}`
     let mat = lacquerCache.get(k)
     if (!mat) {
-      mat = new THREE.MeshStandardMaterial({ name: 'plinthLacquer', color: new THREE.Color(color), normalMap: src.normalMap, normalScale: new THREE.Vector2(0.12, 0.12), roughness: 0.42, metalness: 0, envMapIntensity: 0.9 })
+      mat = new THREE.MeshStandardMaterial({ name: 'plinthLacquer', color: new THREE.Color(color), normalMap: src.normalMap, normalScale: new THREE.Vector2(0.12, 0.12), roughness: rough, metalness: 0, envMapIntensity: rough > 0.6 ? 0.45 : 0.9 })
       injectAtmosphere(mat)
       lacquerCache.set(k, mat)
     }
     return mat
-  }, [src, color])
+  }, [src, color, rough])
 
   return (
     <group name="round-plinth">

@@ -190,5 +190,6 @@ function golden(g: number) {
   _gd.set(target[0] - pos[0], target[1] - pos[1], target[2] - pos[2])
   const d = _gd.length()
   _gd.normalize()
-  return { pos, dir: _gd, cosOuter: Math.cos(24 * DEG), range: d * 2 + 4, I: 7 * d * d * g * accentMaster.gain }
+  // (a crescent, never a flood: a tighter, softer cone, so the galleries below keep their own light)
+  return { pos, dir: _gd, cosOuter: Math.cos(15 * DEG), range: d * 1.4 + 2, I: 3.2 * d * d * g * accentMaster.gain }
 }

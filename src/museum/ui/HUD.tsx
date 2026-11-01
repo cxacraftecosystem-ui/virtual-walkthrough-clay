@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useMuseum } from '../state/store'
 import { resetVisitor, visitor } from '../state/visitor'
 import { zoneAt } from '../config/layout'
+import { heldViewAt } from '../debug/ViewOverride'
 import { perchZone } from '../navigation/perch'
 import { EXHIBITION_TITLE } from '../config/infographics'
 import { QUALITY_PRESETS, withDevOverrides, type QualitySetting } from '../config/quality'
@@ -49,9 +50,13 @@ function useZoneName(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return
     const id = window.setInterval(() => {
-      const n = perchZone() ?? zoneAt(visitor.x, visitor.z)?.id // the roof perch first (SPECTACLE F4)
+      // a held capture view (debug/ViewOverride) names the zone under its camera, and nothing when it
+      // is outside every zone (an aerial); the roof perch first (SPECTACLE F4)
+      const view = heldViewAt()
+      const n = perchZone() ?? zoneAt(view?.x ?? visitor.x, view?.z ?? visitor.z)?.id
+      if (view && !n) setName('')
       // Keep the last known name while crossing thresholds/doorways.
-      if (n) setName((prev) => (prev === n ? prev : n))
+      else if (n) setName((prev) => (prev === n ? prev : n))
     }, 250)
     return () => window.clearInterval(id)
   }, [enabled])

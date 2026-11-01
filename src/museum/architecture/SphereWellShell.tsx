@@ -5,9 +5,15 @@
  *
  *   at grade ..... a 3 m opening with a fired-brick kerb, ringed by a glass balustrade on brass
  *                  posts (WALLS 'well-rim' is its collider; Pavilion leaves it to this file)
- *   below ........ the room (r 6.5, floor −8.0): deep red lime walls on a fired-brick base
- *                  course, a red floor with an inlaid ring; the ceiling's five terraces step up
- *                  from the wall to the opening, each riser's top edge a warm line of light
+ *   below ........ the room (r 6.5, floor −8.0): dark oxblood walls on a fired-brick base
+ *                  course, washed warm from the foot; a polished dark floor with a brass ring that
+ *                  holds the sky; the ceiling's five terraces step up from the wall to the opening
+ *                  in pale rose plaster (p07r), each riser's top edge a warm line of light
+ *   the throat ... a warm line of light just under the kerb, so from grade the opening is a lit
+ *                  lip over the depth (by day faint, at dusk the well glows like a lamp)
+ *
+ * Value structure (the art direction's "one saturated red"): dark walls, pale terraces, a rose
+ * sphere and stair between them; red is the accent, never the whole room.
  *
  * The plinth's paving is cut round the opening (Floor.tsx).
  */
@@ -41,6 +47,7 @@ function wellGeometry() {
   const floor = new Mesh()
   const inlay = new Mesh()
   const glow = new Mesh()
+  const throat = new Mesh()
   const kerb = new Mesh()
   const glass = new Mesh()
   const brass = new Mesh()
@@ -64,6 +71,8 @@ function wellGeometry() {
     revolve(terrace, cx, cz, [[t.r1, t.y], [t.r1, yNext - 0.05]], 0, FULL, SEG, [inn, inn])
     revolve(glow, cx, cz, [[t.r1 - 0.002, yNext - 0.05], [t.r1 - 0.002, yNext]], 0, FULL, SEG, [inn, inn])
   })
+  // the throat's lip: a concealed line just under grade
+  revolve(throat, cx, cz, [[W.openingR - 0.002, -0.16], [W.openingR - 0.002, -0.1]], 0, FULL, SEG, [inn, inn])
   // at grade: the kerb round the opening
   revolve(kerb, cx, cz, [[W.openingR + 0.5, -0.002], [W.openingR + 0.5, 0.1], [W.openingR, 0.1], [W.openingR, -0.002]], 0, FULL, SEG)
   // the balustrade: glass panes and a brass rail on posts
@@ -95,7 +104,7 @@ function wellGeometry() {
     g.translate(cx + R * Math.cos(a), 0.1 + (W.rimH - 0.1) / 2, cz + R * Math.sin(a))
     add(g)
   }
-  return { red: red.build(), terrace: terrace.build(), base: base.build(), floor: floor.build(), inlay: inlay.build(), glow: glow.build(), kerb: kerb.build(), glass: glass.build(), brass: brass.build() }
+  return { red: red.build(), terrace: terrace.build(), base: base.build(), floor: floor.build(), inlay: inlay.build(), glow: glow.build(), throat: throat.build(), kerb: kerb.build(), glass: glass.build(), brass: brass.build() }
 }
 
 /**
@@ -103,7 +112,7 @@ function wellGeometry() {
  * opening bounces off every terrace and lifts the steps to a glowing pink (p07r); at night only
  * their LED lips carry them.
  */
-const terraceMat = new THREE.MeshStandardMaterial({ name: 'wellTerrace', color: '#c97566', emissive: new THREE.Color('#ffb4a2'), emissiveIntensity: 0.3, roughness: 0.9 })
+const terraceMat = new THREE.MeshStandardMaterial({ name: 'wellTerrace', color: '#d9a497', emissive: new THREE.Color('#ffc8b8'), emissiveIntensity: 0.3, roughness: 0.92 })
 
 /**
  * The drum's red wall, washed from a concealed uplight in its base course: warm at the foot,
@@ -112,8 +121,8 @@ const terraceMat = new THREE.MeshStandardMaterial({ name: 'wellTerrace', color: 
 function washedWall(base: THREE.MeshStandardMaterial) {
   const m = base.clone()
   m.name = 'wellWall'
-  m.emissive = new THREE.Color('#ff6a44')
-  m.emissiveIntensity = 0.55
+  m.emissive = new THREE.Color('#ff8a66')
+  m.emissiveIntensity = 0.42
   const y0 = (W.floorY + 0.62).toFixed(3)
   const y1 = W.terraceTopY.toFixed(3)
   m.onBeforeCompile = (shader) => {
@@ -127,17 +136,20 @@ function washedWall(base: THREE.MeshStandardMaterial) {
   return m
 }
 
-const glowMat = new THREE.MeshStandardMaterial({ name: 'wellCove', color: '#4a1410', emissive: new THREE.Color('#ff8a4c'), emissiveIntensity: 1.2, roughness: 0.6 })
+const glowMat = new THREE.MeshStandardMaterial({ name: 'wellCove', color: '#4a1410', emissive: new THREE.Color('#ff9a5c'), emissiveIntensity: 1.2, roughness: 0.6 })
+/** The throat's lip: unlit warm white past 1, so the bloom draws a ring of light round the opening. */
+const throatMat = new THREE.MeshBasicMaterial({ name: 'wellThroat', color: new THREE.Color('#ffc890').multiplyScalar(1.6), toneMapped: false })
 const glassMat = new THREE.MeshPhysicalMaterial({ name: 'wellGlass', color: '#e2eef0', transparent: true, opacity: 0.08, roughness: 0.02, metalness: 0, envMapIntensity: 0.6, depthWrite: false, side: THREE.DoubleSide })
 
 export function SphereWellShell() {
   const m = useMaterials()
   const geo = useMemo(wellGeometry, [])
-  const wall = useMemo(() => washedWall(m.redLime as THREE.MeshStandardMaterial), [m.redLime])
+  const wall = useMemo(() => washedWall(m.oxblood as THREE.MeshStandardMaterial), [m.oxblood])
   useEffect(() => () => wall.dispose(), [wall])
   useEffect(() => () => Object.values(geo).forEach((g) => g?.dispose()), [geo])
   useFrame(() => {
-    glowMat.emissiveIntensity = 0.7 + 1.6 * ambience.night
+    glowMat.emissiveIntensity = 0.9 + 1.6 * ambience.night
+    throatMat.color.set('#ffc890').multiplyScalar(0.7 + 1.6 * Math.max(ambience.night, 1 - ambience.daylight))
     terraceMat.emissiveIntensity = 0.06 + 0.42 * ambience.daylight
   })
   return (
@@ -146,12 +158,13 @@ export function SphereWellShell() {
         {geo.red && <mesh geometry={geo.red} material={wall} castShadow receiveShadow />}
         {geo.terrace && <mesh geometry={geo.terrace} material={terraceMat} castShadow receiveShadow />}
         {geo.base && <mesh geometry={geo.base} material={m.bricks} receiveShadow />}
-        {geo.floor && <mesh geometry={geo.floor} material={m.redLacquer} receiveShadow />}
+        {geo.floor && <mesh geometry={geo.floor} material={m.oxbloodLacquer} receiveShadow />}
         {geo.inlay && <mesh geometry={geo.inlay} material={m.brass} receiveShadow />}
         {geo.kerb && <mesh geometry={geo.kerb} material={m.bricks} castShadow receiveShadow />}
         {geo.brass && <mesh geometry={geo.brass} material={m.brass} castShadow />}
       </StaticMerge>
       {geo.glow && <mesh geometry={geo.glow} material={glowMat} raycast={() => null} />}
+      {geo.throat && <mesh geometry={geo.throat} material={throatMat} raycast={() => null} />}
       {geo.glass && <mesh geometry={geo.glass} material={glassMat} raycast={() => null} renderOrder={2} />}
     </group>
   )

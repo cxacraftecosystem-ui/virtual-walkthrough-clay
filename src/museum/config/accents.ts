@@ -130,8 +130,9 @@ function nicheAccents(): Accent[] {
 function courtAccents(): Accent[] {
   const F = MUSEUM.innerMainWall
   const face = F.r - F.thickness / 2
-  const [nx, nz] = polar(face - 0.15, 90)
-  const [sx, sz] = polar(face - 3.4, 90)
+  const [nx, nz] = polar(face - 0.3, 90)
+  // a key from the court, a little to one side, so the figure models (never a flat dark blob)
+  const [sx, sz] = polar(face - 3.4, 90 + 6)
   const dome = MUSEUM.dome
   const lotusY = MUSEUM.oculus.poolLevel + 0.4
   return [
@@ -139,10 +140,11 @@ function courtAccents(): Accent[] {
       id: 'f-niche',
       zone: 'inner',
       pos: [sx, F.height - 0.6, sz],
-      target: [nx, 1.4 + 0.45, nz],
-      beamDeg: 14,
-      colorK: 3500,
-      intensity: 70,
+      // the figure's middle (it stands 1.6 m tall on a 1.4 m plinth)
+      target: [nx, 1.4 + 0.8, nz],
+      beamDeg: 15,
+      colorK: 3300,
+      intensity: 340,
       weight: 6,
       fixture: 'concealed',
     },
@@ -188,14 +190,24 @@ function earthRoomAccents(): Accent[] {
 function redRoomShelfAccents(): Accent[] {
   const door = Math.atan2(-RED_ROOM.cz, -RED_ROOM.cx) / DEG
   const y = RED_ROOM.height - 0.35
+  const r0 = RED_ROOM.oculusR + 0.45
+  // the beam's upper edge must meet the wall below the shelving's cornice (6 tiers of 0.47 over a
+  // 0.14 kick): a cone that reaches the bare wall above draws a hard scallop on the red (the art
+  // direction's "shelf wash ellipses"); the shelves' own LED lines and the cove carry the rest
+  const beam = 16
+  const shelfTop = 0.14 + 6 * 0.47 - 0.1
+  const edge = Math.atan((RED_ROOM.r - r0) / (y - shelfTop)) / DEG
+  const tilt = Math.max(4, edge - beam)
+  const ty = 0.9
+  const reach = r0 + Math.tan(tilt * DEG) * (y - ty)
   return [55, 115, 180, 245, 305].map((off, i) => {
     const b = door + off
-    const [px, pz] = polar(RED_ROOM.oculusR + 0.45, b, RED_ROOM.cx, RED_ROOM.cz)
-    const [tx, tz] = polar(RED_ROOM.r - 0.3, b, RED_ROOM.cx, RED_ROOM.cz)
+    const [px, pz] = polar(r0, b, RED_ROOM.cx, RED_ROOM.cz)
+    const [tx, tz] = polar(reach, b, RED_ROOM.cx, RED_ROOM.cz)
     const pos: Vec3 = [px, y, pz]
-    const target: Vec3 = [tx, 1.45, tz]
+    const target: Vec3 = [tx, ty, tz]
     const d = len(sub(target, pos))
-    return { id: `red-room-shelves-${i + 1}`, zone: 'library' as ZoneId, pos, target, beamDeg: 19, colorK: 2900, intensity: 3.6 * d * d, weight: 5, fixture: 'concealed' as FixtureKind }
+    return { id: `red-room-shelves-${i + 1}`, zone: 'library' as ZoneId, pos, target, beamDeg: beam, colorK: 3100, intensity: 2.2 * d * d, weight: 5, fixture: 'concealed' as FixtureKind }
   })
 }
 
@@ -203,14 +215,18 @@ function redRoomShelfAccents(): Accent[] {
 function northAccents(): Accent[] {
   return [
     {
-      // the hero coil pot's key: a tight, strong beam from the oculus's rim
+      // the hero coil pot's key: a tight, strong beam from the oculus's rim on the door's side, so
+      // the cut face turned to the door is lit from the front and above, never half-black
       id: 'red-room-plinth',
       zone: 'library',
-      pos: [RED_ROOM.cx, RED_ROOM.height - 0.3, RED_ROOM.cz],
-      target: [RED_ROOM.cx, 1.25, RED_ROOM.cz],
-      beamDeg: 14,
+      pos: (() => {
+        const [x, z] = polar(RED_ROOM.oculusR + 0.35, Math.atan2(-RED_ROOM.cz, -RED_ROOM.cx) / DEG, RED_ROOM.cx, RED_ROOM.cz)
+        return [x, RED_ROOM.height - 0.3, z] as Vec3
+      })(),
+      target: [RED_ROOM.cx, 1.3, RED_ROOM.cz],
+      beamDeg: 15,
       colorK: 3000,
-      intensity: 950,
+      intensity: 900,
       weight: 9,
       fixture: 'concealed',
     },
@@ -219,7 +235,7 @@ function northAccents(): Accent[] {
       id: 'well-sphere',
       zone: 'sphere-well',
       pos: [SPHERE_WELL.cx + 1.2, -0.2, SPHERE_WELL.cz],
-      target: [SPHERE_WELL.cx, SPHERE_WELL.sphereY, SPHERE_WELL.cz],
+      target: [SPHERE_WELL.cx, SPHERE_WELL.sphereY + 1.0, SPHERE_WELL.cz],
       beamDeg: 18,
       colorK: 2700,
       intensity: 40,
@@ -248,7 +264,8 @@ function wineHallAccents(): Accent[] {
       pos,
       target: p.position,
       beamDeg: 14,
-      colorK: 2700,
+      // (neutral-warm: the wine wall stays mauve under it, never scarlet)
+      colorK: 3600,
       // ≈ 1.4 at the plinths, whatever the throw
       intensity: 1.4 * len(sub(p.position, pos)) ** 2,
       weight: 3,
@@ -340,10 +357,11 @@ export function objectAccent(o: SceneObjectConfig): Accent | null {
     pos,
     target,
     beamDeg: beam,
-    colorK: COOL_KEY.has(o.kind) ? 4500 : GALLERY_K[o.zone] ?? (o.zone === 'hallway-d' || o.zone === 'sphere-well' ? 2700 : o.zone === 'annex' ? 3300 : 3000),
+    colorK: COOL_KEY.has(o.kind) ? 4500 : GALLERY_K[o.zone] ?? (o.zone === 'sphere-well' ? 2700 : o.zone === 'annex' ? 3300 : 3000),
     // ≈ 3 at a piece (4.5 at a big one) whatever the throw: a clear pool over the dark ground
-    intensity: (big ? 4.5 : 3) * d * d * wareGain(o.zone),
-    weight: Math.min(6, 1 + h + foot * 0.5),
+    // the workshop's figure and masks: a stronger cool key (a studio's north light), kept first on the low tiers' few slots
+    intensity: (big ? 4.5 : 3) * d * d * wareGain(o.zone) * (COOL_KEY.has(o.kind) ? 1.8 : 1),
+    weight: COOL_KEY.has(o.kind) ? 8 : Math.min(6, 1 + h + foot * 0.5),
     fixture: fixture ?? 'track',
     stemTo,
     // a piece on a plinth or a shelf: its support catches only the top of the beam
@@ -419,7 +437,7 @@ export function buildAccents(objects: readonly SceneObjectConfig[] = SCENE_OBJEC
       }
     })
     .filter((a): a is Accent => !!a && !onPodium(a))
-  const plan = [...podiumAccents(), ...nicheAccents(), ...courtAccents(), ...earthRoomAccents(), ...northAccents(), ...wineHallAccents(), ...lippanRake(), ...herdKey(objects)]
+  const plan = [...podiumAccents(), ...nicheAccents(), ...courtAccents(), ...earthRoomAccents(), ...northAccents(), ...wineHallAccents(), ...lippanRake(), ...herdKey(objects), ...islandBeam(objects)]
   // a piece the plan already lights (the Earth Room table under its skylight) is not lit twice
   const planLit = (a: Accent) => plan.some((p) => Math.hypot(p.target[0] - a.target[0], p.target[2] - a.target[2]) < 0.6)
   return [...plan, ...clusterAccents(fromObjects.filter((a) => !planLit(a)))]
@@ -462,10 +480,58 @@ function herdKey(objects: readonly SceneObjectConfig[]): Accent[] {
   const soffit = MUSEUM.pavilion.mezzanineBand - bal.slab - 0.12
   // from the side the visitor arrives on (the east arch), just inside the balcony's edge
   const [x, z] = polar(bal.r0 + 0.25, a + 12)
-  const target: Vec3 = [cx, 0.85, cz]
+  // aimed at the heads (the herd climbs to 3.3 m), not the plinth top: the faces are keyed from
+  // above, so the lacquer's glow no longer lights them from below
+  const target: Vec3 = [cx, 1.75, cz]
   const pos: Vec3 = [x, soffit, z]
   const d = len(sub(target, pos))
-  return [{ id: 'herd-key', zone: 'ring-a', pos, target, beamDeg: 22, colorK: 2900, intensity: 5.5 * d * d, weight: 9, fixture: 'track', stemTo: soffit + 0.12 }]
+  // a front key from the court side, high in the open bay (concealed in the springing ledge's
+  // line): the faces the visitor meets first catch a warm 3000 K light from above
+  const rc = Math.hypot(cx, cz)
+  const [fx, fz] = polar(rc - 3.4, a - 6)
+  const fpos: Vec3 = [fx, 6.2, fz]
+  const ftarget: Vec3 = [cx, 2.0, cz]
+  const fd = len(sub(ftarget, fpos))
+  return [
+    { id: 'herd-key', zone: 'ring-a', pos, target, beamDeg: 24, colorK: 2900, intensity: 6.5 * d * d, weight: 9, fixture: 'track', stemTo: soffit + 0.12 },
+    { id: 'herd-front', zone: 'ring-a', pos: fpos, target: ftarget, beamDeg: 22, colorK: 3000, intensity: 7 * fd * fd, weight: 8.5, fixture: 'concealed' },
+  ]
+}
+
+/**
+ * Gallery C's black ware island (GRAND §6.5 "black burnished ware on a dark island under one cool
+ * beam"): a concealed head high in the open bay straight over the island (the dome's light-well
+ * line, clear of the balcony's edge) throws one tight, cool (5600 K against the room's 4300) beam
+ * that just covers its top and stops there, so the
+ * table is a cold disc of light in the dark bay and the burnished pots flash on it. It replaces
+ * the stage's own warm-ish soffit beam (the plan lights it: `planLit`).
+ */
+function islandBeam(objects: readonly SceneObjectConfig[]): Accent[] {
+  const island = objects.find((o) => o.id === 'black-ware-island')
+  if (!island) return []
+  const [x, y0, z] = island.position
+  const top = y0 + Number(island.height ?? 0.42)
+  const r = Number(island.props?.r ?? 1.2)
+  // high enough that the brief's tightest beam (12°) just covers the top
+  const d = (r + 0.12) / Math.tan((BEAM_MIN / 1.08) * DEG)
+  const target: Vec3 = [x, top + 0.15, z]
+  const pos: Vec3 = [x * 0.99, top + 0.15 + d, z * 0.99]
+  return [
+    {
+      id: 'c-island-beam',
+      zone: 'ring-c',
+      pos,
+      target,
+      beamDeg: clampBeam((Math.atan((r + 0.12) / d) / DEG) * 1.08),
+      // one cool 4300 K beam: the black ware's silver sheen against the warm rooms either side
+      colorK: 4300,
+      // a cold disc on the slate, never a blown-out beige one: the burnished pots flash, the top stays dark
+      intensity: 16 * d * d,
+      weight: 9,
+      fixture: 'concealed',
+      cutY: top - 0.03,
+    },
+  ]
 }
 
 /** Pieces closer than this (plan, m) may share one beam. */

@@ -53,9 +53,19 @@ export const PODIUM_HOOD = { height: 0.62, margin: 0.012 }
 /** The brass label rail on each podium's court face: its top height and size. */
 export const LABEL_RAIL = { top: 0.95, width: 0.26, depth: 0.075, thick: 0.022 }
 
-/** Every podium of the row: a red lacquered column on a recessed shadow plinth, a brass label rail on its court face. */
+/** Every podium of the row: a red lacquered column on a recessed shadow plinth, a brass collar at its head and a brass label rail on its court face. */
 function PodiumRow() {
   const m = useMaterials()
+  // Gallery C (black ware under a cool beam): charcoal columns, not the red lacquer of A and B
+  const charcoal = useMemo(() => {
+    const c = (m.redLacquer as THREE.MeshStandardMaterial).clone()
+    c.name = 'podiumCharcoal'
+    c.color.set('#26231f')
+    c.roughness = 0.62
+    c.envMapIntensity = 0.5
+    return c
+  }, [m])
+  useEffect(() => () => charcoal.dispose(), [charcoal])
   const geo = useMemo(() => {
     const s = PODIUM.size
     const gap = 0.03
@@ -65,6 +75,9 @@ function PodiumRow() {
     return {
       body: createMeterBoxGeometry(s, PODIUM.height - gap, s),
       base: createMeterBoxGeometry(s - 0.03, gap, s - 0.03),
+      // a brass collar round the top edge: the column's head catches the spot (in C a bright line
+      // that keeps the charcoal columns from reading as dark sticks)
+      collar: createMeterBoxGeometry(s + 0.01, 0.018, s + 0.01),
       rail,
     }
   }, [])
@@ -79,7 +92,8 @@ function PodiumRow() {
           <group key={p.id}>
             <group position={[p.x, 0, p.z]} rotation={[0, p.rotationY, 0]}>
               <mesh geometry={geo.base} material={m.shadowGap} position={[0, 0.015, 0]} receiveShadow />
-              <mesh geometry={geo.body} material={m.redLacquer} position={[0, 0.03 + (PODIUM.height - 0.03) / 2, 0]} castShadow receiveShadow />
+              <mesh geometry={geo.body} material={p.zone === 'ring-c' ? charcoal : m.redLacquer} position={[0, 0.03 + (PODIUM.height - 0.03) / 2, 0]} castShadow receiveShadow />
+              <mesh geometry={geo.collar} material={m.brass} position={[0, PODIUM.height - 0.009, 0]} />
             </group>
             <mesh geometry={geo.rail} material={m.brass} position={[p.x - Math.cos(a) * off, LABEL_RAIL.top - LABEL_RAIL.thick, p.z - Math.sin(a) * off]} rotation={[0, -a - Math.PI / 2, 0]} castShadow />
           </group>
@@ -359,6 +373,19 @@ function renderable(w: WallBox) {
   return w.render !== false && w.kind !== 'boundary' && w.kind !== 'serpentine' && w.kind !== 'tower'
 }
 
+/**
+ * Gallery B's white limewash glows a little by day (the bounce of the court's daylight) and not at
+ * all at night, so after dark the wall falls back and the niche spots carry the room.
+ */
+function WhiteLimeGlow() {
+  const m = useMaterials()
+  useFrame(() => {
+    const w = m.whiteLime as THREE.MeshStandardMaterial
+    w.emissiveIntensity = 0.1 * ambience.daylight
+  })
+  return null
+}
+
 export function Pavilion() {
   const plinth = useMemo(hasPlinthObject, [])
   return (
@@ -380,6 +407,7 @@ export function Pavilion() {
         {!plinth && <OculusPlinth />}
       </StaticMerge>
       <CoveWash />
+      <WhiteLimeGlow />
       <NotchDoorLight />
       <RawClayPatches />
       <PodiumLights />

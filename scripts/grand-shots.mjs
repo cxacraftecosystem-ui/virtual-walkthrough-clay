@@ -46,6 +46,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: 'new',
+  // a busy machine (several agents' browsers on one GPU) stalls the page for minutes while it compiles
+  protocolTimeout: 900000,
   args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', `--window-size=${WIDTH},${HEIGHT}`],
   defaultViewport: { width: WIDTH, height: HEIGHT },
 })

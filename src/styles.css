@@ -1100,6 +1100,13 @@ button {
   }
 }
 
+/* A portrait phone: a small inset in the corner (at 40vh the plan covered half the screen) */
+@media (max-width: 640px) and (orientation: portrait) {
+  .ui-map__svg {
+    width: min(150px, 40vw, calc((26vh - 30px) * var(--map-aspect, 0.7)));
+  }
+}
+
 /* Travel fade */
 .ui-fade {
   position: fixed;

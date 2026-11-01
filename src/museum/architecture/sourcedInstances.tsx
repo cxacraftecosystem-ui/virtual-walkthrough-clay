@@ -12,6 +12,7 @@ import { useGLTF } from '@react-three/drei'
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import * as THREE from 'three'
 import { SOURCED_REGISTRY } from '../config/sourcedRegistry.generated'
+import { cutOutTwigCards, foliageNormals, foliageShading } from '../materials/foliage'
 
 export interface Planting {
   x: number
@@ -38,12 +39,16 @@ function Parts({ url, items, castShadow, receiveShadow, leaf }: { url: string; i
   const { scene } = useGLTF(url, true, true)
   const parts = useMemo(() => {
     scene.updateMatrixWorld(true)
-    const out: { geo: THREE.BufferGeometry; mat: THREE.Material; local: THREE.Matrix4 }[] = []
+    const out: { geo: THREE.BufferGeometry; mat: THREE.Material; local: THREE.Matrix4; own?: boolean }[] = []
     scene.traverse((o) => {
       const mesh = o as THREE.Mesh
       if (!mesh.isMesh) return
       const src = mesh.material as THREE.MeshStandardMaterial
       const mat = src.clone()
+      let geo = mesh.geometry
+      let own = false
+      // twig cards authored opaque: cut out by their texture's alpha (materials/foliage.ts)
+      cutOutTwigCards(mat)
       if (mat.transparent || mat.alphaTest > 0) {
         // leaves: alpha-tested cut-outs, both sides, no sorting
         mat.transparent = false
@@ -51,16 +56,30 @@ function Parts({ url, items, castShadow, receiveShadow, leaf }: { url: string; i
         mat.alphaTest = leaf?.alphaTest ?? 0.5
         mat.side = THREE.DoubleSide
         if (leaf) mat.color.multiplyScalar(leaf.gain)
+        // a canopy, lit as one mass: crown-shaped normals, the same on both faces of a card
+        // (materials/foliage.ts; every planting, the berms' shrubs too)
+        geo = foliageNormals(mesh.geometry)
+        own = true
+        foliageShading(mat)
       }
-      out.push({ geo: mesh.geometry, mat, local: mesh.matrixWorld.clone() })
+      out.push({ geo, mat, local: mesh.matrixWorld.clone(), own })
     })
     return out
   }, [scene, leaf])
-  useEffect(() => () => parts.forEach((p) => p.mat.dispose()), [parts])
+  useEffect(
+    () => () =>
+      parts.forEach((p) => {
+        p.mat.dispose()
+        if (p.own) p.geo.dispose()
+      }),
+    [parts],
+  )
   return (
     <group>
       {parts.map((p, i) => (
-        <PartInstances key={i} geo={p.geo} mat={p.mat} local={p.local} items={items} castShadow={castShadow} receiveShadow={receiveShadow} />
+        // leaves cast shadow but never receive it: a canopy self-shadowed by its shadow map goes
+        // black inside (real leaves pass the light through); the crown normals carry its shading
+        <PartInstances key={i} geo={p.geo} mat={p.mat} local={p.local} items={items} castShadow={castShadow} receiveShadow={receiveShadow && !p.own} />
       ))}
     </group>
   )

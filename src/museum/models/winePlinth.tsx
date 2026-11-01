@@ -32,7 +32,7 @@ export function winePlinthTops(steps: number, depth: number, height: number): { 
 /** Low-iron glass: clear, a whisper of tint, reflections strongest at grazing angles (never amber). */
 let clearGlass: THREE.MeshPhysicalMaterial | null = null
 const glassMat = () =>
-  (clearGlass ??= new THREE.MeshPhysicalMaterial({ name: 'vitrineGlass', color: '#f4f8f8', transparent: true, opacity: 0.07, roughness: 0.02, metalness: 0, ior: 1.5, envMapIntensity: 1.6, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }))
+  (clearGlass ??= new THREE.MeshPhysicalMaterial({ name: 'vitrineGlass', color: '#ffffff', transparent: true, opacity: 0.035, roughness: 0.02, metalness: 0, ior: 1.5, specularIntensity: 0.6, envMapIntensity: 0.55, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }))
 
 let wineMat: THREE.MeshStandardMaterial | null = null
 const wine = (src: THREE.Material) => {

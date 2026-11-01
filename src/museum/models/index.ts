@@ -28,6 +28,7 @@ import { CompassMandala } from './compassMandala'
 import { TheatreHouse } from './theatreHouse'
 import { LivingAlpana } from './livingAlpana'
 import { ClayChimes } from './clayChimes'
+import { VesselConstellation } from './vesselConstellation'
 import { WaterRing } from './waterRing'
 import { GhostPotter } from './ghostPotter'
 import { KulhadHelix } from './kulhadHelix'
@@ -122,6 +123,7 @@ export const PROCEDURAL_MODELS: Record<ProceduralModelId, ComponentType<ModelPro
   'theatre-house': TheatreHouse,
   'living-alpana': LivingAlpana,
   'clay-chimes': ClayChimes,
+  'vessel-constellation': VesselConstellation,
   'water-ring': WaterRing,
   'ghost-potter': GhostPotter,
   'kulhad-helix': KulhadHelix,

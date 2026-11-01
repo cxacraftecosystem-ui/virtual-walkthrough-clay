@@ -721,6 +721,8 @@ export const DEFAULT_STRATA: StrataLayer[] = [
 ]
 
 const STRATA_KINDS = ['kaolin', 'laterite', 'clay', 'silt', 'sand', 'topsoil'] as const
+/** How far each kind stands proud of the section (m): the hard beds weather out, the soft ones back. */
+const STRATA_RELIEF: Record<StrataLayer['kind'], number> = { kaolin: 0.0, laterite: 0.05, sand: -0.02, clay: 0.025, silt: 0.005, topsoil: 0.035 }
 
 /** Parse the `layers` prop: one per line, `name|#colour|thickness|kind`, bottom first. */
 export function parseStrata(text: string): StrataLayer[] {
@@ -737,7 +739,8 @@ export function parseStrata(text: string): StrataLayer[] {
 export interface StrataShader {
   /**
    * GLSL defining `void strata(vec2 p, out vec3 albedo, out float height)`: `p` is (metres along
-   * the wall, metres above the floor), `albedo` linear colour, `height` 0 … 1 (1 = proud).
+   * the wall, metres above the floor), `albedo` linear colour, `height` 0 … 1 (1 = proud); and
+   * `float strataRelief(vec2 p)`, each bed's weathered depth in metres (+ = proud), for displacement.
    */
   glsl: string
   /** Layer tops (m above the section's foot, before the waviness), for checks and labels. */
@@ -773,7 +776,17 @@ export function genStrata(layers: StrataLayer[], seed: number, y0: number, y1: n
   const pick = layers
     .map((l, i) => {
       const top = i === layers.length - 1 ? '1e9' : `${glslF(+tops[i].toFixed(4))} + contact(p.x, ${glslF(i + 1)})`
-      return `${i === 0 ? '' : 'else '}if (p.y < ${top}) { k = ${STRATA_KINDS.indexOf(l.kind)}; base = ${col(l.color)}; lo = ${i === 0 ? glslF(y0) : `${glslF(+tops[i - 1].toFixed(4))} + contact(p.x, ${glslF(i)})`}; hi = ${top}; }`
+      return `${i === 0 ? '' : 'else '}if (p.y < ${top}) { k = ${STRATA_KINDS.indexOf(l.kind)}; li = ${i}; base = ${col(l.color)}; lo = ${i === 0 ? glslF(y0) : `${glslF(+tops[i - 1].toFixed(4))} + contact(p.x, ${glslF(i)})`}; hi = ${top}; }`
+    })
+    .join('\n  ')
+  // the neighbours' colours (the contacts blend across a few centimetres) and each layer's relief
+  const baseOf = layers.map((l, i) => `${i === 0 ? '' : 'else '}if (i == ${i}) return ${col(l.color)};`).join('\n  ')
+  const reliefSteps = layers
+    .slice(1)
+    .map((l, j) => {
+      const i = j + 1
+      const d = STRATA_RELIEF[l.kind] - STRATA_RELIEF[layers[i - 1].kind]
+      return `r += ${glslF(+d.toFixed(4))} * smoothstep(-w, w, p.y - (${glslF(+tops[i - 1].toFixed(4))} + contact(p.x, ${glslF(i)})));`
     })
     .join('\n  ')
   const glsl = /* glsl */ `
@@ -803,8 +816,22 @@ vec2 sCell(vec2 p) {
 float contact(float x, float n) {
   return 0.11 * (sFbm(vec2(x * 0.45 + n * 7.1, n * 3.3)) - 0.5) + 0.035 * sin(x * 0.7 + n * 2.0) + 0.015 * (sNoise(vec2(x * 6.0, n)) - 0.5);
 }
+vec3 strataBase(int i) {
+  ${baseOf}
+  return vec3(0.5);
+}
+/**
+ * Differential erosion (m, + = proud of the panel): hard laterite and the clay band stand out, the
+ * sand is scoured back, the topsoil overhangs; each step is a soft shoulder of a few centimetres.
+ */
+float strataRelief(vec2 p) {
+  float w = 0.035 + 0.03 * sNoise(vec2(p.x * 1.3, 5.0));
+  float r = ${glslF(STRATA_RELIEF[layers[0].kind])};
+  ${reliefSteps}
+  return r + 0.012 * (sNoise(p * vec2(2.4, 5.0)) - 0.5) + 0.006 * (sNoise(p * 11.0) - 0.5);
+}
 void strata(vec2 p0, out vec3 albedo, out float height) {
-  int k = 0; vec3 base = vec3(0.5); float lo = 0.0; float hi = 1.0;
+  int k = 0; int li = 0; vec3 base = vec3(0.5); float lo = 0.0; float hi = 1.0;
   // interfingered contacts: the layer test wanders a few centimetres
   vec2 p = vec2(p0.x, p0.y + 0.025 * (sNoise(p0 * vec2(9.0, 4.0)) - 0.5));
   ${pick}
@@ -888,8 +915,12 @@ void strata(vec2 p0, out vec3 albedo, out float height) {
   c = mix(c, c * vec3(1.12, 0.86, 0.7), streak * 0.35);
   // each contact: a darker skin and a small step
   float t = (p.y - lo) / max(1e-3, hi - lo);
-  c *= 1.0 - 0.18 * exp(-(1.0 - t) * (hi - lo) * 60.0);
+  c *= 1.0 - 0.12 * exp(-(1.0 - t) * (hi - lo) * 60.0);
   h -= 0.1 * exp(-t * (hi - lo) * 80.0);
+  // soft contacts: each layer bleeds into the next over a few ragged centimetres (never a ruled line)
+  float soft = 0.05 + 0.05 * sFbm(vec2(p.x * 2.1, float(li) * 3.7));
+  if (li > 0) c = mix(c, strataBase(li - 1) * (0.9 + 0.2 * n1), 0.5 * (1.0 - smoothstep(0.0, soft, p.y - lo)));
+  if (li < ${layers.length - 1}) c = mix(c, strataBase(li + 1) * (0.9 + 0.2 * n1), 0.5 * (1.0 - smoothstep(0.0, soft, hi - p.y)));
   albedo = c;
   height = clamp(h, 0.0, 1.0);
 }

@@ -139,7 +139,8 @@ export interface ZoneLight {
   shadow: string
   high: string
   contrast: number
-  /** Fraction of the fill kept at full night (open-air zones go dark; rooms keep lamp bounce). */
+  /** Fraction of the fill kept at full night (open-air zones go dark; rooms keep lamp bounce; the
+   *  galleries, the gates, the courtyards and the Red Room keep enough that their floors read). */
   nightFloor?: number
 }
 
@@ -165,30 +166,30 @@ export const ZONE_LIGHT: Record<string, ZoneLight> = {
   /** Ambulatory and H: 3000 K, 0 EV. */
   'entry-e': { ...room(3000, 0.45, ev(0), '#3a2a24', '#ffe8d0', 1.06), nightFloor: 0.15 },
   /** A: 3000 K on the red lacquer ground, −0.1 EV (p02): the red ground stays dark by its own colour. */
-  'ring-a': { ...room(3000, 0.34, ev(-0.1), '#3a1c18', '#ffe4c8', 1.1), nightFloor: 0.15 },
+  'ring-a': { ...room(3000, 0.34, ev(-0.1), '#3a1c18', '#ffe4c8', 1.1), nightFloor: 0.26 },
   /** B: 4000 K neutral, for the white niche wall of plaques (p08r). */
-  'ring-b': { ...room(4000, 0.6, ev(0), '#34302e', '#fbf6f0', 1.08), nightFloor: 0.15 },
+  'ring-b': { ...room(4000, 0.6, ev(0), '#34302e', '#fbf6f0', 1.08), nightFloor: 0.24 },
   /** C: 4300 K cool, −0.35 EV: black ware under one cool beam, on a charcoal wall that still reads. */
-  'ring-c': { ...room(4300, 0.5, ev(-0.35), '#24262e', '#f2f2f2', 1.1), nightFloor: 0.15 },
-  /** The Wine Hall ("Clay Elsewhere", p08l): 2700 K, −0.4 EV — wine walls, timber, spot-lit plinths. */
-  'hallway-d': { ...room(2700, 0.28, ev(-0.4), '#2a1216', '#ffdcb8', 1.12), nightFloor: 0.15 },
+  'ring-c': { ...room(4300, 0.5, ev(-0.35), '#24262e', '#f2f2f2', 1.1), nightFloor: 0.34 },
+  /** The Wine Hall ("Clay Elsewhere", p08l "warm white to neutral"): 3000 K, −0.4 EV — mauve wine walls, honey timber, spot-lit plinths; never an orange cave. */
+  'hallway-d': { ...room(3600, 0.3, ev(-0.3), '#251c28', '#fff4ea', 1.1), nightFloor: 0.15 },
   /** The court under the dome: daylight 5000–5600 K, +0.2 EV. */
-  inner: { ...room(5300, 0.5, ev(0.2), '#36302e', '#fff8ee', 1.06), nightFloor: 0.15 },
-  'parikrama-west': { ...room(5400, 1.05, ev(0), '#403632', '#fff4e6'), nightFloor: 0.12 },
-  'parikrama-east': { ...room(5400, 1.05, ev(0), '#403632', '#fff4e6'), nightFloor: 0.12 },
+  inner: { ...room(5300, 0.5, ev(0.2), '#36302e', '#fff8ee', 1.06), nightFloor: 0.24 },
+  'parikrama-west': { ...room(5400, 1.05, ev(0), '#403632', '#fff4e6'), nightFloor: 0.22 },
+  'parikrama-east': { ...room(5400, 1.05, ev(0), '#403632', '#fff4e6'), nightFloor: 0.22 },
   /** The atlas reads true: 4000 K neutral, 0 EV, so the map and the partner logos are never washed. */
   atlas: room(4000, 1.15, ev(0.15), '#3a3836', '#faf8f4'),
   /** A dim red theatre: 2400 K, −0.55 EV, with enough house fill that the rows and the vault read during the film. */
-  theatre: room(2400, 0.4, ev(-0.55), '#2e1210', '#ffcfa8', 1.04),
+  theatre: room(2400, 0.52, ev(-0.45), '#2e1210', '#ffcfa8', 1.04),
   /** Kothi — the Red Room: 3000 K, −0.6 EV. */
-  library: { ...room(3000, 0.3, ev(-0.6), '#341210', '#ffe0c0', 1.1), nightFloor: 0.2 },
+  library: { ...room(3000, 0.3, ev(-0.6), '#2c1a18', '#fff0e0', 1.1), nightFloor: 0.38 },
   /** The Haat: 3500 K, 0 EV. */
   shop: room(3500, 1.0, ev(0), '#3e3430', '#fff2e0'),
   'sky-rim': { ...room(5400, 1.15, ev(0), '#403c3a', '#fff6ea'), nightFloor: 0.04 },
   /** The balcony shares the rotunda's light (between A's warmth and the court's daylight). */
   duplex: { ...room(4000, 0.42, ev(0), '#34302e', '#fbf4ec', 1.08), nightFloor: 0.15 },
-  /** The Sphere Well: 2700 K red, −0.6 EV. */
-  'sphere-well': { ...room(2700, 0.3, ev(-0.6), '#3a120e', '#ffd2a8', 1.1), nightFloor: 0.2 },
+  /** The Sphere Well: 2700 K, −0.6 EV; the shadows neutral (the room is red enough by its walls). */
+  'sphere-well': { ...room(2700, 0.32, ev(-0.6), '#2a1c1c', '#ffe6d4', 1.12), nightFloor: 0.2 },
 }
 
 /**

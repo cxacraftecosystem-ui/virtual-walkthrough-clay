@@ -15,6 +15,12 @@
  * weld, dedup, prune → simplify to the role cap → textures resized and re-encoded to WebP with
  * sharp → meshopt (quantisation + EXT_meshopt_compression).
  *
+ * Broadleaf trees (`leaves`: { share, maxScale }): the simplifier cannot reduce a crown of
+ * separate leaf cards without eating it, so their cut-out primitives are THINNED instead — a
+ * seeded random subset of whole cards is kept (`share` of the cap) and each kept card grows about
+ * its own centre (up to `maxScale`) so the crown keeps its cover; only the wood is simplified.
+ * `cap` overrides the role's LOD0 cap for one entry, `tex` its LOD0 texture size (px).
+ *
  * Fails when the total is above 45 MB, or any single file is above 4 MB (trees 5 MB).
  *
  * Sources: `--src`, else SOURCED_SRC, else the build's staging folder. The originals are not
@@ -24,7 +30,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { Logger, NodeIO, getBounds } from '@gltf-transform/core'
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions'
-import { center, dedup, dequantize, meshopt, prune, simplify, textureCompress, weld } from '@gltf-transform/functions'
+import { center, compactPrimitive, dedup, dequantize, meshopt, prune, simplify, simplifyPrimitive, textureCompress, weld } from '@gltf-transform/functions'
 import draco3d from 'draco3d'
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer'
 import sharp from 'sharp'
@@ -93,6 +99,111 @@ function orientQuat(steps) {
   return q
 }
 
+/** A seeded PRNG (mulberry32), so a rebuild keeps the same cards. */
+function rng(seed) {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const isLeaf = (p) => p.getMode() === 4 && p.getMaterial() && p.getMaterial().getAlphaMode() !== 'OPAQUE'
+const triCount = (p) => (p.getIndices() ? p.getIndices().getCount() : p.getAttribute('POSITION').getCount()) / 3
+
+/**
+ * Keep a seeded share of a crown's leaf cards (connected pieces of a cut-out primitive) so the
+ * leaves total `budget` triangles; every kept card grows about its centre by min(maxScale, 1/√p).
+ */
+function thinLeaves(doc, budget, maxScale, seed = 1) {
+  const prims = []
+  for (const m of doc.getRoot().listMeshes()) for (const p of m.listPrimitives()) if (isLeaf(p)) prims.push(p)
+  const total = prims.reduce((n, p) => n + triCount(p), 0)
+  if (!total || total <= budget) return
+  const keep = budget / total
+  const grow = Math.min(maxScale, 1 / Math.sqrt(keep))
+  const rnd = rng(seed)
+  for (const p of prims) {
+    const posA = p.getAttribute('POSITION')
+    const nV = posA.getCount()
+    const idx = p.getIndices() ? Array.from(p.getIndices().getArray()) : Array.from({ length: nV }, (_, i) => i)
+    // union-find over the triangles' shared vertices: one set per card
+    const parent = new Int32Array(nV).map((_, i) => i)
+    const find = (x) => {
+      while (parent[x] !== x) x = parent[x] = parent[parent[x]]
+      return x
+    }
+    for (let t = 0; t < idx.length; t += 3) {
+      const a = find(idx[t])
+      parent[find(idx[t + 1])] = a
+      parent[find(idx[t + 2])] = a
+    }
+    const kept = new Map()
+    const out = []
+    for (let t = 0; t < idx.length; t += 3) {
+      const r = find(idx[t])
+      let k = kept.get(r)
+      if (k === undefined) kept.set(r, (k = rnd() < keep))
+      if (k) out.push(idx[t], idx[t + 1], idx[t + 2])
+    }
+    // grow each kept card about its centre
+    const pos = posA.getArray()
+    const sum = new Map()
+    const used = new Uint8Array(nV)
+    for (const v of out) used[v] = 1
+    for (let v = 0; v < nV; v++) {
+      if (!used[v]) continue
+      const r = find(v)
+      const s = sum.get(r) ?? [0, 0, 0, 0]
+      s[0] += pos[v * 3]
+      s[1] += pos[v * 3 + 1]
+      s[2] += pos[v * 3 + 2]
+      s[3]++
+      sum.set(r, s)
+    }
+    for (let v = 0; v < nV; v++) {
+      if (!used[v]) continue
+      const s = sum.get(find(v))
+      for (let c = 0; c < 3; c++) {
+        const m = s[c] / s[3]
+        pos[v * 3 + c] = m + (pos[v * 3 + c] - m) * grow
+      }
+    }
+    posA.setArray(pos)
+    const ia = doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(out)).setBuffer(posA.getBuffer())
+    p.setIndices(ia)
+    compactPrimitive(p)
+  }
+}
+
+/** Join a greyscale alpha map into every leaf material's base colour (see build step 0). */
+async function joinLeafAlpha(root, alphaFile) {
+  const alphaPng = fs.readFileSync(alphaFile)
+  const done = new Set()
+  for (const m of root.listMaterials()) {
+    if (m.getAlphaMode() === 'OPAQUE' && !/lea(f|ves)/i.test(m.getName())) continue
+    const t = m.getBaseColorTexture()
+    if (!t || done.has(t)) continue
+    done.add(t)
+    // (interleaved by hand: the alpha maps are 16-bit grey, which joinChannel drops)
+    const { data: rgb, info } = await sharp(t.getImage()).removeAlpha().raw({ depth: 'uchar' }).toBuffer({ resolveWithObject: true })
+    const a = await sharp(alphaPng).resize(info.width, info.height).extractChannel(0).raw({ depth: 'uchar' }).toBuffer()
+    const rgba = Buffer.alloc(info.width * info.height * 4)
+    for (let i = 0; i < info.width * info.height; i++) {
+      rgba[i * 4] = rgb[i * info.channels]
+      rgba[i * 4 + 1] = rgb[i * info.channels + 1]
+      rgba[i * 4 + 2] = rgb[i * info.channels + 2]
+      rgba[i * 4 + 3] = a[i]
+    }
+    t.setImage(await sharp(rgba, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer()).setMimeType('image/png')
+    m.setAlphaMode('MASK').setAlphaCutoff(0.5)
+  }
+  if (!done.size) throw new Error(`leafAlpha ${alphaFile}: no leaf material with a base colour texture`)
+}
+
 async function build(IO, e, lod) {
   const file = path.join(SRC, e.src)
   const doc = await IO.read(file)
@@ -101,6 +212,11 @@ async function build(IO, e, lod) {
   for (const x of doc.getRoot().listExtensionsUsed()) if (x.extensionName === 'KHR_draco_mesh_compression') x.dispose()
   const root = doc.getRoot()
   const scene = root.getDefaultScene() ?? root.listScenes()[0]
+  // 0. a leaf texture shipped without its alpha (the glb conversions of Poly Haven's trees keep the
+  // diffuse RGB only, so every leaf card drew its black surround): join the asset's own
+  // `<name>_leaves_alpha` map (`leafAlpha`, relative to the sources) into the leaves' colour, and
+  // cut the leaves out (MASK) instead of blending them
+  if (e.leafAlpha) await joinLeafAlpha(root, path.join(SRC, e.leafAlpha))
   // 1. keep only the chosen roots (a variant pick)
   if (e.keepRoots?.length) {
     for (const n of scene.listChildren()) if (!e.keepRoots.includes(n.getName())) scene.removeChild(n)
@@ -127,12 +243,22 @@ async function build(IO, e, lod) {
   // 5. clean-up, 6. simplify to the role cap
   await doc.transform(dequantize(), weld(), dedup(), prune())
   const before = triangles(doc)
-  const cap = Math.round(CAPS[e.role] * (lod === 1 ? 0.25 : 1))
-  if (before > cap) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: cap / before, error: lod === 1 ? 0.05 : 0.02 }), prune())
+  const cap = Math.round((e.cap ?? CAPS[e.role]) * (lod === 1 ? 0.25 : 1))
+  if (e.leaves) {
+    // a broadleaf crown: thin the cards, simplify only the wood
+    const leafBudget = Math.round(cap * e.leaves.share)
+    thinLeaves(doc, leafBudget, e.leaves.maxScale * (lod === 1 ? 1.6 : 1), 7)
+    const wood = []
+    for (const m of root.listMeshes()) for (const p of m.listPrimitives()) if (p.getMode() === 4 && !isLeaf(p)) wood.push(p)
+    const woodTris = wood.reduce((n, p) => n + triCount(p), 0)
+    const woodCap = cap - leafBudget
+    if (woodTris > woodCap) for (const p of wood) simplifyPrimitive(p, { simplifier: MeshoptSimplifier, ratio: woodCap / woodTris, error: lod === 1 ? 0.08 : 0.04, lockBorder: false })
+    await doc.transform(prune())
+  } else if (before > cap) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: cap / before, error: lod === 1 ? 0.05 : 0.02 }), prune())
   // a scan the simplifier could not bring under the cap (locked borders) gets a looser pass
-  if (triangles(doc) > cap * 1.05) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: cap / triangles(doc), error: 0.1, lockBorder: false }), prune())
+  if (!e.leaves && triangles(doc) > cap * 1.05) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: cap / triangles(doc), error: 0.1, lockBorder: false }), prune())
   // 7. textures: colour at q 86, data maps (normal, ORM) at q 92
-  const size = lod === 1 ? TEX.lod1 : TEX.lod0
+  const size = lod === 1 ? Math.min(TEX.lod1, e.tex ?? TEX.lod1) : (e.tex ?? TEX.lod0)
   if (root.listTextures().length) {
     await doc.transform(
       textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [size, size], quality: 86, slots: /^(baseColor|emissive|diffuse)/ }),

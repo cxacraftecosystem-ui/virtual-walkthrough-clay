@@ -291,7 +291,7 @@ export function Serpentine() {
   return (
     <group name="serpentine">
       <StaticMerge name="serpentine-shell">
-        {geo.wall && <mesh geometry={geo.wall} material={m.redLime} castShadow receiveShadow />}
+        {geo.wall && <mesh geometry={geo.wall} material={m.parikramaWall} castShadow receiveShadow />}
         {geo.retain && <mesh geometry={geo.retain} material={m.groundSoil} receiveShadow />}
       </StaticMerge>
     </group>

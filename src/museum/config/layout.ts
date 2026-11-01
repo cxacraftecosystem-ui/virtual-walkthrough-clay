@@ -774,6 +774,13 @@ const RING_OUT = KEY.ringOuterR
 const F_IN = FW.r - FW.thickness / 2
 const F_OUT = FW.r + FW.thickness / 2
 const CURB = OC.rings[0]
+/**
+ * The court's edge: midway between the pool's curb and the brass floor ring (p05's floor line).
+ * Inside it is the Oculus Court (the pool and the walk round it, and the F niche's forecourt),
+ * outside it the galleries: walking round the pool reads "Oculus Court", never a gallery, while
+ * one standing at a gallery's islands (the Herd starts 2 m out from the curb) is in the gallery.
+ */
+const COURT = (CURB + OC.floorRingR) / 2
 const GAP = KEY.annexGapDeg
 /** The corridor between F and H, and the gallery spawns: a little inside the podium row. */
 const CORRIDOR_MID = (F_OUT + RING) / 2
@@ -870,8 +877,8 @@ export const ZONES: Zone[] = (
     },
     {
       id: 'annex',
-      name: 'Entrance Hall',
-      short: 'Entrance',
+      name: 'The Earth Room',
+      short: 'Earth Room',
       shape: annexShape,
       anchor: [0, KEY.annexSkylightZ],
       spawn: { x: 0, z: AN.endZ - 1.6, yawDeg: 0 },
@@ -900,7 +907,7 @@ export const ZONES: Zone[] = (
       id: 'ring-a',
       name: 'Gallery A',
       short: 'Gallery A',
-      shape: sector(CURB, RING, finAB, FW.fromDeg),
+      shape: sector(COURT, RING, finAB, FW.fromDeg),
       anchor: polar(GALLERY_SPAWN_R, (finAB + FW.fromDeg) / 2),
       // between A1 and A2: the gallery's middle (5°) is the Herd's island (GRAND §4.2)
       spawn: spawnAt(GALLERY_SPAWN_R, (MUSEUM.podium.anglesDeg.a[0] + MUSEUM.podium.anglesDeg.a[1]) / 2, 'out'),
@@ -910,7 +917,7 @@ export const ZONES: Zone[] = (
       id: 'ring-b',
       name: 'Gallery B',
       short: 'Gallery B',
-      shape: sector(CURB, RING, finBC, finAB),
+      shape: sector(COURT, RING, finBC, finAB),
       anchor: polar(GALLERY_SPAWN_R, (finAB + finBC) / 2),
       spawn: spawnAt(GALLERY_SPAWN_R, (finAB + finBC) / 2, 'out'),
       height: ZH,
@@ -919,15 +926,15 @@ export const ZONES: Zone[] = (
       id: 'ring-c',
       name: 'Gallery C',
       short: 'Gallery C',
-      shape: sector(CURB, RING, FW.toDeg, finBC + 360),
+      shape: sector(COURT, RING, FW.toDeg, finBC + 360),
       anchor: polar(GALLERY_SPAWN_R, (FW.toDeg + finBC + 360) / 2),
       spawn: spawnAt(GALLERY_SPAWN_R, (DR.dNotchDeg + finBC + 360) / 2, 'out'),
       height: ZH,
     },
     {
       id: 'hallway-d',
-      name: 'Hallway',
-      short: 'Hallway',
+      name: 'Wine Hall',
+      short: 'Wine Hall',
       // the ambulatory from the E-west arch to the D notch, and the D arch's threshold
       shape: { kind: 'union', parts: [sector(RING_OUT, R, DW.fromDeg, DR.dNotchDeg), sector(RING, RING_OUT, ARCH.d.fromDeg, ARCH.d.toDeg)] },
       anchor: polar(KEY.ambMidR, (DW.fromDeg + DR.dNotchDeg) / 2),
@@ -938,8 +945,8 @@ export const ZONES: Zone[] = (
       id: 'inner',
       name: 'Oculus Court',
       short: 'Oculus',
-      // the pool inside the curb, and the court between the curb and F
-      shape: { kind: 'union', parts: [sector(0, CURB, 0, 360), sector(CURB, F_IN, FW.fromDeg, FW.toDeg)] },
+      // the pool and the walk round it, and the court between that and F
+      shape: { kind: 'union', parts: [sector(0, COURT, 0, 360), sector(COURT, F_IN, FW.fromDeg, FW.toDeg)] },
       anchor: [0, 0],
       spawn: spawnAt((CURB + F_IN) / 2, 60, 'in'),
       height: ZH,

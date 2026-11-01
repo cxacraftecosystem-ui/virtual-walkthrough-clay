@@ -75,7 +75,12 @@ for (const [slug, e] of Object.entries(SOURCED_REGISTRY)) {
       fail.push(`${slug}: ${path.basename(f)} does not decode (${err.message})`)
     }
   }
-  if (tris[0] > CAPS[e.role] * 1.05) fail.push(`${slug}: LOD0 ${tris[0]} triangles over the ${e.role} cap ${CAPS[e.role]}`)
+  // An entry may declare a larger LOD0 `budget` than its role's cap, with the reason in `capNote`
+  // (`cap` itself is only the optimiser's input — optimize-sourced.mjs).
+  const own = (Array.isArray(spec) ? spec : spec.models).find((m) => m.slug === slug)
+  if (own?.budget && !own.capNote) fail.push(`${slug}: budget ${own.budget} has no capNote`)
+  const cap = own?.budget && own.capNote ? Math.max(own.budget, CAPS[e.role]) : CAPS[e.role]
+  if (tris[0] > cap * 1.05) fail.push(`${slug}: LOD0 ${tris[0]} triangles over the ${e.role} cap ${cap}`)
   if (tris.length === 2 && tris[1] > tris[0]) fail.push(`${slug}: LOD1 (${tris[1]}) is heavier than LOD0 (${tris[0]})`)
   if (tris[0] !== e.tris) fail.push(`${slug}: registry says ${e.tris} triangles, the file has ${tris[0]}`)
   const c = e.credit

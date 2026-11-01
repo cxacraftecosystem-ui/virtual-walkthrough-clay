@@ -9,228 +9,302 @@
  *
  *   props {height = 4.2, paint = weathered | white | red, seed}
  *
+ * Sculpted (models/sculpt.ts), not stacked: one paddled skin from the tail root through the
+ * barrel and chest up the neck to the poll; a long head with a heavy jowl, a cut mouth, flared
+ * nostrils and bulging lidded eyes; turned legs with knee and fetlock; locks of mane along the
+ * crest; a saddle cloth draped over the back with a scalloped, bound and tasselled hem.
+ *
  * Shown outdoors as a guardian, with no offerings and nothing ritual (CRAFTS §2). Origin at
- * the plinth's floor centre; the horse faces +z. ≈ 9k triangles.
+ * the plinth's floor centre; the horse faces +z.
  */
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import { Builder, cyl, lathe, Parts, rbox, rng, type BuiltParts } from './kit'
+import { Builder, cyl, lathe, Parts, rbox, tube, type BuiltParts } from './kit'
+import { fbm, keyedLoft, sculptDetailFor, sculptEllipsoid, withSculptDetail } from './sculpt'
+import { useMuseum } from '../state/store'
 import { tinted, useModelMaterials, type ModelMaterials } from './modelMaterials'
 import { num, str, type ModelProps } from './types'
 
 type Paint = 'weathered' | 'white' | 'red'
 
-/** A tapered limb or neck: overlapping thrown sections along a curve (radius r0 → r1). */
-function sections(b: Builder, key: string, curve: THREE.Curve<THREE.Vector3>, r0: number, r1: number, n: number, radial = 20) {
-  const up = new THREE.Vector3(0, 1, 0)
-  const len = curve.getLength()
-  for (let i = 0; i < n; i++) {
-    const t = (i + 0.5) / n
-    const p = curve.getPointAt(t)
-    const d = curve.getTangentAt(t)
-    const r = r0 + (r1 - r0) * t
-    const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(up, d))
-    b.add(key, cyl(r * 0.97, r, (len / n) * 1.25, radial, false), { p: [p.x, p.y, p.z], r: [e.x, e.y, e.z] })
-  }
-}
+const PI = Math.PI
 
 /** Beads along a curve (a garland). */
 function beads(b: Builder, key: string, curve: THREE.Curve<THREE.Vector3>, r: number, n: number) {
-  const g = new THREE.SphereGeometry(r, 8, 6)
-  for (let i = 0; i <= n; i++) {
+  const g = sculptEllipsoid(r, r * 0.86, r, undefined, 8, 6)
+  for (let i = 0; i < n; i++) {
     const p = curve.getPointAt(i / n)
     b.add(key, g, { p: [p.x, p.y, p.z] })
   }
 }
 
-/** A garland hanging round the neck: an ellipse in a tilted plane, sagging at the front. */
-function garlandCurve(c: THREE.Vector3, rx: number, rz: number, sag: number, tilt: number) {
-  const pts: THREE.Vector3[] = []
-  for (let i = 0; i < 40; i++) {
-    const a = (i / 40) * Math.PI * 2
-    const x = Math.cos(a) * rx
-    const z = Math.sin(a) * rz
-    // the front (z > 0) hangs lower
-    const y = -Math.max(0, Math.sin(a)) * sag + z * Math.tan(tilt)
-    pts.push(new THREE.Vector3(c.x + x, c.y + y, c.z + z))
-  }
-  return new THREE.CatmullRomCurve3(pts, true)
+/** A clay bell: a lathed cup with a neck and a ring, mouth down once turned over. */
+function bellGeo(s: number) {
+  return lathe(
+    (
+      [
+        [0, 0.004],
+        [0.05, 0],
+        [0.066, 0.02],
+        [0.062, 0.06],
+        [0.046, 0.1],
+        [0.022, 0.122],
+        [0.012, 0.14],
+        [0, 0.142],
+      ] as [number, number][]
+    ).map(([rr, y]) => [rr * s, y * s] as [number, number]),
+    14,
+  )
+}
+
+/** Euler that turns +z to `dir`. */
+function facing(dir: THREE.Vector3): [number, number, number] {
+  const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize()))
+  return [e.x, e.y, e.z]
 }
 
 function build(H: number, seed: number): BuiltParts {
   const b = new Builder()
   const k = H / 4.2
-  const r = rng(seed * 7919 + 13)
+  const V = (x: number, y: number, z: number) => new THREE.Vector3(x * k, y * k, z * k)
+  const S = (l: [number, number][]) => l.map(([u, s]) => [u * k, s * k] as [number, number])
+  // hand-paddled clay: broad, soft unevenness, never a machine-smooth surface
+  const paddled = (amp: number, sd: number) => (_t: number, _a: number, p: THREE.Vector3) => amp * k * fbm((p.x * 2.4) / k + sd, (p.y * 2.4) / k, (p.z * 2.4) / k, 3)
 
   // ── plinth: two plastered steps, 0.8 m in all, so the guardian stands over the 6 m portal ──
   const p1 = 0.36 * k
   const p2 = 0.44 * k
-  b.add('plinth', rbox(1.75 * k, p1, 3.3 * k, 0.03 * k), { p: [0, p1 / 2, 0] })
-  b.add('plinth', rbox(1.5 * k, p2, 3.0 * k, 0.03 * k), { p: [0, p1 + p2 / 2, 0] })
-  const y0 = p1 + p2
+  b.add('plinth', rbox(1.75 * k, p1, 3.3 * k, 0.04 * k, 3), { p: [0, p1 / 2, 0] })
+  b.add('plinth', rbox(1.5 * k, p2, 3.0 * k, 0.04 * k, 3), { p: [0, p1 + p2 / 2, 0] })
+  const y0 = (p1 + p2) / k
 
-  // ── legs: columns with a knee band and a flared hoof ────────────────────────
-  const legH = 1.32 * k
-  const legX = 0.33 * k
-  for (const lz of [-0.88 * k, 0.86 * k])
+  // ── legs: thrown columns, a knee, a fetlock, a flared hoof; anklets of beads ──────────────
+  for (const lz of [-0.9, 0.82])
     for (const sx of [-1, 1]) {
-      const x = sx * legX
-      b.add('lime', cyl(0.165 * k, 0.19 * k, legH, 18), { p: [x, y0 + legH / 2 + 0.1 * k, lz] })
-      b.add('lime', cyl(0.24 * k, 0.26 * k, 0.12 * k, 18), { p: [x, y0 + 0.06 * k, lz] })
-      b.add('ochre', cyl(0.2 * k, 0.2 * k, 0.07 * k, 18, true), { p: [x, y0 + 0.58 * k, lz] })
-      b.add('red', cyl(0.205 * k, 0.205 * k, 0.04 * k, 18, true), { p: [x, y0 + 0.66 * k, lz] })
-      b.add('red', cyl(0.25 * k, 0.25 * k, 0.03 * k, 18, true), { p: [x, y0 + 0.13 * k, lz] })
+      const x = sx * 0.33
+      const leg = keyedLoft(
+        [V(x, y0, lz), V(x, y0 + 0.13, lz), V(x, y0 + 0.3, lz), V(x, y0 + 0.55, lz), V(x, y0 + 0.74, lz), V(x, y0 + 1.0, lz), V(x * 0.97, y0 + 1.45, lz)],
+        S([
+          [0.25, 0.25],
+          [0.2, 0.2],
+          [0.168, 0.168],
+          [0.152, 0.152],
+          [0.182, 0.176],
+          [0.17, 0.168],
+          [0.21, 0.2],
+        ]),
+      )
+      b.add('lime', leg.loft.geometry({ rows: 36, cols: 28, displace: paddled(0.012, sx + lz), capStart: true }))
+      b.add('red', tube(leg.loft.ring(0.47, 0.012 * k, 32), 0.022 * k, 40, 6))
+      b.add('ochre', tube(leg.loft.ring(0.52, 0.012 * k, 32), 0.022 * k, 40, 6))
+      beads(b, 'ochre', leg.loft.ring(0.2, 0.03 * k, 32), 0.03 * k, 16)
+      b.add('red', tube(leg.loft.ring(0.07, 0.01 * k, 32), 0.018 * k, 40, 6))
     }
 
-  // ── body: a thrown barrel, a deep chest, a rounded rump ─────────────────────
-  const bodyY = y0 + legH + 0.48 * k
-  const body = new THREE.CapsuleGeometry(0.56 * k, 1.55 * k, 8, 24)
-  body.rotateX(Math.PI / 2)
-  body.scale(0.84, 1, 1)
-  b.add('lime', body, { p: [0, bodyY, -0.05 * k] })
-  const chest = new THREE.SphereGeometry(0.6 * k, 24, 16)
-  chest.scale(0.86, 1.05, 0.8)
-  b.add('lime', chest, { p: [0, bodyY + 0.12 * k, 0.78 * k] })
-
-  // firing vents: dark round mouths on the flanks and under the belly
-  const vent = new THREE.CircleGeometry(0.06 * k, 14)
-  for (const sx of [-1, 1])
-    for (const z of [-0.6 * k, 0.1 * k]) {
-      const g = vent.clone()
-      g.rotateY((sx * Math.PI) / 2)
-      b.add('dark', g, { p: [sx * 0.475 * k, bodyY - 0.05 * k, z] })
-    }
-  const under = vent.clone()
-  under.rotateX(Math.PI / 2)
-  b.add('dark', under, { p: [0, bodyY - 0.565 * k, -0.2 * k] })
-
-  // ── neck: rising steeply from the chest, thick, slightly arched ─────────────
-  const neck = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, bodyY + 0.2 * k, 0.86 * k),
-    new THREE.Vector3(0, bodyY + 0.75 * k, 1.04 * k),
-    new THREE.Vector3(0, bodyY + 1.3 * k, 1.12 * k),
-    new THREE.Vector3(0, bodyY + 1.68 * k, 1.1 * k),
-  ])
-  sections(b, 'lime', neck, 0.42 * k, 0.27 * k, 9)
-  const poll = neck.getPointAt(1)
-  b.add('lime', new THREE.SphereGeometry(0.28 * k, 18, 12), { p: [poll.x, poll.y, poll.z] })
-
-  // ── head: a long face reaching forward and down, flaring at the muzzle ──────
-  const head = lathe(
-    [
-      [0, 0],
-      [0.25, 0.02],
-      [0.24, 0.3],
-      [0.19, 0.62],
-      [0.2, 0.78],
-      [0.22, 0.86],
-      [0.17, 0.95],
-      [0, 0.97],
-    ].map(([rr, y]) => [rr * k, y * k] as [number, number]),
-    22,
+  // ── body and neck: one paddled skin from the root of the tail up to the poll ─────────────
+  const body = keyedLoft(
+    [V(0, 2.66, -1.44), V(0, 2.7, -1.2), V(0, 2.64, -0.7), V(0, 2.58, -0.1), V(0, 2.64, 0.5), V(0, 2.98, 0.92), V(0, 3.42, 1.06), V(0, 3.82, 1.1), V(0, 4.04, 1.1)],
+    S([
+      [0.2, 0.18],
+      [0.5, 0.44],
+      [0.6, 0.48],
+      [0.62, 0.5],
+      [0.64, 0.5],
+      [0.54, 0.43],
+      [0.43, 0.35],
+      [0.35, 0.29],
+      [0.26, 0.24],
+    ]),
+    {
+      shape: (_t, a) => {
+        // a flatter belly, a ridge along the spine
+        const c = Math.cos(a)
+        const belly = c < 0 ? -0.06 * c * c : 0
+        const ridge = 0.04 * Math.pow(Math.max(0, c), 10)
+        return 1 + belly + ridge
+      },
+    },
   )
-  head.scale(0.82, 1, 1)
+  const K = body.keys
+  b.add('lime', body.loft.geometry({ rows: 110, cols: 48, displace: paddled(0.02, 3), capStart: true, capEnd: true }))
+
+  // ── head: a long face reaching forward and down, a heavy jowl, a flaring muzzle ───────────
+  const poll = body.loft.frame(1).p
   const hd = new THREE.Vector3(0, -0.62, 0.79).normalize()
-  const he = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), hd))
-  const hp = poll.clone().add(new THREE.Vector3(0, 0.02 * k, 0.06 * k))
-  b.add('lime', head, { p: [hp.x, hp.y, hp.z], r: [he.x, he.y, he.z] })
-  const at = (t: number) => hp.clone().add(hd.clone().multiplyScalar(t * k))
-  // wide eyes: a white ring, a black pupil, a red rim
-  for (const sx of [-1, 1]) {
-    const e = at(0.22)
-    b.add('red', new THREE.TorusGeometry(0.1 * k, 0.025 * k, 8, 20), { p: [sx * 0.2 * k, e.y + 0.04 * k, e.z], r: [0, (sx * Math.PI) / 2, 0] })
-    b.add('white', new THREE.SphereGeometry(0.095 * k, 16, 10), { p: [sx * 0.17 * k, e.y + 0.04 * k, e.z], s: [0.55, 1, 1] })
-    b.add('dark', new THREE.SphereGeometry(0.05 * k, 12, 8), { p: [sx * 0.215 * k, e.y + 0.04 * k, e.z + 0.01 * k], s: [0.5, 1, 1] })
-    // tall pricked ears
-    b.add('lime', cyl(0.015 * k, 0.09 * k, 0.42 * k, 12), { p: [sx * 0.15 * k, poll.y + 0.38 * k, poll.z - 0.02 * k], r: [-0.12, 0, -sx * 0.18] })
-    b.add('red', cyl(0.01 * k, 0.05 * k, 0.3 * k, 10), { p: [sx * 0.155 * k, poll.y + 0.36 * k, poll.z + 0.03 * k], r: [-0.12, 0, -sx * 0.18] })
-    // nostrils
-    const n = at(0.9)
-    b.add('dark', new THREE.SphereGeometry(0.045 * k, 10, 8), { p: [sx * 0.08 * k, n.y + 0.02 * k, n.z + 0.03 * k] })
-  }
-  // bridle: bands round the muzzle and the brow, a strap down the face
-  for (const t of [0.42, 0.74]) {
-    const c = at(t)
-    const band = new THREE.TorusGeometry(0.205 * k, 0.03 * k, 8, 26)
-    band.scale(0.85, 1, 1)
-    b.add('red', band, { p: [c.x, c.y, c.z], r: [he.x + Math.PI / 2, he.y, he.z] })
-  }
-  const brow = at(0.02)
-  b.add('ochre', new THREE.TorusGeometry(0.29 * k, 0.035 * k, 8, 28), { p: [brow.x, brow.y + 0.05 * k, brow.z], r: [Math.PI / 2 - 0.35, 0, 0] })
-
-  // ── mane: a scalloped crest down the back of the neck ───────────────────────
-  const mane = new THREE.Shape()
-  const M = 12
-  const back: THREE.Vector3[] = []
-  for (let i = 0; i <= M; i++) back.push(neck.getPointAt(0.04 + (0.94 * i) / M))
-  mane.moveTo(back[0].z - 0.3 * k, back[0].y)
-  for (let i = 0; i <= M; i++) {
-    const p = back[i]
-    const out = (0.38 + 0.12 * Math.sin((i / M) * Math.PI)) * k
-    mane.lineTo(p.z - out, p.y + (i % 2 ? 0.05 * k : -0.04 * k))
-  }
-  for (let i = M; i >= 0; i--) mane.lineTo(back[i].z - 0.2 * k, back[i].y)
-  mane.closePath()
-  const maneG = new THREE.ExtrudeGeometry(mane, { depth: 0.12 * k, bevelEnabled: true, bevelThickness: 0.02 * k, bevelSize: 0.02 * k, bevelSegments: 1, curveSegments: 4 })
-  // the shape was drawn in (z, y): turn it so its x runs along the world z
-  maneG.rotateY(-Math.PI / 2)
-  maneG.translate(-0.06 * k, 0, 0)
-  b.add('mane', maneG)
-
-  // ── trappings ──────────────────────────────────────────────────────────────
-  // three bead garlands round the neck's foot, sagging over the chest
-  const gc = new THREE.Vector3(0, bodyY + 0.62 * k, 0.98 * k)
-  const garlandKeys = ['red', 'ochre', 'green']
-  for (let i = 0; i < 3; i++) beads(b, garlandKeys[(i + seed) % 3], garlandCurve(gc.clone().add(new THREE.Vector3(0, -i * 0.14 * k, -i * 0.02 * k)), (0.43 + i * 0.05) * k, (0.4 + i * 0.05) * k, (0.22 + i * 0.12) * k, 0.25), 0.042 * k, 34 + i * 6)
-  // breast band with a row of bells
-  const band = new THREE.TorusGeometry(0.62 * k, 0.05 * k, 8, 40, Math.PI)
-  band.rotateX(Math.PI / 2)
-  band.rotateY(Math.PI)
-  b.add('red', band, { p: [0, bodyY - 0.06 * k, 0.42 * k], s: [0.82, 1, 0.82] })
-  const bell = lathe(
-    [
-      [0, 0],
-      [0.06, 0.01],
-      [0.07, 0.06],
-      [0.045, 0.11],
-      [0.018, 0.13],
-      [0, 0.135],
-    ].map(([rr, y]) => [rr * k, y * k] as [number, number]),
-    12,
+  const H0 = poll.clone().add(V(0, 0.04, -0.06))
+  const hAt = (d: number) => H0.clone().addScaledVector(hd, d * k)
+  const head = keyedLoft(
+    [hAt(0), hAt(0.28), hAt(0.58), hAt(0.84), hAt(1.0)],
+    S([
+      [0.3, 0.27],
+      [0.25, 0.225],
+      [0.205, 0.19],
+      [0.25, 0.215],
+      [0.15, 0.14],
+    ]),
+    {
+      shape: (t, a) => {
+        const c = Math.cos(a)
+        // the jowl swells under the cheek; the nasal bone runs as a ridge down the face
+        const jowl = 0.3 * Math.exp(-(((t - 0.12) / 0.16) ** 2)) * Math.pow(Math.max(0, -c), 1.5)
+        const nose = 0.05 * Math.pow(Math.max(0, c), 8)
+        return 1 + jowl + nose
+      },
+    },
   )
-  for (let i = 0; i < 9; i++) {
-    const a = Math.PI * (0.12 + (0.76 * i) / 8)
-    b.add('ochre', bell, { p: [Math.cos(a) * 0.51 * k, bodyY - 0.24 * k, 0.42 * k + Math.sin(a) * 0.51 * k] })
+  // the mouth: a deep cut round the muzzle
+  const mouth = (t: number, a: number) => -0.035 * k * Math.exp(-(((Math.cos(a) + 0.38) / 0.09) ** 2)) * THREE.MathUtils.smoothstep(t, 0.68, 0.82)
+  const headPad = paddled(0.012, 7)
+  b.add('lime', head.loft.geometry({ rows: 60, cols: 48, displace: (t, a, p) => mouth(t, a) + headPad(t, a, p), capStart: true, capEnd: true }))
+  for (const sx of [-1, 1]) {
+    // wide, bulging eyes under a heavy brow: white, a dark iris, a red lid
+    const t = 0.24
+    const a = sx * 1.2
+    const out = head.loft.outward(t, a)
+    const q = head.loft.point(t, a, 0)
+    const rot = facing(out)
+    b.add('white', sculptEllipsoid(0.11 * k, 0.085 * k, 0.07 * k, undefined, 24, 16), { p: [q.x, q.y, q.z], r: rot })
+    const iris = q.clone().addScaledVector(out, 0.055 * k)
+    b.add('dark', sculptEllipsoid(0.05 * k, 0.05 * k, 0.022 * k, undefined, 16, 10), { p: [iris.x, iris.y, iris.z], r: rot })
+    const lid = new THREE.TorusGeometry(0.105 * k, 0.026 * k, 8, 28)
+    lid.scale(1, 0.8, 1)
+    b.add('red', lid, { p: [q.x, q.y, q.z], r: rot })
+    const brow = q.clone().addScaledVector(head.loft.frame(t).N, 0.08 * k).addScaledVector(out, 0.015 * k)
+    b.add('lime', sculptEllipsoid(0.12 * k, 0.04 * k, 0.05 * k), { p: [brow.x, brow.y, brow.z], r: rot })
+    // flared nostrils
+    const nq = head.loft.point(0.9, sx * 0.55, 0)
+    const nOut = facing(head.loft.outward(0.9, sx * 0.55))
+    b.add('lime', new THREE.TorusGeometry(0.05 * k, 0.022 * k, 8, 20), { p: [nq.x, nq.y, nq.z], r: nOut })
+    b.add('dark', sculptEllipsoid(0.045 * k, 0.03 * k, 0.012 * k), { p: [nq.x, nq.y, nq.z], r: nOut })
+    // tall pricked ears, cupped to the front, red inside
+    const base = poll.clone().add(V(sx * 0.14, 0.12, 0))
+    const ear = keyedLoft(
+      [base, base.clone().add(V(sx * 0.03, 0.18, 0.02)), base.clone().add(V(sx * 0.06, 0.36, 0.03)), base.clone().add(V(sx * 0.08, 0.48, 0.02))],
+      S([
+        [0.06, 0.09],
+        [0.05, 0.1],
+        [0.035, 0.065],
+        [0.008, 0.01],
+      ]),
+      { shape: (_t, an) => 1 - 0.45 * Math.exp(-(((Math.abs(an) - PI) / 0.7) ** 2)) },
+    )
+    b.add('lime', ear.loft.geometry({ rows: 16, cols: 20, capEnd: true }))
+    const inner = ear.loft.point(0.4, PI, 0.004 * k)
+    b.add('red', sculptEllipsoid(0.05 * k, 0.12 * k, 0.012 * k), { p: [inner.x, inner.y, inner.z], r: [0.1, 0, -sx * 0.15] })
+    // a boss at the cheek where the bridle's straps meet
+    const cq = head.loft.point(0.42, sx * 1.6, 0.02 * k)
+    b.add('ochre', sculptEllipsoid(0.055 * k, 0.055 * k, 0.025 * k), { p: [cq.x, cq.y, cq.z], r: facing(head.loft.outward(0.42, sx * 1.6)) })
   }
-  // saddle cloth over the back with a bordered hem, a saddle seat on top
-  const cloth = new THREE.CylinderGeometry(0.62 * k, 0.62 * k, 1.05 * k, 28, 1, true, -Math.PI * 0.62, Math.PI * 1.24)
-  cloth.rotateX(Math.PI / 2)
-  cloth.scale(0.86, 1, 1)
-  b.add('red', cloth, { p: [0, bodyY + 0.02 * k, -0.25 * k] })
-  const hem = new THREE.TorusGeometry(0.62 * k, 0.04 * k, 6, 30, Math.PI * 1.24)
-  for (const z of [-0.77 * k, 0.27 * k]) {
-    const g = hem.clone()
-    g.rotateZ(-Math.PI * 0.12 - Math.PI / 2 - Math.PI * 0.5)
-    b.add('ochre', g, { p: [0, bodyY + 0.02 * k, z], s: [0.86, 1, 1] })
+  // bridle: a band round the muzzle and the brow, a strap down the face
+  b.add('red', tube(head.loft.ring(0.7, 0.012 * k, 36), 0.028 * k, 48, 6))
+  b.add('red', tube(head.loft.ring(0.06, 0.02 * k, 36), 0.028 * k, 48, 6))
+  const strap: THREE.Vector3[] = []
+  for (let i = 0; i <= 8; i++) strap.push(head.loft.point(0.06 + (0.64 * i) / 8, 0, 0.012 * k))
+  b.add('red', tube(new THREE.CatmullRomCurve3(strap), 0.024 * k, 24, 6))
+
+  // ── mane: sculpted locks standing along the crest, a forelock between the ears ────────────
+  const LOCKS = 13
+  for (let i = 0; i < LOCKS; i++) {
+    const t = K[5] + ((1 - K[5]) * (i + 0.5)) / LOCKS
+    const f = body.loft.frame(t)
+    const q = body.loft.point(t, 0, 0.03 * k)
+    const lean = f.N.clone().multiplyScalar(0.7).addScaledVector(f.T, -0.7).normalize()
+    const sz = 0.75 + 0.35 * Math.sin((i / (LOCKS - 1)) * PI)
+    const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), lean))
+    const lock = sculptEllipsoid(0.07 * k * sz, 0.17 * k * sz, 0.05 * k * sz, (d) => 0.012 * k * Math.sin(d.y * 6 + d.x * 4) - (d.y > 0.4 ? 0.04 * k * (d.y - 0.4) : 0), 16, 12)
+    b.add('mane', lock, { p: [q.x + (i % 2 ? 0.035 : -0.035) * k, q.y, q.z], r: [e.x, e.y, e.z] })
   }
-  b.add('red', rbox(0.62 * k, 0.16 * k, 0.72 * k, 0.05 * k), { p: [0, bodyY + 0.6 * k, -0.25 * k] })
-  b.add('ochre', rbox(0.66 * k, 0.05 * k, 0.76 * k, 0.02 * k), { p: [0, bodyY + 0.69 * k, -0.25 * k] })
-  b.add('red', rbox(0.5 * k, 0.32 * k, 0.12 * k, 0.04 * k), { p: [0, bodyY + 0.8 * k, -0.6 * k] })
-  // tassels hanging at the cloth's corners
+  const fore = poll.clone().add(V(0, 0.1, 0.1))
+  b.add('mane', sculptEllipsoid(0.08 * k, 0.14 * k, 0.06 * k), { p: [fore.x, fore.y, fore.z], r: [0.5, 0, 0] })
+
+  // ── trappings ────────────────────────────────────────────────────────────────────────────
+  // three bead garlands round the foot of the neck, sagging over the chest (a = π: the front)
+  const garlandKeys = ['red', 'ochre', 'green']
+  for (let i = 0; i < 3; i++) {
+    const t = K[5] + 0.02 + i * 0.03
+    const sag = (0.1 + i * 0.12) * k
+    const g = body.loft.ring(t, 0.04 * k, 48, (a) => sag * Math.pow(Math.max(0, -Math.cos(a)), 1.4))
+    beads(b, garlandKeys[(i + seed) % 3], g, 0.045 * k, 40 + i * 6)
+  }
+  // a collar higher on the neck, a pendant boss at its front
+  const collarT = K[6] + 0.01
+  b.add('red', tube(body.loft.ring(collarT, 0.02 * k, 40), 0.04 * k, 56, 8))
+  b.add('ochre', tube(body.loft.ring(collarT + 0.012, 0.03 * k, 40), 0.018 * k, 56, 6))
+  {
+    const q = body.loft.point(collarT, PI, 0.06 * k)
+    b.add('ochre', sculptEllipsoid(0.09 * k, 0.11 * k, 0.04 * k), { p: [q.x, q.y - 0.08 * k, q.z], r: facing(body.loft.outward(collarT, PI)) })
+  }
+  // breast band round the chest, a row of hanging bells
+  const breast: THREE.Vector3[] = []
+  for (let i = 0; i <= 20; i++) {
+    const th = -PI / 2 + (PI * i) / 20
+    breast.push(V(Math.sin(th) * 0.545, 2.5 + 0.04 * Math.cos(th), 0.42 + 0.52 * Math.cos(th)))
+  }
+  const breastC = new THREE.CatmullRomCurve3(breast)
+  b.add('red', tube(breastC, 0.05 * k, 48, 8))
+  b.add('ochre', tube(new THREE.CatmullRomCurve3(breast.map((p) => p.clone().add(V(0, -0.055, 0)))), 0.02 * k, 48, 6))
+  const bell = bellGeo(k * 1.15)
+  for (let i = 1; i < 12; i++) {
+    const p = breastC.getPointAt(i / 12)
+    b.add('ochre', bell, { p: [p.x, p.y - 0.06 * k, p.z], r: [PI, 0, 0] })
+  }
+  // saddle cloth over the back, its hem scalloped and bound, a tassel at each scallop
+  const tc0 = K[1] + 0.07
+  const tc1 = K[4] - 0.06
+  const SC = 7
+  const hemA = (t: number) => 1.9 + 0.14 * Math.abs(Math.sin(((t - tc0) / (tc1 - tc0)) * PI * SC))
+  b.add('cloth', body.loft.geometry({ t0: tc0, t1: tc1, rows: 70, cols: 40, offset: 0.03 * k, arange: (t) => [-hemA(t), hemA(t)], displace: paddled(0.008, 11) }))
+  for (const sx of [-1, 1]) {
+    const hem: THREE.Vector3[] = []
+    for (let i = 0; i <= 70; i++) {
+      const t = tc0 + ((tc1 - tc0) * i) / 70
+      hem.push(body.loft.point(t, sx * hemA(t), 0.035 * k))
+    }
+    b.add('ochre', tube(new THREE.CatmullRomCurve3(hem), 0.026 * k, 90, 6))
+    for (let s = 0; s <= SC; s++) {
+      const t = tc0 + ((tc1 - tc0) * s) / SC
+      const q = body.loft.point(t, sx * hemA(t), 0.04 * k)
+      b.add('green', cyl(0.02 * k, 0.065 * k, 0.2 * k, 10), { p: [q.x, q.y - 0.12 * k, q.z] })
+      b.add('ochre', sculptEllipsoid(0.04 * k, 0.04 * k, 0.04 * k, undefined, 10, 8), { p: [q.x, q.y - 0.01 * k, q.z] })
+    }
+  }
+  for (const t of [tc0, tc1]) {
+    const edge: THREE.Vector3[] = []
+    for (let i = 0; i <= 24; i++) edge.push(body.loft.point(t, -hemA(t) + (2 * hemA(t) * i) / 24, 0.034 * k))
+    b.add('red', tube(new THREE.CatmullRomCurve3(edge), 0.024 * k, 48, 6))
+  }
+  // the seat: a padded saddle with a raised cantle and pommel
+  {
+    const tm = (tc0 + tc1) / 2
+    const top = body.loft.point(tm, 0, 0.05 * k)
+    b.add('red', sculptEllipsoid(0.34 * k, 0.09 * k, 0.46 * k), { p: [top.x, top.y + 0.02 * k, top.z] })
+    for (const dz of [-0.42, 0.4]) b.add('red', sculptEllipsoid(0.26 * k, 0.12 * k, 0.07 * k), { p: [top.x, top.y + 0.08 * k, top.z + dz * k] })
+  }
+  // girth strap under the belly
+  b.add('ochre', tube(body.loft.ring(K[3] - 0.02, 0.035 * k, 40), 0.03 * k, 48, 6))
+
+  // firing vents: dark round mouths with a thrown lip, low on the flanks
   for (const sx of [-1, 1])
-    for (const z of [-0.7 * k, 0.18 * k]) {
-      b.add('green', cyl(0.02 * k, 0.07 * k, 0.24 * k, 10), { p: [sx * 0.49 * k, bodyY - 0.52 * k, z] })
-      b.add('ochre', new THREE.SphereGeometry(0.045 * k, 10, 8), { p: [sx * 0.49 * k, bodyY - 0.38 * k, z] })
+    for (const t of [K[2], K[3] + 0.03]) {
+      const a = sx * 1.95
+      const q = body.loft.point(t, a, 0)
+      const o = facing(body.loft.outward(t, a))
+      b.add('lime', new THREE.TorusGeometry(0.07 * k, 0.022 * k, 8, 20), { p: [q.x, q.y, q.z], r: o })
+      b.add('dark', sculptEllipsoid(0.065 * k, 0.065 * k, 0.012 * k), { p: [q.x, q.y, q.z], r: o })
     }
 
-  // ── tail: a thick sweep up and back ─────────────────────────────────────────
-  const tail = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, bodyY + 0.1 * k, -1.32 * k),
-    new THREE.Vector3(0, bodyY - 0.2 * k, -1.62 * k),
-    new THREE.Vector3(0, bodyY - 0.75 * k, -1.62 * k),
-  ])
-  sections(b, 'lime', tail, 0.13 * k, 0.08 * k, 5, 14)
-  void r
+  // ── tail: a thick sweep down from the rump, a flared tuft ────────────────────────────────
+  const tail = keyedLoft(
+    [V(0, 2.82, -1.32), V(0, 2.72, -1.58), V(0, 2.3, -1.7), V(0, 1.85, -1.66), V(0, 1.6, -1.6)],
+    S([
+      [0.13, 0.12],
+      [0.12, 0.11],
+      [0.1, 0.09],
+      [0.13, 0.11],
+      [0.05, 0.05],
+    ]),
+  )
+  b.add('mane', tail.loft.geometry({ rows: 40, cols: 24, displace: (t, a) => 0.012 * k * Math.abs(Math.sin(a * 6 + t * 8)) * THREE.MathUtils.smoothstep(t, 0.2, 0.6), capStart: true, capEnd: true }))
   return b.build()
 }
 
@@ -285,6 +359,8 @@ function materialsFor(m: ModelMaterials, paint: Paint): Record<string, THREE.Mat
     white: tinted(m.terracotta, '#f3efe6', { roughness: 0.6 }),
     dark: tinted(m.terracotta, '#1b1714', { roughness: 0.8 }),
     mane: fade(weathered ? '#5a2a20' : '#7a1f17'),
+    // the saddle cloth is an open skin over the back: seen from below its hem too
+    cloth: tinted(m.terracotta, weathered ? '#8f3324' : '#a8261b', { roughness: weathered ? 0.95 : 0.8, envMapIntensity: weathered ? 0.4 : 0.6, side: THREE.DoubleSide }),
   }
 }
 
@@ -294,16 +370,18 @@ export function AyyanarHorse({ config }: ModelProps) {
   const paintS = str(config, 'paint', 'weathered')
   const paint: Paint = paintS === 'white' || paintS === 'red' ? paintS : 'weathered'
   const seed = Math.round(num(config, 'seed', 1))
+  // tessellation by tier (sculpt.ts): the form is the same, the facets fewer
+  const d = sculptDetailFor(useMuseum((s) => s.tier))
   const parts = useMemo(() => {
-    const key = `${H}|${seed}|${paint}`
+    const key = `${H}|${seed}|${paint}|${d}`
     let hit = cache.get(key)
     if (!hit) {
-      hit = build(H, seed)
+      hit = withSculptDetail(d, () => build(H, seed))
       if (paint === 'weathered') for (const p of hit) if (p.key === 'lime') weather(p.geometry, H, seed)
       cache.set(key, hit)
     }
     return hit
-  }, [H, seed, paint])
+  }, [H, seed, paint, d])
   const mats = useMemo(() => materialsFor(m, paint), [m, paint])
   return <Parts parts={parts} materials={mats} />
 }

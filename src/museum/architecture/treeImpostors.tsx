@@ -12,9 +12,11 @@ import { useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { SOURCED_REGISTRY } from '../config/sourcedRegistry.generated'
+import { cutOutTwigCards } from '../materials/foliage'
+import { withHaze } from './exteriorHaze'
 import type { Planting } from './sourcedInstances'
 
-const SIZE = 256
+const SIZE = 384
 
 /** Two crossed vertical cards, 1 wide × 1 tall, standing on y 0, normals up. */
 function crossedCards(): THREE.BufferGeometry {
@@ -40,8 +42,19 @@ function crossedCards(): THREE.BufferGeometry {
   return g
 }
 
-/** Render a model side-on into a square texture; returns it with the model's width / height ratio. */
-function capture(gl: THREE.WebGLRenderer, model: THREE.Object3D): { tex: THREE.Texture; aspect: number } {
+/** One horizontal card, 1 × 1, at y 0, normal up (the crown seen from above). */
+function topCard(): THREE.BufferGeometry {
+  const g = new THREE.PlaneGeometry(1, 1)
+  g.rotateX(-Math.PI / 2)
+  return g
+}
+
+/**
+ * Render a model into a square texture, side-on (or from above, `top`); returns it with the
+ * model's width / height ratio (from above: its crown's width / height). Leaves are captured with
+ * a low cut-out threshold, so the card's crown is a dense canopy, never a few spindly twigs.
+ */
+function capture(gl: THREE.WebGLRenderer, model: THREE.Object3D, top = false): { tex: THREE.Texture; aspect: number; crownY: number } {
   const root = model.clone(true)
   const made: THREE.Material[] = []
   root.traverse((o) => {
@@ -49,18 +62,28 @@ function capture(gl: THREE.WebGLRenderer, model: THREE.Object3D): { tex: THREE.T
     if (m && (m.transparent || m.alphaTest > 0)) {
       const c = m.clone()
       c.transparent = false
-      c.alphaTest = 0.4
+      c.alphaTest = 0.18
       c.side = THREE.DoubleSide
       made.push(c)
       ;(o as THREE.Mesh).material = c
+    } else if (m) {
+      // twig cards authored opaque (materials/foliage.ts): cut out, or the card is a dark sheet
+      const c = m.clone()
+      if (cutOutTwigCards(c)) {
+        made.push(c)
+        ;(o as THREE.Mesh).material = c
+      } else c.dispose()
     }
   })
   const box = new THREE.Box3().setFromObject(root)
   const size = box.getSize(new THREE.Vector3())
   const c = box.getCenter(new THREE.Vector3())
-  const half = Math.max(size.x, size.y) / 2
+  const half = top ? Math.max(size.x, size.z) / 2 : Math.max(size.x, size.y) / 2
   const cam = new THREE.OrthographicCamera(-half, half, half, -half, 0.01, 1000)
-  cam.position.set(c.x, c.y, box.max.z + 50)
+  if (top) {
+    cam.position.set(c.x, box.max.y + 50, c.z)
+    cam.up.set(0, 0, -1)
+  } else cam.position.set(c.x, c.y, box.max.z + 50)
   cam.lookAt(c.x, c.y, c.z)
   const scene = new THREE.Scene()
   scene.add(root)
@@ -83,7 +106,7 @@ function capture(gl: THREE.WebGLRenderer, model: THREE.Object3D): { tex: THREE.T
   gl.setClearColor(prevClear, prevAlpha)
   gl.toneMapping = prevTone
   made.forEach((m) => m.dispose())
-  return { tex: rt.texture, aspect: size.x / Math.max(1e-3, size.y) }
+  return { tex: rt.texture, aspect: (top ? Math.max(size.x, size.z) : size.x) / Math.max(1e-3, size.y), crownY: size.y * 0.62 }
 }
 
 function Belt({ slug, items }: { slug: string; items: Planting[] }) {
@@ -92,17 +115,28 @@ function Belt({ slug, items }: { slug: string; items: Planting[] }) {
   const gl = useThree((s) => s.gl)
   const height = entry.bbox[4] - entry.bbox[1]
   const card = useMemo(() => capture(gl, scene), [gl, scene])
+  const crown = useMemo(() => capture(gl, scene, true), [gl, scene])
   const geo = useMemo(() => crossedCards(), [])
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({ name: 'treeImpostor', map: card.tex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 1, metalness: 0 }), [card])
+  const geoTop = useMemo(() => topCard(), [])
+  // the far woods recede into the horizon's haze with the terrain (exteriorHaze.ts)
+  const mat = useMemo(() => withHaze(new THREE.MeshStandardMaterial({ name: 'treeImpostor', map: card.tex, alphaTest: 0.32, side: THREE.DoubleSide, roughness: 1, metalness: 0 })), [card])
+  // the crown from above (aerial and roof views): the canopy, not two crossed cards seen edge-on.
+  // One-sided (facing up): seen from below, from the ground beside a near tree (Low draws the
+  // near belt and the avenue as cards), the picture of a crown's top drew as an opaque black blob
+  const matTop = useMemo(() => withHaze(new THREE.MeshStandardMaterial({ name: 'treeImpostorTop', map: crown.tex, alphaTest: 0.32, side: THREE.FrontSide, roughness: 1, metalness: 0 })), [crown])
   useEffect(
     () => () => {
       mat.dispose()
+      matTop.dispose()
       geo.dispose()
+      geoTop.dispose()
       card.tex.dispose()
+      crown.tex.dispose()
     },
-    [mat, geo, card],
+    [mat, matTop, geo, geoTop, card, crown],
   )
   const ref = useRef<THREE.InstancedMesh>(null)
+  const refTop = useRef<THREE.InstancedMesh>(null)
   useLayoutEffect(() => {
     const im = ref.current
     if (!im) return
@@ -117,8 +151,23 @@ function Belt({ slug, items }: { slug: string; items: Planting[] }) {
     })
     im.instanceMatrix.needsUpdate = true
     im.computeBoundingSphere()
-  }, [items, height, card])
-  return <instancedMesh ref={ref} args={[geo, mat, items.length]} raycast={() => null} />
+    const im2 = refTop.current
+    if (!im2) return
+    items.forEach((it, i) => {
+      const w = height * it.scale * crown.aspect * 0.9
+      q.setFromAxisAngle(up, it.rot)
+      m.compose(new THREE.Vector3(it.x, it.y + crown.crownY * it.scale, it.z), q, new THREE.Vector3(w, 1, w))
+      im2.setMatrixAt(i, m)
+    })
+    im2.instanceMatrix.needsUpdate = true
+    im2.computeBoundingSphere()
+  }, [items, height, card, crown])
+  return (
+    <group>
+      <instancedMesh ref={ref} args={[geo, mat, items.length]} raycast={() => null} />
+      <instancedMesh ref={refTop} args={[geoTop, matTop, items.length]} raycast={() => null} />
+    </group>
+  )
 }
 
 /** The far belt: impostors of the sourced trees, one instanced draw per variant. */

@@ -191,7 +191,8 @@ function SkylightBeam() {
   }, [])
   useEffect(() => () => geo.dispose(), [geo])
   useFrame(() => {
-    beamMat.uniforms.uGain.value = 0.085 * ambience.daylight * (1 - 0.6 * weatherNow.overcast)
+    // (p05: a beam one sees, from the roof light down onto the table)
+    beamMat.uniforms.uGain.value = 0.17 * ambience.daylight * (1 - 0.6 * weatherNow.overcast)
   })
   return <mesh geometry={geo} material={beamMat} renderOrder={40} raycast={() => null} frustumCulled={false} />
 }

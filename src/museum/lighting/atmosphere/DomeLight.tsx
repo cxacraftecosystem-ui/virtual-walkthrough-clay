@@ -63,9 +63,10 @@ function apply() {
   // the golden hour warms the light-well and the terraces (amber off the low sun), and lifts them
   const g = goldenNow()
   DOME_RINGS.slice(0, RING_SLOTS).forEach((d, i) => {
-    cDay.set(kelvinToHex(d.dayK)).lerp(cGold, i === 0 ? 0.5 * g : 0.85 * g)
+    // (held: the golden hour warms the rings, it does not flood the drum below them orange)
+    cDay.set(kelvinToHex(d.dayK)).lerp(cGold, i === 0 ? 0.25 * g : 0.55 * g)
     cNight.set(kelvinToHex(d.nightK))
-    const day = d.day * (i === DOME_RINGS.length - 1 ? sky : 1) * (1 + (i === 0 ? 0.6 : 0.9) * g)
+    const day = d.day * (i === DOME_RINGS.length - 1 ? sky : 1) * (1 + (i === 0 ? 0.2 : 0.45) * g)
     let I = day + (d.night - day) * n
     if (i === 0) I *= 1 - 0.45 * diyaNow.festival
     cDay.lerp(cNight, n).multiplyScalar(I)

@@ -42,7 +42,7 @@ const POSE_ZONES: Record<string, ZoneId> = {
   G05: 'entry-e',
   G06: 'ring-a',
   G07: 'inner',
-  G07b: 'ring-b',
+  G07b: 'inner',
   G09: 'ring-a',
   G10: 'ring-b',
   G11: 'ring-c',

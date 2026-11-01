@@ -114,8 +114,8 @@ export function CoilPot({ config }: ModelProps) {
       // burnished outside, rougher coils, the raw section a lighter, unburnt core
       // (the coils only a shade from the skin: they read in their shadows, never as stripes)
       skin: tinted(m.terracotta, '#5a3626', { roughness: 0.34, envMapIntensity: 1.1, side: THREE.DoubleSide }),
-      coil: tinted(m.terracotta, '#5e3a29', { roughness: 0.8, side: THREE.DoubleSide }),
-      section: tinted(m.terracotta, '#8a5a40', { roughness: 0.97, side: THREE.DoubleSide }),
+      coil: tinted(m.terracotta, '#7a4a33', { roughness: 0.8, side: THREE.DoubleSide }),
+      section: tinted(m.terracotta, '#a8704f', { roughness: 0.97, side: THREE.DoubleSide }),
     }),
     [m],
   )

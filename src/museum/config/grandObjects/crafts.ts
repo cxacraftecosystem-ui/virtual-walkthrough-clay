@@ -164,8 +164,8 @@ function piece(p: PieceSpec): SceneObjectConfig {
 const vessel = (form: string, clay: string, burnish = 0.3, decor = 'none'): Props => ({ form, clay, burnish, decor })
 
 /** A plain display stand (the pavilion's lacquered podium), as furniture: it collides, it is not an exhibit. */
-function stand(id: string, position: Vec3, rotationDeg: number, footprint: [number, number], height: number, zone: ZoneId, top: 'plain' | 'vitrine' = 'plain'): SceneObjectConfig {
-  return { id, title: 'Display stand', kind: 'podium', position, rotationDeg, footprint, height, props: { height, top }, zone, i18n: { hi: { title: 'प्रदर्शन चौकी' }, bn: { title: 'প্রদর্শনী বেদি' } } }
+function stand(id: string, position: Vec3, rotationDeg: number, footprint: [number, number], height: number, zone: ZoneId, top: 'plain' | 'vitrine' = 'plain', finish = '', extra: Props = {}): SceneObjectConfig {
+  return { id, title: 'Display stand', kind: 'podium', position, rotationDeg, footprint, height, props: { ...(finish ? { height, top, finish } : { height, top }), ...extra }, zone, i18n: { hi: { title: 'प्रदर्शन चौकी' }, bn: { title: 'প্রদর্শনী বেদি' } } }
 }
 
 /** A bracket on a wall (a shallow lacquered podium, sized by props), its top at `y`. */
@@ -340,7 +340,9 @@ const HERD_HORSES: { x: number; out: number; step: number; h: number; flip: bool
 ]
 const HERD: SceneObjectConfig[] = [
   // footprint [across, along]: the podium's local x is tangential, its z radial
-  ...HERD_STEPS.map((st, i) => stand(`herd-plinth-${i + 1}`, herdAt(0, stepOut(i), 0), facingIn(HERD_A), [st.w, st.len], st.h, 'ring-a')),
+  // rose-lime steps (not the oxblood lacquer): under the red light they stay a warm red, never black
+  // lacquered red (a low roughness, so the steps carry a sheen) with a brass lip on every edge
+  ...HERD_STEPS.map((st, i) => stand(`herd-plinth-${i + 1}`, herdAt(0, stepOut(i), 0), facingIn(HERD_A), [st.w, st.len], st.h, 'ring-a', 'plain', '#a8382a', { roughness: 0.3, edge: true })),
   ...HERD_HORSES.map((hh, i) =>
     piece({
       id: `craft-bankura-herd-${i + 1}`,
@@ -471,7 +473,8 @@ const BLACK_ISLAND: SceneObjectConfig[] = [
     rotationDeg: 0,
     footprint: [ISLAND.r * 2, ISLAND.r * 2],
     height: ISLAND.h,
-    props: { tiers: 1, r: ISLAND.r, h: ISLAND.h, color: '#2e2a28' },
+    // a dark slate top (p04: black ware on slate under one cool beam)
+    props: { tiers: 1, r: ISLAND.r, h: ISLAND.h, color: '#141719', roughness: 0.5 },
     zone: 'ring-c',
     i18n: { hi: { title: 'काले मृद्भांडों की मेज़' }, bn: { title: 'কালো মৃৎপাত্রের টেবিল' } },
   },
@@ -618,11 +621,13 @@ const F_COURT: SceneObjectConfig[] = [
   // shown large (≈ 60 % of the niche's height above the plinth), like p07l's lit niche figure
   sourced('elsewhere-forme-sortant', 'wc-forme-sortant-de-la-matiere', at(F_PLINTH_R, F_NICHE_A, F_PLINTH_H), facingIn(F_NICHE_A), 'inner', {
     h: F.niche.height * 0.38,
+    // a pale buff clay finish: against the niche's glowing red the grey read as a dark lump
+    finish: 'buff',
     title: ['Form Rising from Matter', 'पदार्थ से उठता रूप', 'পদার্থ থেকে উঠে আসা রূপ'],
     text: [
-      'A sculpture by Paul Le Goff, “La forme sortant de la matière”: a figure emerging from an uncut block. Shown from a 3D scan, in a plain grey finish, as the court’s one figure.',
-      'पॉल ल गॉफ़ की मूर्ति, “ला फ़ॉर्म सॉर्तां द ला मातियेर”: बिना तराशे ढोके से उभरती एक आकृति। 3D स्कैन से, सादी धूसर सतह में, आँगन की अकेली आकृति के रूप में।',
-      'পল ল গফের ভাস্কর্য, “লা ফর্ম সর্তাঁ দ্য লা মাতিয়ের”: না-কাটা পাথরের খণ্ড থেকে বেরিয়ে আসা এক মূর্তি। 3D স্ক্যান থেকে, সাদামাটা ধূসর রঙে, উঠোনের একমাত্র মূর্তি হিসেবে।',
+      'A sculpture by Paul Le Goff, “La forme sortant de la matière”: a figure emerging from an uncut block. Shown from a 3D scan, in a pale clay finish, as the court’s one figure.',
+      'पॉल ल गॉफ़ की मूर्ति, “ला फ़ॉर्म सॉर्तां द ला मातियेर”: बिना तराशे ढोके से उभरती एक आकृति। 3D स्कैन से, हल्की मिट्टी जैसी सतह में, आँगन की अकेली आकृति के रूप में।',
+      'পল ল গফের ভাস্কর্য, “লা ফর্ম সর্তাঁ দ্য লা মাতিয়ের”: না-কাটা পাথরের খণ্ড থেকে বেরিয়ে আসা এক মূর্তি। 3D স্ক্যান থেকে, হালকা মাটির রঙে, উঠোনের একমাত্র মূর্তি হিসেবে।',
     ],
   }),
 ]
@@ -831,6 +836,18 @@ function wineHall(): SceneObjectConfig[] {
       out.push(stand(`elsewhere-stand-${wi + 1}-${k + 1}`, sp.position, sp.rotationY / DEG, [0.42, 0.42], h, 'hallway-d', k === 0 && wi === 0 ? 'vitrine' : 'plain'))
       out.push(sourced(`elsewhere-${e.slug}`, e.slug, [sp.position[0], h, sp.position[2]], sp.rotationY / DEG, 'hallway-d', { title: e.title, text: e.text }))
     })
+  })
+  // p08l "plinths and busts": sculpted heads in a terracotta finish at the ends of four plinths'
+  // top treads, at eye level, turned a little towards the walk (fittings of the hall, not curated
+  // pieces: no label, credited on /credits)
+  const HEADS = ['ph-marble-bust-01', 'ph-horse-head', 'ph-lion-head', 'ph-bull-head']
+  const headOn = [0, 1, 3, 5]
+  HEADS.forEach((slug, k) => {
+    const p = plinths[headOn[k]]
+    if (!p || !SOURCED_REGISTRY[slug]) return
+    const t = winePlinthTread(p, 1)
+    const side = k % 2 ? -1 : 1
+    out.push(sourced(`wine-head-${k + 1}`, slug, toWorld(p, side * (t.width / 2 - 0.24), t.y, t.z), (p.rotationDeg ?? 0) - side * 18, 'hallway-d', { finish: 'terracotta' }))
   })
   // the relief at the hall's end: on its ledge if there is one, else on the lobe wall at eye level
   if (ledge) {
@@ -1180,9 +1197,9 @@ function redRoom(): SceneObjectConfig[] {
       craft: 'andro',
       kind: 'coil-pot',
       position: [plinth ? plinth.position[0] : RR.cx, top, plinth ? plinth.position[2] : RR.cz],
-      // the open quarter turned 50° off the door: from the doorway the burnished skin and the cut
-      // section read together, the coils showing in section and inside (never a wall of stripes)
-      rotationDeg: facingIn(RED_ROOM.aDeg) + 50,
+      // the open quarter turned to the door (a few degrees off, so the burnished skin shows beside
+      // the cut): from the doorway the coils show in section and as ridges inside
+      rotationDeg: facingIn(RED_ROOM.aDeg) + 12,
       height: 0.82,
       footprint: undefined,
       props: { coils: 22, cutaway: true },
@@ -1237,6 +1254,34 @@ function earthRoom(): SceneObjectConfig[] {
 }
 
 /* ------------------------------------------------------------------ */
+/* Gallery C: black ware on wall brackets between the podiums          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The C ring wall between its podiums was a blank charcoal sheet: four lacquered brackets at
+ * shoulder height, each carrying one burnished black piece under its own cool spot (the soffit
+ * track over it), so the wall reads as a run of lit shelves of black ware.
+ */
+const C_WALL_PIECES: { craft: CraftSlug; word: Word; h: number; props: Props }[] = [
+  { craft: 'longpi', word: 'kettle', h: 0.28, props: vessel('kettle', 'black', 0.85) },
+  { craft: 'nizamabad', word: 'surahi', h: 0.36, props: vessel('surahi', 'black', 0.9, 'silver-incision') },
+  { craft: 'longpi', word: 'blackBowl', h: 0.24, props: vessel('lidded', 'black', 0.85) },
+  { craft: 'nizamabad', word: 'jar', h: 0.32, props: vessel('jar', 'black', 0.9, 'silver-incision') },
+]
+const C_WALL_Y = 2.1
+const C_WALL: SceneObjectConfig[] = C_WALL_PIECES.flatMap((p, i) => {
+  const angs = MUSEUM.podium.anglesDeg.c
+  // between consecutive podiums, and past the last one towards the D notch
+  const a = i < angs.length - 1 ? (angs[i] + angs[i + 1]) / 2 : angs[angs.length - 1] - (angs[angs.length - 2] - angs[angs.length - 1]) / 2
+  const r = KEY.ringR - 0.17
+  const rot = facingIn(a)
+  return [
+    bracket(`c-wall-bracket-${i + 1}`, at(r, a, C_WALL_Y), rot, 0.5, 0.3, 'ring-c'),
+    piece({ id: `craft-${p.craft}-c-wall-${i + 1}`, title: W[p.word], craft: p.craft, kind: 'clay-vessel', position: at(r, a, C_WALL_Y), rotationDeg: rot, height: p.h, props: p.props, zone: 'ring-c', inspectable: true }),
+  ]
+})
+
+/* ------------------------------------------------------------------ */
 /* The list                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -1247,6 +1292,7 @@ export const GRAND_CRAFTS_OBJECTS: SceneObjectConfig[] = [
   ...NICHE_PLAQUES,
   ...MAKERS_TABLE,
   ...BLACK_ISLAND,
+  ...C_WALL,
   ...UPPER_REGISTER,
   ...REGISTER_RELIEFS,
   ...F_COURT,

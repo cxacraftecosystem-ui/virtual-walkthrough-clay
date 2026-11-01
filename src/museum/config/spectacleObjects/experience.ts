@@ -54,7 +54,7 @@ const STAMP_POSTS: SceneObjectConfig[] = [
   post('b', 'plaque', ['Passport stamp: Gallery B', 'पासपोर्ट मुहर: दीर्घा B', 'পাসপোর্টের ছাপ: গ্যালারি B'], 'ring-b', at(podiumRowR, (POD.b[POD.b.length - 1] + GATE_BC) / 2), facingIn((POD.b[POD.b.length - 1] + GATE_BC) / 2)),
   post('c', 'kettle', ['Passport stamp: Gallery C', 'पासपोर्ट मुहर: दीर्घा C', 'পাসপোর্টের ছাপ: গ্যালারি C'], 'ring-c', at(podiumRowR, POD.c[POD.c.length - 1] - 16), facingIn(POD.c[POD.c.length - 1] - 16)),
   post('oculus', 'rings', ['Passport stamp: Oculus court', 'पासपोर्ट मुहर: आँगन', 'পাসপোর্টের ছাপ: উঠোন'], 'inner', at(F_IN - 0.35, 148), facingIn(148)),
-  post('hallway', 'arches', ['Passport stamp: Hallway', 'पासपोर्ट मुहर: गलियारा', 'পাসপোর্টের ছাপ: করিডর'], 'hallway-d', at(MUSEUM.drum.r - 0.35, 190), facingIn(190)),
+  post('hallway', 'arches', ['Passport stamp: Wine Hall', 'पासपोर्ट मुहर: वाइन हॉल', 'পাসপোর্টের ছাপ: ওয়াইন হল'], 'hallway-d', at(MUSEUM.drum.r - 0.35, 190), facingIn(190)),
   // in the walk, against the courtyard wall where the walk swings in towards the ring
   post('parikrama', 'kolam', ['Passport stamp: Parikrama', 'पासपोर्ट मुहर: परिक्रमा', 'পাসপোর্টের ছাপ: পরিক্রমা'], 'parikrama-west', at(serpentineR(-92.5) + SERP_OFFSET - 0.45, -92.5), facingIn(-92.5)),
   post('atlas', 'compass', ['Passport stamp: Clay Atlas', 'पासपोर्ट मुहर: मिट्टी का एटलस', 'পাসপোর্টের ছাপ: মাটির অ্যাটলাস'], 'atlas', at(INSIDE, -120), facingOut(-120)),
@@ -100,7 +100,8 @@ const PIT = polar(KEY.lobeOuterR + 5.15, 62)
 const MAP_MID = polar(SAT_WALL.outerFace, ATLAS_DOOR + 4)
 /** Inside the curb on gallery A's side, the Herd island (GRAND §4.2) and the red wall behind it. */
 const HERD = polar(KEY.podiumR - 4.6, 5)
-const HERD_STAND_R = KEY.curbR + 0.9
+/** Just outside the court's edge (layout.ts COURT: midway between the curb and the floor ring), so it stands in Gallery A. */
+const HERD_STAND_R = Math.max(KEY.curbR + 0.9, (KEY.curbR + MUSEUM.oculus.floorRingR) / 2 + 0.3)
 /** The Wine Hall: from its D-arch end, along the hall towards the plinths. */
 const WINE_A = MUSEUM.drum.dNotchDeg - 3
 /** The Red Room: just inside its door, the plinth and the shelves ahead. */

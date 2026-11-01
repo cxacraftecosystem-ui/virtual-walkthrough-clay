@@ -26,6 +26,7 @@ import { ambience } from '../lighting/timeOfDayState'
 import { rainNow } from '../lighting/weather/weatherState'
 import { createCausticsMaterial } from '../materials/caustics'
 import { useMaterials } from '../materials/materials'
+import { createPlanarMirror, tickPlanarMirrors } from '../materials/planarMirror'
 import { BLACK_TEX, createWaterMaterial, MAX_RIPPLES, waterUniforms, WHITE_TEX, type WaterUniforms } from '../materials/waterShader'
 import { annulusFace, cylinderFace, mergeAll } from '../architecture/shellGeometry'
 import { caption } from '../spectacle/captions'
@@ -37,6 +38,7 @@ import { num, str } from './types'
 
 const FULL = Math.PI * 2
 const noRaycast = () => null
+const noBeforeRender = () => {}
 
 /** The pool as the rest of the court sees it (the helix, the potter, the rain). */
 export const POOL: { r0: number; r1: number; level: number } = { r0: 0, r1: MUSEUM.oculus.rings[1] - 0.05, level: MUSEUM.oculus.poolLevel }
@@ -57,10 +59,18 @@ export function addRipple(x: number, z: number, amp = 1) {
   rippleNext = (rippleNext + 1) % MAX_RIPPLES
 }
 
-/** Should reflections be drawn in the pool on this device (High / Ultra, not Lite)? */
+/** Is the water a rendered planar mirror on this device (Medium and up, not Lite)? */
+export function planarWater(s = spectacleSettings()): boolean {
+  return s.caps.waterMirrorPx > 0 && s.mode !== 'lite'
+}
+
+/**
+ * Should other pieces draw their own reflections in the pool (`withWaterMirror`)? Only where the
+ * pool is not already a rendered mirror (which holds them itself).
+ */
 export function poolMirror(): boolean {
   const s = spectacleSettings()
-  return s.caps.poolMirror && s.mode !== 'lite'
+  return s.caps.poolMirror && s.mode !== 'lite' && !planarWater(s)
 }
 
 /* ------------------------------------------------------------------ */
@@ -234,7 +244,18 @@ export function WaterRing({ config }: ModelProps) {
     uniforms.uWallR.value = REFL.wallR
     uniforms.uBandY.value = MUSEUM.pavilion.mezzanineBand
   }, [uniforms, tint, level, dome, r0, r1])
-  const water = useMemo(() => withCourtWall(createWaterMaterial('ring', uniforms)), [uniforms])
+  // Medium and up: a rendered mirror (the dome, its coffers, the oculus sky, the lotus, all of it);
+  // Low and Lite: the analytic reflection
+  const planarPx = planarWater(sp) ? sp.caps.waterMirrorPx : 0
+  const camera = useThree((s) => s.camera)
+  const mirror = useMemo(() => (planarPx > 0 ? createPlanarMirror(level, planarPx, (c) => c === camera, planarPx >= 1024 ? 4 : 0) : null), [planarPx, level, camera])
+  useEffect(() => () => mirror?.dispose(), [mirror])
+  const water = useMemo(() => {
+    if (!mirror) return withCourtWall(createWaterMaterial('ring', uniforms))
+    uniforms.uMirror.value = mirror.texture
+    uniforms.uMirrorMat.value = mirror.matrix
+    return createWaterMaterial('ring', uniforms, true)
+  }, [uniforms, mirror])
   useEffect(() => () => water.dispose(), [water])
 
   const geo = useMemo(() => {
@@ -284,6 +305,7 @@ export function WaterRing({ config }: ModelProps) {
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
     clockNow = t
+    tickPlanarMirrors()
     const u = uniforms
     u.uTime.value = t
     u.uDay.value = ambience.daylight
@@ -336,7 +358,7 @@ export function WaterRing({ config }: ModelProps) {
   // the scene object stands at the court centre; the pool is built in court coordinates
   return (
     <group name="water-ring">
-      <mesh geometry={geo} material={water} onClick={onTap} onPointerOver={onOver} onPointerOut={onOut} />
+      <mesh geometry={geo} material={water} onBeforeRender={mirror?.onBeforeRender ?? noBeforeRender} onClick={onTap} onPointerOver={onOver} onPointerOut={onOut} />
       {/* the brass edge round the water (p07l): one thin warm line, the pool set into the floor */}
       {lip && <mesh geometry={lip} material={m.brass} receiveShadow raycast={noRaycast} />}
       {causticGeo && <mesh geometry={causticGeo} material={caustics} visible={showCaustics} renderOrder={2} raycast={noRaycast} />}

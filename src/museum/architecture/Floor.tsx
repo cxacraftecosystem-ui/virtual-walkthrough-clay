@@ -38,6 +38,8 @@ import { polarBand } from './Satellites'
 import { serpentineFloors } from './Serpentine'
 import { applyPbr, pbrTint, type PbrSetId } from '../materials/pbrSets'
 import { annulusFace, circlePoints, mergeAll, outlineSides, planFace } from './shellGeometry'
+import { useClayPaving } from './clayPaving'
+import { withHaze } from './exteriorHaze'
 
 /** Height of the landscape plinth above the surrounding ground. */
 export const PLINTH_RISE = 0.18
@@ -50,7 +52,8 @@ export const FLOOR_RINGS: [number, number][] = [
 /** The court's terrazzo: out to here, then burnished earth to the ring wall. */
 export const TERRAZZO_R = MUSEUM.innerMainWall.r - MUSEUM.innerMainWall.thickness / 2 - 0.6 - 0.25
 /** The red runner under the podium row (p02): its radii and plan span (deg, the ring's span). */
-export const RUNNER = { r0: MUSEUM.podium.ringR - 0.42, r1: MUSEUM.podium.ringR + 0.42, fromDeg: MUSEUM.podium.anglesDeg.c[MUSEUM.podium.anglesDeg.c.length - 1] - 3, toDeg: MUSEUM.podium.anglesDeg.a[0] + 3 }
+/** (A and B only: Gallery C keeps its dark earth floor under the cool beam.) */
+export const RUNNER = { r0: MUSEUM.podium.ringR - 0.42, r1: MUSEUM.podium.ringR + 0.42, fromDeg: MUSEUM.podium.anglesDeg.b[MUSEUM.podium.anglesDeg.b.length - 1] - 4, toDeg: MUSEUM.podium.anglesDeg.a[0] + 3 }
 
 /** The walkable outdoor area (landscape disc + forecourt) as a closed [x, z] ring. */
 export function siteOutline(): [number, number][] {
@@ -136,6 +139,8 @@ export function Floor() {
   const tier = useMuseum((s) => s.tier)
   const reflect = withDevOverrides(QUALITY_PRESETS[tier]).floorReflections
   const cursor = useRef<THREE.Mesh>(null)
+  // the forecourt and the plinth in handmade clay tiles (architecture/clayPaving.ts)
+  const clayPaving = useClayPaving(tier)
 
   const geos = useMemo(() => {
     const full = Math.PI * 2
@@ -182,7 +187,7 @@ export function Floor() {
     return {
       runner: mk('podiumRunner', m.redLime as THREE.MeshStandardMaterial, 0.9, 'Clay005', '#9e2a22'),
       // a pale oiled timber with a soft sheen, so it reads as wood even in the hall's red light
-      timber: mk('wineHallFloor', m.timberFloor as THREE.MeshStandardMaterial, 0.42, 'Wood092', '#c8996a'),
+      timber: mk('wineHallFloor', m.timberFloor as THREE.MeshStandardMaterial, 0.42, 'Wood092', '#ddb57c'),
       // p05: a pale, smooth blush floor under the canyon, catching the skylight
       annex: mk('earthRoomFloor', m.earthFloor as THREE.MeshStandardMaterial, 0.5, 'Clay005', '#d6b2a0'),
       red: mk('redRoomFloor', m.redLime as THREE.MeshStandardMaterial, 0.8, 'Clay005', '#8c1f18'),
@@ -190,6 +195,8 @@ export function Floor() {
     }
   }, [m, tier])
   useEffect(() => () => Object.values(over).forEach((mm) => mm.dispose()), [over])
+  // p09l: grey stone in the tree courts
+  const courtStone = useMemo(() => tinted(m.stone, '#a7a29b', { roughness: 0.82 }), [m])
   const gateMat = useMemo(() => tinted(m.earthInlay, '#8c3a2f', { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), [m])
   const roomMats = useMemo(
     () => Object.fromEntries(SATELLITES.map((s) => [s.id, tinted(m[ROOM_FLOOR[s.id].base], ROOM_FLOOR[s.id].color, { roughness: ROOM_FLOOR[s.id].roughness })])) as Record<SatelliteId, THREE.Material>,
@@ -247,11 +254,11 @@ export function Floor() {
       {geos.timber && <mesh geometry={geos.timber} material={over.timber} receiveShadow {...handlers} />}
       <mesh geometry={geos.annex} material={over.annex} receiveShadow {...handlers} />
       <mesh geometry={geos.redRoom} material={over.red} receiveShadow {...handlers} />
-      <mesh geometry={geos.plinth} material={m.sandPaving} receiveShadow {...handlers} />
+      <mesh geometry={geos.plinth} material={clayPaving} receiveShadow {...handlers} />
       {geos.edge && <mesh geometry={geos.edge} material={m.rammedEarth} receiveShadow raycast={() => null} />}
-      <mesh geometry={serp.walk} material={m.redLime} receiveShadow {...handlers} />
+      <mesh geometry={serp.walk} material={m.parikramaFloor} receiveShadow {...handlers} />
       {aprons && <mesh geometry={aprons} material={m.sandPaving} receiveShadow {...handlers} />}
-      {courtyards && <mesh geometry={courtyards} material={m.groundSoil} receiveShadow raycast={() => null} />}
+      {courtyards && <mesh geometry={courtyards} material={courtStone} receiveShadow raycast={() => null} />}
       <mesh geometry={serp.gardens} material={m.groundSoil} receiveShadow raycast={() => null} />
       {north.slots && <mesh geometry={north.slots} material={m.rawClay} receiveShadow {...handlers} />}
       {north.gates && <mesh geometry={north.gates} material={gateMat} receiveShadow raycast={() => null} />}
@@ -269,33 +276,57 @@ export function Floor() {
 }
 
 /**
- * The ground round the landscape plinth: a wide disc of dry grass and earth, its colour
+ * The ground round the landscape plinth: a wide disc of meadow grass, its colour
  * drifting slowly (vertex colours, no textures), meeting the distant terrain ring.
  */
 export function ExteriorGround() {
+  const m = useMaterials()
   const geo = useMemo(() => {
     // from just inside the plinth's edge (nothing below the plinth is seen; the Sphere Well's room lies under it)
     const g = new THREE.RingGeometry(MUSEUM.landscape.r - 1, TERRAIN.inner + 2, 128, 36)
     g.rotateX(-Math.PI / 2)
     const pos = g.getAttribute('position') as THREE.BufferAttribute
+    const uv = g.getAttribute('uv') as THREE.BufferAttribute
     const col = new Float32Array(pos.count * 3)
-    const a = new THREE.Color('#aaa07a')
-    const b = new THREE.Color('#968f68')
+    // a warm, dry meadow: sun-faded greens drifting into straw (Landscape.tsx's terrain carries on
+    // from it), in long soft swathes, never a mottle of khaki blotches
+    const a = new THREE.Color('#87994c')
+    const b = new THREE.Color('#a8a462')
     const c = new THREE.Color()
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const z = pos.getZ(i)
-      const t = 0.5 + 0.25 * Math.sin(x * 0.21 + Math.cos(z * 0.13) * 2) + 0.25 * Math.sin(z * 0.17 - x * 0.05)
+      const t = 0.5 + 0.3 * Math.sin(x * 0.045 + Math.cos(z * 0.031) * 2) + 0.2 * Math.sin(z * 0.052 - x * 0.019)
       c.copy(a).lerp(b, THREE.MathUtils.clamp(t, 0, 1))
       col.set([c.r, c.g, c.b], i * 3)
+      // the soil's grain in metres (a 4 m tile), so the meadow has a surface up close
+      uv.setXY(i, x / 4, z / 4)
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3))
     return g
   }, [])
-  useEffect(() => () => geo.dispose(), [geo])
-  return (
-    <mesh geometry={geo} position={[0, -PLINTH_RISE, 0]} receiveShadow raycast={() => null}>
-      <meshStandardMaterial vertexColors roughness={1} />
-    </mesh>
+  // it recedes into the horizon's haze with the terrain ring beyond it (no seam where they meet)
+  const soil = m.groundSoil as THREE.MeshStandardMaterial
+  const mat = useMemo(
+    () =>
+      withHaze(
+        new THREE.MeshStandardMaterial({
+          name: 'exteriorGround',
+          vertexColors: true,
+          // the vertex colour carries the green; the soil's normal map its grain
+          normalMap: soil.normalMap,
+          normalScale: new THREE.Vector2(0.6, 0.6),
+          roughness: 1,
+        }),
+      ),
+    [soil],
   )
+  useEffect(
+    () => () => {
+      geo.dispose()
+      mat.dispose()
+    },
+    [geo, mat],
+  )
+  return <mesh geometry={geo} material={mat} position={[0, -PLINTH_RISE, 0]} receiveShadow raycast={() => null} />
 }
