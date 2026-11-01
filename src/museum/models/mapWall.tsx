@@ -10,7 +10,12 @@
  *   pins ....... craft-cluster pins (props.pins = "lon,lat;lon,lat;…") — hollow numbered markers
  *                with a "Craft cluster" legend. While the item is flagged `placeholder` the pins
  *                are stand-in positions that mark no real place, so none are drawn.
- *   light ...... three wash spots from the ceiling (SpotPool)
+ *   light ...... three wash spots from the ceiling (SpotPool); the clay finish one even neutral wash
+ *   finish ..... props.finish 'linen' (a slim walnut frame, as in the hand block museum) or 'clay'
+ *                (the clay pavilion's Atlas: a terracotta frame set in a deep terracotta-toned
+ *                surround that returns to the wall behind). Only the frame and surround change:
+ *                the printed face, the relief and the projection are the same in both
+ *   kicker ..... props.kicker, the small line above the title (default 'GALLERY D  ·  MAP WALL')
  *
  * Local space: origin = floor point on the wall face, panel faces +z. Place it against a
  * wall with rotationDeg so +z points into the room (0 / 90 / 180 / 270).
@@ -18,14 +23,14 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { ZONES } from '../config/layout'
-import { LIGHTING } from '../config/lighting'
+import { kelvinToHex, LIGHTING } from '../config/lighting'
 import { INDIA_BOUNDS, indiaRings } from '../exhibits/indiaGeometry'
 import { registerSpot } from '../lighting/SpotPool'
 import { TRACK_COLOR } from '../lighting/TrackLight'
 import { ensureWallFonts } from '../materials/wallGraphics'
 import { useAsyncTexture } from '../utils/useAsyncTexture'
-import { Builder, Parts, rbox, useBuilt } from './kit'
-import { useModelMaterials } from './modelMaterials'
+import { box, Builder, Parts, rbox, useBuilt } from './kit'
+import { tinted, useModelMaterials } from './modelMaterials'
 import { num, str, type ModelProps } from './types'
 
 const PAPER = '#f5f1e8'
@@ -37,6 +42,10 @@ const SANS = 'Inter, "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 const RELIEF_H = 0.012
 const PANEL_D = 0.05
+/** The clay finish's surround: margin round the frame, depth back towards the wall. */
+const CLAY_SURROUND = { margin: 0.1, depth: 0.24, color: '#a65a3f' }
+/** The clay Atlas's map wash: neutral (≈ 4000 K), so the map and the partners read true. */
+const NEUTRAL_WASH = kelvinToHex(4000)
 
 /* ------------------------------------------------------------------ */
 /* Layout (panel metres, origin = panel centre, +y up)                 */
@@ -101,7 +110,7 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxW: number) {
   return lines
 }
 
-async function faceTexture(L: MapLayout, pins: [number, number][], title: string): Promise<THREE.Texture> {
+async function faceTexture(L: MapLayout, pins: [number, number][], title: string, kicker = 'GALLERY D  ·  MAP WALL'): Promise<THREE.Texture> {
   await ensureWallFonts()
   const s = Math.min(4096 / L.W, 520) // px per metre
   const cw = Math.round(L.W * s)
@@ -216,7 +225,7 @@ async function faceTexture(L: MapLayout, pins: [number, number][], title: string
   ctx.fillStyle = MADDER
   ctx.font = `500 ${Math.round(s * 0.05)}px ${SANS}`
   if ('letterSpacing' in ctx) (ctx as unknown as { letterSpacing: string }).letterSpacing = `${Math.round(s * 0.012)}px`
-  ctx.fillText('GALLERY D  ·  MAP WALL', tl, y)
+  ctx.fillText(kicker, tl, y)
   if ('letterSpacing' in ctx) (ctx as unknown as { letterSpacing: string }).letterSpacing = '0px'
   y += s * 0.36
   ctx.fillStyle = INK
@@ -326,8 +335,32 @@ function reliefGeometry(L: MapLayout) {
     shapes.push(shape)
   }
   const g = new THREE.ExtrudeGeometry(shapes, { depth: RELIEF_H, bevelEnabled: false, curveSegments: 1 })
+  oneGroupPerMaterial(g)
   reliefCache.set(key, g)
   return g
+}
+
+/**
+ * ExtrudeGeometry gives every shape its own cap and side groups: one draw call each, some 600 for
+ * the mainland and the islands. Gather them into one group per material through an index buffer —
+ * the vertices (the outline, the projection) are untouched, only the order they are drawn in changes.
+ */
+function oneGroupPerMaterial(g: THREE.BufferGeometry) {
+  if (g.index || g.groups.length <= 2) return
+  const byMaterial = new Map<number, number[]>()
+  for (const group of g.groups) {
+    const mi = group.materialIndex ?? 0
+    const ids = byMaterial.get(mi) ?? []
+    for (let i = group.start; i < group.start + group.count; i++) ids.push(i)
+    byMaterial.set(mi, ids)
+  }
+  const index: number[] = []
+  g.clearGroups()
+  for (const [mi, ids] of [...byMaterial].sort((x, y) => x[0] - y[0])) {
+    g.addGroup(index.length, ids.length, mi)
+    for (const i of ids) index.push(i)
+  }
+  g.setIndex(index)
 }
 
 /* ------------------------------------------------------------------ */
@@ -340,22 +373,32 @@ export function MapWall({ config }: ModelProps) {
   const H = num(config, 'height', 4.6)
   const bottom = num(config, 'bottom', 0.65)
   const title = str(config, 'title', 'A Map of Making')
+  const kicker = str(config, 'kicker', 'GALLERY D  ·  MAP WALL')
+  const clay = str(config, 'finish', 'clay') === 'clay'
   // stand-in pins mark no real place: draw none until the workshop's clusters are in
   const pinStr = config.placeholder ? '' : str(config, 'pins', '')
   const L = useMemo(() => layoutFor(W, H), [W, H])
   const pins = useMemo(() => parsePins(pinStr), [pinStr])
   const cy = bottom + H / 2
-  const face = useAsyncTexture(() => faceTexture(L, pins, title), [L, pins, title])
+  const face = useAsyncTexture(() => faceTexture(L, pins, title, kicker), [L, pins, title, kicker])
   const relief = useMemo(() => reliefGeometry(L), [L])
 
-  const frame = useBuilt(`map-frame|${W}|${H}`, () => {
+  const frame = useBuilt(`map-frame|${W}|${H}|${clay ? 'clay' : 'linen'}`, () => {
     const b = new Builder()
-    const fw = 0.04
+    const fw = clay ? 0.05 : 0.04
     const fd = PANEL_D + 0.03
     b.add('walnut', rbox(W + 2 * fw, fw, fd, 0.004, 2, 'x'), { p: [0, H / 2 + fw / 2, fd / 2] })
     b.add('walnut', rbox(W + 2 * fw, fw, fd, 0.004, 2, 'x'), { p: [0, -H / 2 - fw / 2, fd / 2] })
     for (const sx of [-1, 1]) b.add('walnut', rbox(fw, H, fd, 0.004, 2, 'y'), { p: [sx * (W / 2 + fw / 2), 0, fd / 2] })
     b.add('board', rbox(W, H, PANEL_D, 0.002), { p: [0, 0, PANEL_D / 2] })
+    if (clay) {
+      // the surround: a deep terracotta-toned mount round the frame, returning to the wall
+      // behind (the wall curves away from a flat panel), with a thin oxblood shadow line
+      const mg = CLAY_SURROUND.margin
+      const back = CLAY_SURROUND.depth
+      b.add('surround', rbox(W + 2 * (fw + mg), H + 2 * (fw + mg), back, 0.01, 2, 'x'), { p: [0, 0, -back / 2 + 0.004] })
+      b.add('reveal', box(W + 2 * fw + 0.02, H + 2 * fw + 0.02, 0.006), { p: [0, 0, 0.004] })
+    }
     return b
   })
 
@@ -377,26 +420,40 @@ export function MapWall({ config }: ModelProps) {
     [mats],
   )
   useEffect(() => () => faceMat.dispose(), [faceMat])
+  const surround = useMemo(() => tinted(m.terracottaPlaster, CLAY_SURROUND.color, { roughness: 0.92 }), [m.terracottaPlaster])
 
-  // three wash lights from the ceiling, 2.4 m out from the wall (world space)
+  // three wash lights from the ceiling, 2.4 m out from the wall (world space); the clay finish
+  // takes one even, neutral wash from further out instead (no scalloped pools on the map's top)
   useEffect(() => {
     const ceiling = Math.min(ZONES.find((z) => z.id === config.zone)?.height ?? 6, 7) - 0.2
     const rot = ((config.rotationDeg ?? 0) * Math.PI) / 180
     const [px, , pz] = config.position
     const w = (lx: number, ly: number, lz: number): [number, number, number] => [px + lx * Math.cos(rot) + lz * Math.sin(rot), ly, pz - lx * Math.sin(rot) + lz * Math.cos(rot)]
+    if (clay) {
+      const out = 4.2
+      const pos = w(0, ceiling, out)
+      const target = w(0, cy, 0)
+      const d = Math.hypot(out, ceiling - cy)
+      // the inner cone covers the whole panel (flat inside it), the soft edge falls beyond the frame
+      const half = Math.atan((Math.hypot(W, H) * 0.56) / d)
+      // a neutral 4000 K wall-washer: soft-edged (no hotspot ellipse on the wall above), exempt from
+      // the colour choreography, so the map and the partners beside it read true
+      const off = registerSpot({ position: pos, target, intensity: LIGHTING.track.artworkIntensity * 0.95 * (d / 2.2) ** 2, angle: Math.min(1.2, (half / 0.8) * 1.15), penumbra: 0.95, color: NEUTRAL_WASH, neutral: true, tag: 'atlas-wash' })
+      return () => off()
+    }
     const offs = [-W * 0.33, 0, W * 0.33]
     const out = offs.map((lx) => {
       const pos = w(lx, ceiling, 2.4)
       const target = w(lx, cy, 0)
       const d = Math.hypot(2.4, ceiling - cy)
-      return registerSpot({ position: pos, target, intensity: LIGHTING.track.artworkIntensity * 0.75 * (d / 2.2) ** 2, angle: Math.min(1.0, Math.atan((W * 0.22) / d) * 1.6), penumbra: 0.85, color: TRACK_COLOR })
+      return registerSpot({ position: pos, target, intensity: LIGHTING.track.artworkIntensity * 0.55 * (d / 2.2) ** 2, angle: Math.min(1.0, Math.atan((W * 0.22) / d) * 1.6), penumbra: 0.85, color: TRACK_COLOR })
     })
     return () => out.forEach((u) => u())
-  }, [config.position, config.rotationDeg, config.zone, W, cy])
+  }, [config.position, config.rotationDeg, config.zone, W, H, cy, clay])
 
   return (
     <group position={[0, cy, 0]}>
-      <Parts parts={frame} materials={{ walnut: m.walnut, board: m.linen }} />
+      <Parts parts={frame} materials={clay ? { walnut: m.terracotta, board: m.linen, surround, reveal: m.oxblood } : { walnut: m.walnut, board: m.linen }} />
       {face && (
         <mesh position={[0, 0, PANEL_D + 0.0006]} material={faceMat} receiveShadow>
           <planeGeometry args={[W, H]} />

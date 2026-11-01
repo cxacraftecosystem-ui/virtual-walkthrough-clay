@@ -1,10 +1,13 @@
 /**
  * ARCHITECTURAL LAYOUT — the clay pavilion, derived entirely from MUSEUM constants.
  *
- * A circular, double-height drum entered through a straight annex (G). Inside the mouth stands
- * the gallery description wall (H); the entry ways (E) lead round its ends past the inner main
- * wall (F) into the ring of three tradition galleries (A, B, C) round the oculus court, and the
- * hallway (D) brings the visitor back to E. See config/museum.ts for the plan and assumptions.
+ * A circular drum under a coffered dome, entered through a straight annex (G, the Earth Room).
+ * The annex opens onto the ambulatory between the lobe and the ring circle; on the ring circle
+ * stand the gallery description wall (H) facing the annex, the hallway wall (D) and three great
+ * arches (E east, E west, D). Through the E arches the corridor between H and the inner main
+ * wall (F) leads round F's ends into the ring of tradition galleries (A, B, C) round the pool
+ * court under the oculus; the D arch leads from Gallery C into the hallway (D), which brings the
+ * visitor back to E. See config/museum.ts for the plan and GRAND.md §1–§2 for the dimensions.
  *
  * Shapes. Curved walls are true arcs (`shape.kind: 'arc'`), straight walls segments with a
  * thickness (`'seg'`); `min`/`max` is always the shape's bounding box, so code that only needs
@@ -13,7 +16,8 @@
  * (runAxis 'along'), placed so a flat frame never sinks into the wall.
  */
 
-import { DEG, KEY, MUSEUM, polar, type Vec3 } from './museum'
+import { ARCH, DEG, KEY, MUSEUM, polar, type Vec3 } from './museum'
+import { EAST_STAIR, EAST_STAIR_FOOT_DEG, JALI, JALI_SLOTS, NOTCH_DOOR, PARIKRAMA, RED_ROOM, SAT_DOOR_HALF_DEG, SAT_WALL, satellite, SATELLITES, SERP_OFFSET, SERPENTINE, serpentineOffset, serpentineOuterRuns, serpentineR, SPHERE_WELL, THEATRE, type SatelliteId } from './satellites'
 
 /* ------------------------------------------------------------------ */
 /* Geometry helpers                                                    */
@@ -58,7 +62,7 @@ export type WallKind =
   | 'notch'
   /** Entrance annex G. */
   | 'annex'
-  /** Above a door: rendered, never collides. */
+  /** Above a door or arch: rendered, never collides. */
   | 'lintel'
   /** H — gallery description wall. */
   | 'description'
@@ -66,12 +70,28 @@ export type WallKind =
   | 'inner-main'
   /** D — hallway inner wall. */
   | 'hallway'
-  /** Low radial fins between the podium runs. */
+  /** Formation gates between the podium runs (collider boxes; the formations are drawn by their owner). */
   | 'fin'
   /** Oculus plinth curb (rendered by the oculus plinth, not the plaster wall). */
   | 'plinth'
   /** Invisible edge of the walkable site (landscape disc + forecourt). */
   | 'boundary'
+  /** North wing: the crescent rooms' inner, outer and end walls, and their door lintels. */
+  | 'satellite'
+  /** The Parikrama walk's low horse plinth along the ring. */
+  | 'colonnade'
+  /** Pierced screens closing the slots between the rooms (drawn by their owner; collide). */
+  | 'jali'
+  /** The theatre's lobby baffle (drawn by its owner; collides). */
+  | 'baffle'
+  /** A full circle that collides as a solid disc: the Sphere Well's rim balustrade. */
+  | 'tower'
+  /** The Parikrama's red serpentine walls: the drum-side parapet, the courtyard wall and its closures. */
+  | 'serpentine'
+  /** The Red Room's round wall inside the library crescent, its door vestibule and lintels. */
+  | 'red-room'
+  /** The east stair's footprint where its lower flight is below head height. */
+  | 'stair'
 
 /** Wall footprint. Arcs: centreline radius `r`, angles in radians, a0 < a1. */
 export type WallShape =
@@ -145,38 +165,193 @@ const LR = MUSEUM.landscape.r
 const fcJoinZ = Math.sqrt(LR * LR - FC.halfWidth * FC.halfWidth)
 const fcGapDeg = Math.asin(FC.halfWidth / LR) / DEG
 
+/** A notch wall with its door: ring-side pier, lobe-side pier and the lintel over the door. */
+function notchWalls(id: string, aDeg: number): WallBox[] {
+  return [
+    radialWall(`${id}-in`, 'notch', aDeg, DR.ringR, NOTCH_DOOR.r0, T, 0, H),
+    radialWall(`${id}-out`, 'notch', aDeg, NOTCH_DOOR.r1, DR.r + T, T, 0, H),
+    radialWall(`${id}-lintel`, 'notch', aDeg, NOTCH_DOOR.r0, NOTCH_DOOR.r1, T, NOTCH_DOOR.height, H, { collide: false }),
+  ]
+}
+
+/** An arch in the ring circle: the open bay collides nowhere; its lintel runs from the spring to the slab. */
+function archWall(id: string, a: { fromDeg: number; toDeg: number; spring: number }): WallBox {
+  return arcWall(id, 'lintel', ringC, T, a.fromDeg, a.toDeg, a.spring, H, { collide: false })
+}
+
+/** An arc about its own centre (cx, cz), angles in degrees about that centre. */
+function arcAbout(id: string, kind: WallKind, cx: number, cz: number, r: number, thickness: number, fromDeg: number, toDeg: number, y0: number, y1: number, extra: Partial<WallBox> = {}): WallBox {
+  const a0 = fromDeg * DEG
+  const a1 = toDeg * DEG
+  const b = sectorBox(cx, cz, r - thickness / 2, r + thickness / 2, a0, a1)
+  return { id, kind, min: [b.minX, y0, b.minZ], max: [b.maxX, y1, b.maxZ], shape: { kind: 'arc', cx, cz, r, thickness, a0, a1 }, ...extra }
+}
+
+/** A polyline of straight wall segments (each overlapping the next at the joint). */
+function polyWalls(id: string, kind: WallKind, pts: [number, number][], thickness: number, y0: number, y1: number, extra: Partial<WallBox> = {}): WallBox[] {
+  const out: WallBox[] = []
+  for (let i = 1; i < pts.length; i++) out.push(segWall(`${id}-${i}`, kind, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], thickness, y0, y1, extra))
+  return out
+}
+
+/**
+ * The Parikrama's serpentine (GRAND §2.6): the drum-side parapet from gate to gate, the
+ * courtyard wall wherever the walk leaves the rooms' inner wall, and a closing wall from that
+ * wall's ends to the first and last room, so every courtyard is closed and both gates open.
+ */
+function serpentineWalls(): WallBox[] {
+  const S = SERPENTINE
+  const out: WallBox[] = polyWalls('serp-in', 'serpentine', serpentineOffset(-SERP_OFFSET), S.t, 0, S.parapetH)
+  serpentineOuterRuns().forEach(([a0, a1], i) => out.push(...polyWalls(`serp-out-${i + 1}`, 'serpentine', serpentineOffset(SERP_OFFSET, a0, a1), S.t, 0, S.wallH)))
+  const ends: [string, number][] = [
+    ['serp-close-w', SATELLITES[0].fromDeg],
+    ['serp-close-e', SATELLITES[SATELLITES.length - 1].toDeg],
+  ]
+  for (const [id, aDeg] of ends) {
+    const [from] = serpentineOffset(SERP_OFFSET, aDeg, aDeg + 0.01)
+    const [tx, tz] = polar(SAT_WALL.innerC, aDeg)
+    out.push(segWall(id, 'serpentine', from[0], from[1], tx, tz, S.t, 0, S.wallH))
+  }
+  return out
+}
+
+/**
+ * The Red Room (p09r): a round wall about its own centre with the door facing the library's
+ * door and two side openings into the library's wings; a short vestibule wall either side of
+ * the door closes the slot between the room and the library's inner wall; lintels over all three.
+ */
+function redRoomWalls(): WallBox[] {
+  const RR = RED_ROOM
+  const rc = RR.r + RR.t / 2
+  // bearings about the room's centre: the door faces the drum centre, the sides run along the crescent
+  const door = Math.atan2(-RR.cz, -RR.cx) / DEG
+  const east = door - 90
+  const west = door + 90
+  const dh = Math.asin(RR.doorWidth / 2 / rc) / DEG
+  const sh = Math.asin(RR.sideWidth / 2 / rc) / DEG
+  const lintelY = SAT_WALL.door.height
+  const out: WallBox[] = [
+    arcAbout('rr-wall-e', 'red-room', RR.cx, RR.cz, rc, RR.t, east + sh, door - dh, 0, RR.height),
+    arcAbout('rr-wall-w', 'red-room', RR.cx, RR.cz, rc, RR.t, door + dh, west - sh, 0, RR.height),
+    arcAbout('rr-wall-n', 'red-room', RR.cx, RR.cz, rc, RR.t, west + sh, east + 360 - sh, 0, RR.height),
+    arcAbout('rr-lintel-door', 'red-room', RR.cx, RR.cz, rc, RR.t, door - dh, door + dh, lintelY, RR.height - 0.002, { collide: false }),
+    arcAbout('rr-lintel-e', 'red-room', RR.cx, RR.cz, rc, RR.t, east - sh, east + sh, lintelY, RR.height - 0.002, { collide: false }),
+    arcAbout('rr-lintel-w', 'red-room', RR.cx, RR.cz, rc, RR.t, west - sh, west + sh, lintelY, RR.height - 0.002, { collide: false }),
+  ]
+  // vestibule: from each door jamb straight back to the library's inner wall (radially about the drum)
+  const da = RR.aDeg * DEG
+  const [ux, uz] = [Math.cos(da), Math.sin(da)]
+  const [vx, vz] = [-Math.sin(da), Math.cos(da)]
+  for (const side of [-1, 1] as const) {
+    const off = side * (RR.doorWidth / 2 + RR.t / 2)
+    const back = Math.sqrt(rc * rc - off * off)
+    const jx = RR.cx - ux * back + vx * off
+    const jz = RR.cz - uz * back + vz * off
+    // along the drum radius at that tangential offset, to the inner wall's room-side face
+    const along = Math.hypot(RR.cx, RR.cz) - back - (SAT_WALL.innerFace - 0.05)
+    out.push(segWall(`rr-vestibule-${side < 0 ? 'w' : 'e'}`, 'red-room', jx, jz, jx - ux * along, jz - uz * along, RR.t, 0, lintelY))
+  }
+  return out
+}
+
+/** The east stair's lower flight where it is below head height (render: false — its owner draws the stair). */
+function eastStairWalls(): WallBox[] {
+  const E = EAST_STAIR
+  const L = E.lower
+  // below `headroom` from the flight's foot; the foot itself stops at the annex wall's line
+  const climb = (L.fromDeg - L.toDeg) * (E.headroom / (L.y1 - L.y0))
+  return [arcWall('stair-e', 'stair', E.r, E.width, L.fromDeg - climb, EAST_STAIR_FOOT_DEG, 0, E.headroom, { render: false })]
+}
+
+/**
+ * The north wing's walls: per room the inner wall either side of its door with the lintel over
+ * it, the outer wall and the two radial end walls; the jali screens in the slots between the
+ * rooms, the theatre's lobby baffle, the berm behind the rooms, the serpentine and the Red Room.
+ */
+function northWingWalls(): WallBox[] {
+  const S = SAT_WALL
+  const out: WallBox[] = []
+  for (const s of SATELLITES) {
+    const d0 = s.doorDeg - SAT_DOOR_HALF_DEG
+    const d1 = s.doorDeg + SAT_DOOR_HALF_DEG
+    out.push(
+      arcWall(`sat-${s.id}-inner-a`, 'satellite', S.innerC, S.t, s.fromDeg, d0, 0, s.height),
+      arcWall(`sat-${s.id}-inner-b`, 'satellite', S.innerC, S.t, d1, s.toDeg, 0, s.height),
+      // 2 mm under the wall tops, so the lintel's top never sits in the piers' plane
+      arcWall(`sat-${s.id}-lintel`, 'satellite', S.innerC, S.t, d0, d1, S.door.height, s.height - 0.002, { collide: false }),
+      arcWall(`sat-${s.id}-outer`, 'satellite', S.outerC, S.t, s.fromDeg, s.toDeg, 0, s.height),
+      radialWall(`sat-${s.id}-end-w`, 'satellite', s.fromDeg, S.innerC - S.t / 2, S.outerOuter, S.t, 0, s.height),
+      radialWall(`sat-${s.id}-end-e`, 'satellite', s.toDeg, S.innerC - S.t / 2, S.outerOuter, S.t, 0, s.height),
+      // the earth berm against the room's back closes the strip to the plinth's edge
+      arcWall(`berm-${s.id}`, 'boundary', (S.outerOuter + LR) / 2, LR - S.outerOuter, s.fromDeg - 1, s.toDeg + 1, 0, 1.2, { render: false }),
+    )
+  }
+  JALI_SLOTS.forEach(([a0, a1], i) => out.push(arcWall(`jali-${i + 1}`, 'jali', S.innerC, JALI.t, a0, a1, 0, JALI.height, { render: false })))
+  const b = THEATRE.baffle
+  out.push(radialWall('sat-theatre-baffle', 'baffle', b.aDeg, b.r0, b.r1, b.t, 0, b.h, { render: false }))
+  out.push(...serpentineWalls(), ...redRoomWalls())
+  return out
+}
+
+/** The Sphere Well's rim balustrade: a solid disc to visitors (the room below is reached by the perch). */
+const SW = SPHERE_WELL
+const WELL_RIM: WallBox = {
+  id: 'well-rim',
+  kind: 'tower',
+  min: [SW.cx - SW.rimR, 0, SW.cz - SW.rimR],
+  max: [SW.cx + SW.rimR, SW.rimH, SW.cz + SW.rimR],
+  shape: { kind: 'arc', cx: SW.cx, cz: SW.cz, r: SW.rimR - 0.15, thickness: 0.3, a0: 0, a1: Math.PI * 2 },
+}
+
 export const WALLS: WallBox[] = [
   // ── Drum: lobe round the annex (gap for the annex mouth), gallery ring, notch walls ──
   arcWall('drum-lobe-east', 'drum', lobeC, T, DR.neNotchDeg, 90 - KEY.annexGapDeg, 0, H),
   arcWall('drum-lobe-west', 'drum', lobeC, T, 90 + KEY.annexGapDeg, DR.dNotchDeg, 0, H),
   arcWall('drum-ring', 'drum', ringC, T, DR.dNotchDeg, DR.neNotchDeg + 360, 0, H),
-  radialWall('notch-ne', 'notch', DR.neNotchDeg, DR.ringR, DR.r + T, T, 0, H),
-  radialWall('notch-d', 'notch', DR.dNotchDeg, DR.ringR, DR.r + T, T, 0, H),
+  // the notch walls carry the doors to the Parikrama walk (ring side, door, lobe side, lintel)
+  ...notchWalls('notch-ne', DR.neNotchDeg),
+  ...notchWalls('notch-d', DR.dNotchDeg),
+  // the three great arches in the ring circle (their owner draws the true intrados)
+  archWall('arch-e-east', ARCH.eEast),
+  archWall('arch-e-west', ARCH.eWest),
+  archWall('arch-d', ARCH.d),
 
-  // ── Annex G: side walls, end wall with the entrance door ──
+  // ── Annex G: side walls, end wall with the entrance portal ──
   segWall('annex-east', 'annex', annexWallX, annexJoinZ, annexWallX, AN.endZ + at, at, 0, H),
   segWall('annex-west', 'annex', -annexWallX, annexJoinZ, -annexWallX, AN.endZ + at, at, 0, H),
   segWall('annex-end-east', 'annex', KEY.doorHalf, endC, KEY.annexOuterHalf, endC, at, 0, H),
   segWall('annex-end-west', 'annex', -KEY.annexOuterHalf, endC, -KEY.doorHalf, endC, at, 0, H),
   segWall('annex-door-lintel', 'lintel', -KEY.doorHalf, endC, KEY.doorHalf, endC, at, AN.door.height, H, { collide: false }),
 
-  // ── Free-standing curved walls: H (description), F (inner main), D (hallway) ──
+  // ── On the ring circle: H (description) and D (hallway); inside it F (inner main) ──
   arcWall('wall-h', 'description', HW.r, HW.thickness, HW.fromDeg, HW.toDeg, 0, HW.height),
   arcWall('wall-f', 'inner-main', FW.r, FW.thickness, FW.fromDeg, FW.toDeg, 0, FW.height),
   arcWall('wall-d', 'hallway', DW.r, DW.thickness, DW.fromDeg, DW.toDeg, 0, DW.height),
 
-  // ── Fins between the podium runs ──
-  radialWall('fin-ab', 'fin', FIN.atDeg[0], FIN.r0, FIN.r1, FIN.thickness, 0, FIN.height),
-  radialWall('fin-bc', 'fin', FIN.atDeg[1], FIN.r0, FIN.r1, FIN.thickness, 0, FIN.height),
+  // ── Formation gates between the podium runs (their owner draws the eroded clay) ──
+  radialWall('gate-ab', 'fin', FIN.atDeg[0], FIN.r0, FIN.r1, FIN.thickness, 0, FIN.height, { render: false }),
+  radialWall('gate-bc', 'fin', FIN.atDeg[1], FIN.r0, FIN.r1, FIN.thickness, 0, FIN.height, { render: false }),
 
-  // ── Oculus plinth: the outer curb ring (the plinth component draws the stepped rings) ──
+  // ── The pool court's curb ring (the court's owner draws the curb, the pool and the lotus) ──
   arcWall('oculus-plinth', 'plinth', OC.rings[0] - OC.curbThickness / 2, OC.curbThickness, 0, 360, 0, OC.curbHeight, { render: false }),
+
+  // ── The east stair, against the lobe in the east ambulatory ──
+  ...eastStairWalls(),
+
+  // ── The portal's lacquered jambs, standing 0.6 m proud of the facade (Pavilion.tsx draws them) ──
+  ...[1, -1].map((s) => segWall(`portal-jamb-${s > 0 ? 'east' : 'west'}`, 'boundary', s * (KEY.doorHalf + 0.25), KEY.annexOuterZ, s * (KEY.doorHalf + 0.25), KEY.annexOuterZ + 0.6, 0.5, 0, MUSEUM.annex.door.height, { render: false })),
 
   // ── Site edge: landscape disc + forecourt (invisible) ──
   arcWall('boundary-landscape', 'boundary', LR + 0.1, 0.2, 90 + fcGapDeg, 450 - fcGapDeg, 0, 1.2, { render: false }),
   segWall('boundary-forecourt-east', 'boundary', FC.halfWidth + 0.1, fcJoinZ - 0.2, FC.halfWidth + 0.1, FC.endZ + 0.2, 0.2, 0, 1.2, { render: false }),
   segWall('boundary-forecourt-west', 'boundary', -FC.halfWidth - 0.1, fcJoinZ - 0.2, -FC.halfWidth - 0.1, FC.endZ + 0.2, 0.2, 0, 1.2, { render: false }),
   segWall('boundary-forecourt-south', 'boundary', -FC.halfWidth - 0.2, FC.endZ + 0.1, FC.halfWidth + 0.2, FC.endZ + 0.1, 0.2, 0, 1.2, { render: false }),
+
+  // ── The Sphere Well's rim, sunk in the plinth south-west of the drum ──
+  WELL_RIM,
+
+  // ── North wing (satellites.ts): the crescent rooms, jali slots, berm, serpentine, Red Room ──
+  ...northWingWalls(),
 ]
 
 /* ------------------------------------------------------------------ */
@@ -244,6 +419,8 @@ export type SurfaceId =
   | 'g-west'
   | 'g-facade-east'
   | 'g-facade-west'
+  // Agni Theatre: the curved screen on the outer wall
+  | 'th-screen'
 
 export interface DisplaySurface {
   id: SurfaceId
@@ -264,6 +441,8 @@ export interface DisplaySurface {
   dir: [number, number]
   /** WALLS id the surface is hung on. */
   wall: string
+  /** Kept for a spectacle installation (named here); the admin warns before content is placed on it. */
+  reserved?: string
 }
 
 /** Margin kept free at each end of a facet / run (m). */
@@ -280,6 +459,8 @@ interface FacetSpec {
   concave: boolean
   height: number
   wall: string
+  /** Margin kept free at each end (default END_MARGIN). */
+  margin?: number
 }
 
 /**
@@ -305,7 +486,7 @@ function facet(s: FacetSpec): Omit<DisplaySurface, 'zone'> {
     mid = [s.r * out[0], s.r * out[1]]
     halfLen = s.r * Math.tan(half)
   }
-  halfLen -= END_MARGIN
+  halfLen -= s.margin ?? END_MARGIN
   const a: [number, number] = [mid[0] - dir[0] * halfLen, mid[1] - dir[1] * halfLen]
   return {
     id: s.id,
@@ -351,26 +532,28 @@ function buildSurfaces(): Record<SurfaceId, DisplaySurface> {
     ...facets(['a-outer-1', 'a-outer-2', 'a-outer-3'], (i) => `Gallery A — ring wall ${i}`, ringR, finAB, ne, true, ringH, 'drum-ring', true),
     ...facets(['b-outer-1', 'b-outer-2', 'b-outer-3', 'b-outer-4'], (i) => `Gallery B — ring wall ${i}`, ringR, finBC, finAB, true, ringH, 'drum-ring', true),
     ...facets(['c-outer-1', 'c-outer-2'], (i) => `Gallery C — ring wall ${i}`, ringR, dn - 360, finBC, true, ringH, 'drum-ring', true),
-    // Hallway wall: inside face (C's south flank) and outside face (hallway)
+    // Hallway wall (the ring circle from the E-west arch to the D arch): inside face (C's south flank) and outside face (hallway)
     ...facets(['c-south-1', 'c-south-2', 'c-south-3'], (i) => `Gallery C — curved wall ${i}`, DW.r - DW.thickness / 2, DW.fromDeg, DW.toDeg, true, DW.height, 'wall-d', true),
     ...facets(['d-hallway-1', 'd-hallway-2', 'd-hallway-3', 'd-hallway-4', 'd-hallway-5', 'd-hallway-6'], (i) => `Hallway D — outer wall ${i}`, lobeR, DW.fromDeg, dn, true, ringH, 'drum-lobe-west', true),
     ...facets(['d-inner-1', 'd-inner-2', 'd-inner-3'], (i) => `Hallway D — inner wall ${i}`, DW.r + DW.thickness / 2, DW.fromDeg, DW.toDeg, false, DW.height, 'wall-d', true),
-    // Entry ways: the lobe either side of the mouth
+    // Entry ways (the ambulatory): the lobe either side of the annex mouth
     ...facets(['e-north-1', 'e-north-2', 'e-north-3'], (i) => `Entry way (east) — drum wall ${i}`, lobeR, ne, 90 - gap, true, ringH, 'drum-lobe-east', true),
     ...facets(['e-south-1', 'e-south-2', 'e-south-3'], (i) => `Entry way (west) — drum wall ${i}`, lobeR, 90 + gap, DW.fromDeg, true, ringH, 'drum-lobe-west'),
-    // H: entrance face (convex), back face (concave)
-    facet({ id: 'h-east', label: 'Description wall — east wing', r: HW.r + HW.thickness / 2, fromDeg: HW.fromDeg, toDeg: 77, concave: false, height: HW.height, wall: 'wall-h' }),
-    facet({ id: 'h-description', label: 'Description wall — title and introduction', r: HW.r + HW.thickness / 2, fromDeg: 77, toDeg: 103, concave: false, height: HW.height, wall: 'wall-h' }),
-    facet({ id: 'h-west', label: 'Description wall — west wing', r: HW.r + HW.thickness / 2, fromDeg: 103, toDeg: HW.toDeg, concave: false, height: HW.height, wall: 'wall-h' }),
+    // H: annex face (convex, the title in the middle), corridor face (concave, the strata wall)
+    facet({ id: 'h-east', label: 'Description wall — east wing', r: HW.r + HW.thickness / 2, fromDeg: HW.fromDeg, toDeg: 90 - H_TITLE_HALF_DEG, concave: false, height: HW.height, wall: 'wall-h' }),
+    facet({ id: 'h-description', label: 'Description wall — title and introduction', r: HW.r + HW.thickness / 2, fromDeg: 90 - H_TITLE_HALF_DEG, toDeg: 90 + H_TITLE_HALF_DEG, concave: false, height: HW.height, wall: 'wall-h' }),
+    facet({ id: 'h-west', label: 'Description wall — west wing', r: HW.r + HW.thickness / 2, fromDeg: 90 + H_TITLE_HALF_DEG, toDeg: HW.toDeg, concave: false, height: HW.height, wall: 'wall-h' }),
     ...facets(['h-inner-1', 'h-inner-2', 'h-inner-3', 'h-inner-4'], (i) => `Description wall — back ${i}`, HW.r - HW.thickness / 2, HW.fromDeg, HW.toDeg, true, HW.height, 'wall-h'),
     // F: face towards H (convex), oculus-court face (concave)
     ...facets(['f-outer-1', 'f-outer-2', 'f-outer-3', 'f-outer-4', 'f-outer-5'], (i) => `Inner main wall — entry side ${i}`, FW.r + FW.thickness / 2, FW.fromDeg, FW.toDeg, false, FW.height, 'wall-f'),
     ...facets(['f-inner-1', 'f-inner-2', 'f-inner-main', 'f-inner-3', 'f-inner-4'], (i) => (i === 3 ? 'Inner main wall — oculus court, centre' : `Inner main wall — oculus court ${i < 3 ? i : i - 1}`), FW.r - FW.thickness / 2, FW.fromDeg, FW.toDeg, true, FW.height, 'wall-f'),
     // Annex G side walls (inside) and the entrance front either side of the door (outside)
-    run('g-east', 'Entrance hall — east wall', [KEY.annexHalf, KEY.annexMouthZ + 0.3], [KEY.annexHalf, AN.endZ - 0.15], [-1, 0], H, 'annex-east'),
-    run('g-west', 'Entrance hall — west wall', [-KEY.annexHalf, AN.endZ - 0.15], [-KEY.annexHalf, KEY.annexMouthZ + 0.3], [1, 0], H, 'annex-west'),
-    run('g-facade-east', 'Entrance front — east of the door', [KEY.doorHalf + 0.12, KEY.annexOuterZ], [KEY.annexOuterHalf - 0.05, KEY.annexOuterZ], [0, 1], H, 'annex-end-east'),
-    run('g-facade-west', 'Entrance front — west of the door', [-KEY.annexOuterHalf + 0.05, KEY.annexOuterZ], [-KEY.doorHalf - 0.12, KEY.annexOuterZ], [0, 1], H, 'annex-end-west'),
+    run('g-east', 'Earth Room — east wall', [KEY.annexHalf, KEY.annexMouthZ + 0.3], [KEY.annexHalf, AN.endZ - 0.15], [-1, 0], H, 'annex-east'),
+    run('g-west', 'Earth Room — west wall', [-KEY.annexHalf, AN.endZ - 0.15], [-KEY.annexHalf, KEY.annexMouthZ + 0.3], [1, 0], H, 'annex-west'),
+    run('g-facade-east', 'Entrance front — east of the portal', [KEY.doorHalf + 0.12, KEY.annexOuterZ], [KEY.annexOuterHalf - 0.05, KEY.annexOuterZ], [0, 1], H, 'annex-end-east'),
+    run('g-facade-west', 'Entrance front — west of the portal', [-KEY.annexOuterHalf + 0.05, KEY.annexOuterZ], [-KEY.doorHalf - 0.12, KEY.annexOuterZ], [0, 1], H, 'annex-end-west'),
+    // The Agni Theatre's screen: the whole chord of the outer wall's face from screenFrom to screenTo
+    facet({ id: 'th-screen', label: 'Agni Theatre — screen', r: SAT_WALL.outerFace, fromDeg: THEATRE.screenFrom, toDeg: THEATRE.screenTo, concave: true, height: satellite('theatre').height, wall: 'sat-theatre-outer', margin: 0 }),
   ]
   const out = {} as Record<SurfaceId, DisplaySurface>
   for (const s of list) {
@@ -378,9 +561,42 @@ function buildSurfaces(): Record<SurfaceId, DisplaySurface> {
     const mid = (s.range[0] + s.range[1]) / 2
     const x = s.a[0] + s.dir[0] * mid + s.normal[0] * 0.5
     const z = s.a[1] + s.dir[1] * mid + s.normal[1] * 0.5
-    out[s.id] = { ...s, zone: zoneAt(x, z)?.id ?? 'entrance-court' }
+    const reserved = RESERVED[s.id]
+    out[s.id] = { ...s, zone: zoneAt(x, z)?.id ?? 'entrance-court', ...(reserved ? { reserved } : {}) }
   }
   return out
+}
+
+/** Half-angle (deg) of the title facet in the middle of H's annex face (it carries the 6 m carved panel). */
+const H_TITLE_HALF_DEG = 13
+
+/** Surfaces kept for spectacle and grand installations (SPECTACLE §1.5, GRAND §2.4). */
+const RESERVED: Partial<Record<SurfaceId, string>> = {
+  'h-inner-1': 'Earth section (strata wall)',
+  'h-inner-2': 'Earth section (strata wall)',
+  'h-inner-3': 'Earth section (strata wall)',
+  'h-inner-4': 'Earth section (strata wall)',
+  'f-inner-1': 'Mandala of clay tools',
+  'f-inner-main': 'Niche: form rising from matter',
+  'f-inner-4': 'Terracotta medallion',
+  'b-outer-1': 'White niche wall (Molela)',
+  'b-outer-2': 'White niche wall (Molela)',
+  'b-outer-3': 'White niche wall (Molela)',
+  'b-outer-4': 'White niche wall (Molela)',
+  'f-outer-1': 'Lippan relief',
+  'f-outer-2': 'Lippan relief',
+  'f-outer-3': 'Lippan relief',
+  'f-outer-4': 'Lippan relief',
+  'f-outer-5': 'Lippan relief',
+  'g-east': 'Earth Room formations and shelves',
+  'g-west': 'Earth Room formations and shelves',
+  'd-hallway-1': 'Wine Hall plinth wall',
+  'd-hallway-2': 'Wine Hall plinth wall',
+  'd-hallway-3': 'Wine Hall plinth wall',
+  'd-hallway-4': 'Wine Hall plinth wall',
+  'd-hallway-5': 'Wine Hall plinth wall',
+  'd-hallway-6': 'Wine Hall plinth wall',
+  'th-screen': 'Agni Theatre screen',
 }
 
 /** World transform for a point on a display surface. */
@@ -404,7 +620,26 @@ export function surfacePoint(surfaceId: SurfaceId, at: number, y: number, standO
 /* Zones (minimap, orientation, teleport, culling)                     */
 /* ------------------------------------------------------------------ */
 
-export type ZoneId = 'entrance-court' | 'annex' | 'entry-e' | 'ring-a' | 'ring-b' | 'ring-c' | 'hallway-d' | 'inner'
+export type ZoneId =
+  | 'entrance-court'
+  | 'annex'
+  | 'entry-e'
+  | 'ring-a'
+  | 'ring-b'
+  | 'ring-c'
+  | 'hallway-d'
+  | 'inner'
+  // north wing (satellites.ts)
+  | 'atlas'
+  | 'theatre'
+  | 'library'
+  | 'shop'
+  | 'parikrama-west'
+  | 'parikrama-east'
+  // reached by the perch only (level 2): the roof round the oculus, the duplex balcony, the Sphere Well's room
+  | 'sky-rim'
+  | 'duplex'
+  | 'sphere-well'
 
 /** Zone footprint. Sector angles in radians (a0 < a1); polygons are [x, z] rings, optionally with holes. */
 export type ZoneShape =
@@ -428,9 +663,15 @@ export interface Zone {
   height: number
   /** Open to the sky (no ceiling). */
   outdoor?: boolean
+  /**
+   * 2 = reached by a perch (the Sky Rim, the duplex balcony, the Sphere Well's room): never found
+   * by zoneAt (each lies over or under a ground zone), not drawn on the plan; the perch reports
+   * it. Omitted = ground level.
+   */
+  level?: number
 }
 
-const sector = (r0: number, r1: number, fromDeg: number, toDeg: number): ZoneShape => ({ kind: 'sector', cx: 0, cz: 0, r0, r1, a0: fromDeg * DEG, a1: toDeg * DEG })
+const sector = (r0: number, r1: number, fromDeg: number, toDeg: number, cx = 0, cz = 0): ZoneShape => ({ kind: 'sector', cx, cz, r0, r1, a0: fromDeg * DEG, a1: toDeg * DEG })
 
 /** Points along a circle from → to (deg), inclusive, every ~stepDeg. */
 function arcPoints(r: number, fromDeg: number, toDeg: number, stepDeg = 4): [number, number][] {
@@ -526,21 +767,33 @@ function spawnAt(r: number, aDeg: number, facing: 'out' | 'in' | 'cw' | 'ccw') {
 
 const R = DR.r
 const RING = DR.ringR
-/** Hallway / ring boundary radius (between the drum ring face and the hallway wall). */
-const RING_EDGE = DW.r - DW.thickness / 2
 const [finAB, finBC] = FIN.atDeg
+/** The ring wall's outer face (the ambulatory's and the Parikrama's inner edge). */
+const RING_OUT = KEY.ringOuterR
+/** F's faces: towards the court and towards the corridor. */
+const F_IN = FW.r - FW.thickness / 2
+const F_OUT = FW.r + FW.thickness / 2
+const CURB = OC.rings[0]
+const GAP = KEY.annexGapDeg
+/** The corridor between F and H, and the gallery spawns: a little inside the podium row. */
+const CORRIDOR_MID = (F_OUT + RING) / 2
+const GALLERY_SPAWN_R = (CURB + KEY.podiumR) / 2
 
-/** Annex interior plus the mouth between H (its centreline) and the lobe. */
+/** Annex interior up to its mouth, plus the ambulatory in front of H between the mouth's edges. */
 const annexShape: ZoneShape = {
-  kind: 'poly',
-  points: [
-    [-KEY.annexHalf, AN.endZ],
-    [KEY.annexHalf, AN.endZ],
-    [KEY.annexHalf, KEY.annexMouthZ],
-    ...arcPoints(R, Math.atan2(KEY.annexMouthZ, KEY.annexHalf) / DEG, HW.fromDeg),
-    ...arcPoints(HW.r, HW.fromDeg, HW.toDeg),
-    ...arcPoints(R, HW.toDeg, Math.atan2(KEY.annexMouthZ, -KEY.annexHalf) / DEG),
-    [-KEY.annexHalf, KEY.annexMouthZ],
+  kind: 'union',
+  parts: [
+    {
+      kind: 'poly',
+      points: [
+        [-KEY.annexHalf, AN.endZ],
+        [KEY.annexHalf, AN.endZ],
+        [KEY.annexHalf, KEY.annexMouthZ],
+        ...arcPoints(R, Math.atan2(KEY.annexMouthZ, KEY.annexHalf) / DEG, Math.atan2(KEY.annexMouthZ, -KEY.annexHalf) / DEG),
+        [-KEY.annexHalf, KEY.annexMouthZ],
+      ],
+    },
+    sector(RING_OUT, R, 90 - GAP, 90 + GAP),
   ],
 }
 
@@ -556,6 +809,21 @@ export const BUILDING_OUTLINE: [number, number][] = [
   ...arcPoints(KEY.ringOuterR, DR.dNotchDeg, DR.neNotchDeg + 360),
 ]
 
+/**
+ * Footprint of the north wing (the Parikrama and the four crescent rooms) along its outer
+ * edges: the ring's outer face from the west gate to the NE notch, the walk's edge across the
+ * east gate, the rooms' outer face, and the walk's edge across the west gate.
+ */
+export const NORTH_WING_OUTLINE: [number, number][] = [
+  ...arcPoints(PARIKRAMA.r0, PARIKRAMA.fromDeg, PARIKRAMA.toDeg),
+  ...arcPoints(PARIKRAMA.r1, PARIKRAMA.toDeg, SATELLITES[SATELLITES.length - 1].toDeg),
+  ...arcPoints(SAT_WALL.outerOuter, SATELLITES[SATELLITES.length - 1].toDeg, SATELLITES[0].fromDeg),
+  ...arcPoints(PARIKRAMA.r1, SATELLITES[0].fromDeg, PARIKRAMA.fromDeg),
+]
+
+/** The Sphere Well's rim on the plan (closed ring). */
+export const WELL_OUTLINE: [number, number][] = arcPoints(SW.rimR, 0, 356, 4).map(([x, z]) => [x + SW.cx, z + SW.cz] as [number, number])
+
 /** The interior floor along the INNER wall faces (closed [x, z] ring, ~4° sampling). */
 export const FLOOR_OUTLINE: [number, number][] = [
   ...arcPoints(R, DR.neNotchDeg, Math.atan2(KEY.annexMouthZ, KEY.annexHalf) / DEG),
@@ -567,7 +835,8 @@ export const FLOOR_OUTLINE: [number, number][] = [
 
 /**
  * Everything outside the building that a visitor can reach: the landscape disc plus the
- * forecourt, with the building's footprint (outer wall faces) as a hole.
+ * forecourt, with the building's footprint (outer wall faces), the north wing and the well's
+ * rim as holes.
  */
 const outdoorShape: ZoneShape = {
   kind: 'poly',
@@ -576,10 +845,15 @@ const outdoorShape: ZoneShape = {
     [-FC.halfWidth, FC.endZ],
     [FC.halfWidth, FC.endZ],
   ],
-  holes: [BUILDING_OUTLINE],
+  holes: [BUILDING_OUTLINE, NORTH_WING_OUTLINE, WELL_OUTLINE],
 }
 
+/** A crescent room's mid radius (anchors, plans) and the spawn just inside its door. */
+const SAT_MID = (SAT_WALL.innerFace + SAT_WALL.outerFace) / 2
+const SAT_SPAWN = SAT_WALL.innerFace + 0.6
 const ZH = H
+/** The Sky Rim's plan extent (its rail path and a little beyond). */
+const SKY_RIM_R = KEY.curbR
 
 /** Zones in walking order (admin lists, guide). zoneAt uses MATCH_ORDER. */
 export const ZONES: Zone[] = (
@@ -599,7 +873,7 @@ export const ZONES: Zone[] = (
       name: 'Entrance Hall',
       short: 'Entrance',
       shape: annexShape,
-      anchor: [0, (KEY.annexMouthZ + AN.endZ) / 2 + 0.6],
+      anchor: [0, KEY.annexSkylightZ],
       spawn: { x: 0, z: AN.endZ - 1.6, yawDeg: 0 },
       height: ZH,
     },
@@ -607,63 +881,146 @@ export const ZONES: Zone[] = (
       id: 'entry-e',
       name: 'Entry Ways',
       short: 'Entry',
-      // the corridor between F and H, and the two ways round H's ends
-      shape: { kind: 'union', parts: [sector(FW.r, HW.r, DR.neNotchDeg, FW.toDeg), sector(HW.r, R, DR.neNotchDeg, HW.fromDeg), sector(HW.r, R, HW.toDeg, FW.toDeg)] },
-      anchor: polar((FW.r + HW.r) / 2, 90),
-      spawn: spawnAt((FW.r + HW.r) / 2 + 0.05, 66, 'in'),
+      // the ambulatory either side of the annex mouth, the E arches' thresholds and the corridor between F and H
+      shape: {
+        kind: 'union',
+        parts: [
+          sector(RING_OUT, R, DR.neNotchDeg, 90 - GAP),
+          sector(RING_OUT, R, 90 + GAP, DW.fromDeg),
+          sector(RING, RING_OUT, ARCH.eEast.fromDeg, ARCH.eEast.toDeg),
+          sector(RING, RING_OUT, ARCH.eWest.fromDeg, ARCH.eWest.toDeg),
+          sector(F_OUT, RING, FW.fromDeg, FW.toDeg),
+        ],
+      },
+      anchor: polar(CORRIDOR_MID, 90),
+      spawn: spawnAt(CORRIDOR_MID, 66, 'in'),
       height: ZH,
     },
     {
       id: 'ring-a',
       name: 'Gallery A',
       short: 'Gallery A',
-      // up to F's end, then the strip outside it to the NE notch
-      shape: { kind: 'union', parts: [sector(0, RING, finAB, FW.fromDeg), sector(FW.r, RING, FW.fromDeg, DR.neNotchDeg)] },
-      anchor: polar(4.9, (finAB + FW.fromDeg) / 2),
-      spawn: spawnAt(5.0, 8, 'out'),
+      shape: sector(CURB, RING, finAB, FW.fromDeg),
+      anchor: polar(GALLERY_SPAWN_R, (finAB + FW.fromDeg) / 2),
+      // between A1 and A2: the gallery's middle (5°) is the Herd's island (GRAND §4.2)
+      spawn: spawnAt(GALLERY_SPAWN_R, (MUSEUM.podium.anglesDeg.a[0] + MUSEUM.podium.anglesDeg.a[1]) / 2, 'out'),
       height: ZH,
     },
     {
       id: 'ring-b',
       name: 'Gallery B',
       short: 'Gallery B',
-      shape: sector(0, RING, finBC, finAB),
-      anchor: polar(4.9, (finAB + finBC) / 2),
-      spawn: spawnAt(5.0, (finAB + finBC) / 2, 'out'),
+      shape: sector(CURB, RING, finBC, finAB),
+      anchor: polar(GALLERY_SPAWN_R, (finAB + finBC) / 2),
+      spawn: spawnAt(GALLERY_SPAWN_R, (finAB + finBC) / 2, 'out'),
       height: ZH,
     },
     {
       id: 'ring-c',
       name: 'Gallery C',
       short: 'Gallery C',
-      shape: sector(0, RING_EDGE, FW.toDeg, finBC + 360),
-      anchor: polar(4.9, 222),
-      spawn: spawnAt(5.0, 239, 'out'),
+      shape: sector(CURB, RING, FW.toDeg, finBC + 360),
+      anchor: polar(GALLERY_SPAWN_R, (FW.toDeg + finBC + 360) / 2),
+      spawn: spawnAt(GALLERY_SPAWN_R, (DR.dNotchDeg + finBC + 360) / 2, 'out'),
       height: ZH,
     },
     {
       id: 'hallway-d',
       name: 'Hallway',
       short: 'Hallway',
-      shape: sector(RING_EDGE, R, FW.toDeg, DR.dNotchDeg),
-      anchor: polar((DW.r + R) / 2, 187),
-      spawn: spawnAt((DW.r + DW.thickness / 2 + R) / 2, 205, 'cw'),
+      // the ambulatory from the E-west arch to the D notch, and the D arch's threshold
+      shape: { kind: 'union', parts: [sector(RING_OUT, R, DW.fromDeg, DR.dNotchDeg), sector(RING, RING_OUT, ARCH.d.fromDeg, ARCH.d.toDeg)] },
+      anchor: polar(KEY.ambMidR, (DW.fromDeg + DR.dNotchDeg) / 2),
+      spawn: spawnAt(KEY.ambMidR, ARCH.d.midDeg, 'cw'),
       height: ZH,
     },
     {
       id: 'inner',
       name: 'Oculus Court',
       short: 'Oculus',
-      shape: sector(0, FW.r, FW.fromDeg, FW.toDeg),
+      // the pool inside the curb, and the court between the curb and F
+      shape: { kind: 'union', parts: [sector(0, CURB, 0, 360), sector(CURB, F_IN, FW.fromDeg, FW.toDeg)] },
       anchor: [0, 0],
-      spawn: spawnAt(4.35, 60, 'in'),
+      spawn: spawnAt((CURB + F_IN) / 2, 60, 'in'),
       height: ZH,
+    },
+    // ── North wing: the Parikrama walk (west, then east) and the four rooms off it ──
+    {
+      id: 'parikrama-west',
+      name: 'Parikrama Walk, west',
+      short: 'Parikrama',
+      shape: sector(PARIKRAMA.r0, PARIKRAMA.r1, PARIKRAMA.fromDeg, PARIKRAMA.split),
+      anchor: polar(serpentineR(-98), -98),
+      spawn: spawnAt(serpentineR(-128), -128, 'ccw'),
+      height: SERPENTINE.wallH,
+      outdoor: true,
+    },
+    satelliteZone('atlas', 'Clay Atlas', 'Atlas'),
+    satelliteZone('theatre', 'Agni Theatre', 'Theatre', THEATRE.axisDeg + 2),
+    satelliteZone('library', 'Kothi — the Red Room', 'Red Room'),
+    satelliteZone('shop', 'The Haat', 'Haat'),
+    {
+      id: 'parikrama-east',
+      name: 'Parikrama Walk, east',
+      short: 'Parikrama',
+      shape: sector(PARIKRAMA.r0, PARIKRAMA.r1, PARIKRAMA.split, PARIKRAMA.toDeg),
+      anchor: polar(serpentineR(-12), -12),
+      spawn: spawnAt(serpentineR(-52), -52, 'ccw'),
+      height: SERPENTINE.wallH,
+      outdoor: true,
+    },
+    {
+      id: 'sky-rim',
+      name: 'Sky Rim',
+      short: 'Roof',
+      shape: sector(0, SKY_RIM_R, 0, 360),
+      anchor: [0, 0],
+      // reached by the perch only; "go to" is never offered for it
+      spawn: { x: 0, z: SKY_RIM_R, yawDeg: 0 },
+      height: 0,
+      outdoor: true,
+      level: 2,
+    },
+    {
+      id: 'duplex',
+      name: 'The Balcony',
+      short: 'Balcony',
+      shape: sector(MUSEUM.balcony.r0, MUSEUM.balcony.r1, MUSEUM.balcony.fromDeg, MUSEUM.balcony.toDeg),
+      anchor: polar((MUSEUM.balcony.r0 + MUSEUM.balcony.r1) / 2, -45),
+      spawn: { ...spawnAt((MUSEUM.balcony.r0 + MUSEUM.balcony.r1) / 2, -45, 'in') },
+      height: H - MUSEUM.pavilion.mezzanineBand,
+      level: 2,
+    },
+    {
+      id: 'sphere-well',
+      name: 'The Sphere Well',
+      short: 'Sphere Well',
+      shape: sector(0, SW.roomR, 0, 360, SW.cx, SW.cz),
+      anchor: [SW.cx, SW.cz],
+      spawn: { x: SW.cx, z: SW.cz + SW.rimR + 0.6, yawDeg: 0 },
+      height: -SW.terraceTopY,
+      level: 2,
     },
   ] satisfies Omit<Zone, 'rect'>[]
 ).map((z) => ({ ...z, rect: shapeBox(z.shape) }))
 
-/** First-match order for zoneAt (the shapes are disjoint; shared edges resolve in this order). */
-const MATCH_ORDER: ZoneId[] = ['annex', 'inner', 'entry-e', 'hallway-d', 'ring-a', 'ring-b', 'ring-c', 'entrance-court']
+/** A crescent room of the north wing: its sector inside the walls, the anchor mid-room (on `anchorDeg`, default the door), the spawn inside the door facing in. */
+function satelliteZone(id: SatelliteId, name: string, short: string, anchorDeg?: number): Omit<Zone, 'rect'> & { shape: ZoneShape } {
+  const s = satellite(id)
+  return {
+    id,
+    name,
+    short,
+    // from the walk's edge (the doorway belongs to the room) to the outer wall's face
+    shape: sector(PARIKRAMA.r1, SAT_WALL.outerFace, s.fromDeg, s.toDeg),
+    anchor: polar(SAT_MID, anchorDeg ?? s.doorDeg),
+    spawn: spawnAt(SAT_SPAWN, s.doorDeg, 'out'),
+    height: s.height,
+  }
+}
+
+/** First-match order for zoneAt (the shapes are disjoint; shared edges resolve in this order). Roof zones are never matched. */
+const MATCH_ORDER: ZoneId[] = ['annex', 'inner', 'entry-e', 'hallway-d', 'ring-a', 'ring-b', 'ring-c', 'atlas', 'theatre', 'library', 'shop', 'parikrama-west', 'parikrama-east', 'entrance-court']
 const MATCH = MATCH_ORDER.map((id) => ZONES.find((z) => z.id === id)!)
 
 function inZone(zn: Zone, x: number, z: number) {
@@ -689,14 +1046,25 @@ export function zoneDistance(zn: Zone, x: number, z: number) {
  * the zone itself.
  */
 export const ZONE_VISIBILITY: Record<ZoneId, ZoneId[]> = {
-  'entrance-court': ['entrance-court', 'annex'],
-  annex: ['annex', 'entrance-court', 'entry-e', 'hallway-d', 'ring-a', 'inner'],
-  'entry-e': ['entry-e', 'annex', 'inner', 'ring-a', 'ring-b', 'ring-c', 'hallway-d', 'entrance-court'],
-  'ring-a': ['ring-a', 'ring-b', 'ring-c', 'inner', 'entry-e', 'annex'],
-  'ring-b': ['ring-b', 'ring-a', 'ring-c', 'inner', 'entry-e', 'hallway-d'],
-  'ring-c': ['ring-c', 'ring-b', 'ring-a', 'inner', 'hallway-d', 'entry-e'],
-  'hallway-d': ['hallway-d', 'ring-c', 'entry-e', 'annex', 'inner'],
-  inner: ['inner', 'ring-a', 'ring-b', 'ring-c', 'entry-e', 'hallway-d'],
+  'entrance-court': ['entrance-court', 'annex', 'parikrama-west', 'parikrama-east', 'sphere-well'],
+  // the dome's upper part shows over F through the arches
+  annex: ['annex', 'entrance-court', 'entry-e', 'inner', 'hallway-d', 'ring-a', 'ring-c'],
+  'entry-e': ['entry-e', 'annex', 'inner', 'ring-a', 'ring-b', 'ring-c', 'hallway-d', 'entrance-court', 'parikrama-east', 'duplex'],
+  // one rotunda: the galleries, the court and the corridor see each other, and the balcony over them
+  'ring-a': ['ring-a', 'ring-b', 'ring-c', 'inner', 'entry-e', 'annex', 'duplex'],
+  'ring-b': ['ring-b', 'ring-a', 'ring-c', 'inner', 'entry-e', 'hallway-d', 'duplex'],
+  'ring-c': ['ring-c', 'ring-b', 'ring-a', 'inner', 'hallway-d', 'entry-e', 'duplex'],
+  'hallway-d': ['hallway-d', 'ring-c', 'entry-e', 'annex', 'inner', 'parikrama-west', 'sphere-well', 'duplex'],
+  inner: ['inner', 'ring-a', 'ring-b', 'ring-c', 'entry-e', 'hallway-d', 'duplex'],
+  'parikrama-west': ['parikrama-west', 'parikrama-east', 'atlas', 'theatre', 'hallway-d', 'entrance-court'],
+  'parikrama-east': ['parikrama-east', 'parikrama-west', 'theatre', 'library', 'shop', 'entry-e', 'entrance-court'],
+  atlas: ['atlas', 'parikrama-west'],
+  theatre: ['theatre', 'parikrama-east', 'parikrama-west'],
+  library: ['library', 'parikrama-east'],
+  shop: ['shop', 'parikrama-east'],
+  'sky-rim': ['sky-rim', 'inner', 'ring-a', 'ring-b', 'ring-c', 'entry-e', 'hallway-d', 'annex', 'duplex', 'entrance-court', 'parikrama-west', 'parikrama-east', 'sphere-well'],
+  duplex: ['duplex', 'inner', 'ring-a', 'ring-b', 'ring-c', 'entry-e', 'hallway-d', 'annex'],
+  'sphere-well': ['sphere-well', 'entrance-court'],
 }
 
 // Built after the zones: each surface's zone comes from zoneAt.
@@ -744,7 +1112,7 @@ export interface BenchPlacement {
 
 export const BENCH_SIZE = { length: 1.8, depth: 0.42, height: 0.44 }
 
-/** One low bench in the oculus court, between F and the plinth, facing the light. */
+/** One low bench in the oculus court, between F and the curb, facing the pool. */
 export const BENCHES: BenchPlacement[] = [{ id: 'bench-oculus', x: 0, z: (OC.rings[0] + FW.r - FW.thickness / 2) / 2, along: 'x' }]
 
 /** Centre of the oculus court (the plinth under the open skylight). */

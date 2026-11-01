@@ -16,7 +16,7 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { surfaceFace, type MedallionTreatment } from '../config/decor'
-import { SURFACES } from '../config/layout'
+import { SURFACES, WALLS } from '../config/layout'
 import { QUALITY_PRESETS, withDevOverrides } from '../config/quality'
 import { getHaloTexture, loadMedallionTextures } from '../materials/decorTextures'
 import { finishTextureSize } from '../materials/materials'
@@ -64,6 +64,41 @@ function mandalaMaterial(l: LayerLook) {
   })
 }
 
+/**
+ * Where a medallion hangs on an 'along' surface (a straight run that may be the chord of a curved
+ * wall). On a concave wall the chord stands off the plaster by up to its sagitta, so the roundel
+ * is pushed back towards the wall until its nearest edge clears the curved face by 1 cm.
+ */
+function alongPlace(m: MedallionTreatment): [number, number, number] {
+  const s = SURFACES[m.surface]
+  const [nx, nz] = s.normal
+  const px = s.a[0] + s.dir[0] * m.at
+  const pz = s.a[1] + s.dir[1] * m.at
+  const w = WALLS.find((x) => x.id === s.wall)
+  let back = 0
+  if (w?.shape?.kind === 'arc') {
+    const { cx, cz, r, thickness } = w.shape
+    // the wall face the surface looks out of (nearer the surface point)
+    const d = Math.hypot(px - cx, pz - cz)
+    const rf = d < r ? r - thickness / 2 : r + thickness / 2
+    const half = (m.size * Math.max(0.5, (m.ornate?.disc?.scale ?? 1) / 2)) / 1
+    let clear = Infinity
+    for (const l of [-half, 0, half]) {
+      // march from the roundel's edge point back along −normal to the curved face
+      const qx = px + s.dir[0] * l - cx
+      const qz = pz + s.dir[1] * l - cz
+      const b = -(qx * nx + qz * nz)
+      const c = qx * qx + qz * qz - rf * rf
+      const disc = b * b - c
+      if (disc < 0) continue
+      const t = d < r ? -b + Math.sqrt(disc) : -b - Math.sqrt(disc)
+      if (t >= 0) clear = Math.min(clear, t)
+    }
+    if (Number.isFinite(clear)) back = Math.max(0, clear - 0.01)
+  }
+  return [px - nx * back, m.centerHeight, pz - nz * back]
+}
+
 export function Medallion({ m }: { m: MedallionTreatment }) {
   const tier = useMuseum((s) => s.tier)
   const halo = useRef<THREE.MeshBasicMaterial>(null)
@@ -72,10 +107,12 @@ export function Medallion({ m }: { m: MedallionTreatment }) {
 
   const place = useMemo(() => {
     const s = SURFACES[m.surface]
+    const rotY = Math.atan2(s.normal[0], s.normal[1])
+    if (s.runAxis === 'along') return { pos: alongPlace(m), rotY }
     const f = surfaceFace(m.surface)
     const pos: [number, number, number] = s.runAxis === 'z' ? [f.plane, m.centerHeight, m.at] : [m.at, m.centerHeight, f.plane]
-    return { pos, rotY: Math.atan2(s.normal[0], s.normal[1]) }
-  }, [m.surface, m.at, m.centerHeight])
+    return { pos, rotY }
+  }, [m])
 
   const paint = m.finish === 'paint'
   const material = useMemo(
@@ -126,7 +163,7 @@ export function Medallion({ m }: { m: MedallionTreatment }) {
   const spin = inner?.spinPeriod
   const reducedMotion = useMuseum((s) => s.reducedMotion)
   useFrame(({ clock }, dt) => {
-    if (spin && innerMesh.current && !reducedMotion) innerMesh.current.rotation.z -= (dt * Math.PI * 2) / spin
+    if (spin && innerMesh.current && !reducedMotion && tier !== 'low') innerMesh.current.rotation.z -= (dt * Math.PI * 2) / spin
     if (!glow) return
     const k = 0.5 - 0.5 * Math.cos((clock.elapsedTime * Math.PI * 2) / (glow.period ?? 8))
     material.emissiveIntensity = glow.intensity * (0.04 + 0.08 * k)

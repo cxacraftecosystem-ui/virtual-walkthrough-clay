@@ -46,8 +46,8 @@ function build(): Collider[] {
     } else if (s.kind === 'seg') {
       const len = Math.hypot(s.bx - s.ax, s.bz - s.az) || 1e-6
       list.push(obb(w.id, (s.ax + s.bx) / 2, (s.az + s.bz) / 2, (s.bx - s.ax) / len, (s.bz - s.az) / len, len / 2, s.thickness / 2))
-    } else if (w.kind === 'plinth' && s.a1 - s.a0 >= TAU - 1e-9) {
-      // a full plinth ring is solid: nobody stands on the plinth inside it
+    } else if ((w.kind === 'plinth' || w.kind === 'tower') && s.a1 - s.a0 >= TAU - 1e-9) {
+      // a full plinth ring (or the Kiln Stair's round tower) is solid: nobody stands inside it
       list.push({ id: w.id, kind: 'circle', cx: s.cx, cz: s.cz, r: s.r + s.thickness / 2, low: w.max[1] < 1.2, minX: w.min[0], maxX: w.max[0], minZ: w.min[2], maxZ: w.max[2] })
     } else {
       const low = w.max[1] < 1.2

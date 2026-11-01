@@ -3,15 +3,25 @@
  *  • applies the a11y settings as classes on <html> (a11y-contrast / a11y-large / a11y-reduce-motion),
  *  • a skip link to the text-only guide (first Tab stop),
  *  • a polite live region announcing zone changes and the nearby item (with its alt text),
+ *    and whatever the pavilion's moments announce (`announce()`: a stamp pressed, the roof
+ *    reached, a docent's moment) — the roof perch reports its own zone (navigation/perch.ts),
  *  • labels the 3D canvas for assistive technology.
  */
 import { useEffect, useRef, useState } from 'react'
+import { create } from 'zustand'
 import { zoneAt } from '../config/layout'
+import { perchZone } from '../navigation/perch'
 import { useMuseum } from '../state/store'
 import { visitor } from '../state/visitor'
 import { useLang, useT } from '../i18n'
 import { itemAlt, itemTitle, zoneName } from '../i18n/content'
 import { isCoarsePointer } from '../ui/HelpOverlay'
+
+/** Something for screen readers to say (polite). Repeating the same words still re-announces them. */
+const useAnnounce = create<{ text: string; n: number }>(() => ({ text: '', n: 0 }))
+export function announce(text: string) {
+  if (text) useAnnounce.setState((s) => ({ text, n: s.n + 1 }))
+}
 
 export function useA11yDocumentClasses() {
   const reducedMotion = useMuseum((s) => s.reducedMotion)
@@ -58,7 +68,7 @@ export function A11yLayer() {
   useEffect(() => {
     if (!entered) return
     const id = window.setInterval(() => {
-      const z = zoneAt(visitor.x, visitor.z)?.id
+      const z = perchZone() ?? zoneAt(visitor.x, visitor.z)?.id
       if (!z || z === lastZone.current) return
       const first = lastZone.current === null
       lastZone.current = z
@@ -78,6 +88,12 @@ export function A11yLayer() {
     }, 700)
     return () => window.clearTimeout(h)
   }, [entered, nearby, lang, t])
+
+  // Announcements from the moments.
+  const said = useAnnounce((s) => s.n)
+  useEffect(() => {
+    if (said) setMessage(useAnnounce.getState().text)
+  }, [said])
 
   // Describe the WebGL canvas.
   useEffect(() => {

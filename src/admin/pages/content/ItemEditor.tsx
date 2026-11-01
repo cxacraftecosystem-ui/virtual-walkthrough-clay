@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ContentCollection } from '../../../museum/content/types'
 import { api, isConflict, type ConflictBody, type ContentStamp, type Item, type SavedItem } from '../../api'
-import { FIELDS, LANGS, getPath, setPath, surfaceRange, type FieldDef } from '../../fields'
+import { FIELDS, LANGS, getPath, setPath, surfaceRange, surfaceWarning, type FieldDef } from '../../fields'
 import { recordRecent } from '../../recent'
 import { Badge, Button, ButtonRow, Field, Modal, Textarea, errMsg, formatDate, formatRelative, useConfirm, useToast, useUnsavedGuard } from '../../ui'
 import { ConflictDialog } from './ConflictDialog'
@@ -53,9 +53,15 @@ function validate(fields: FieldDef[], draft: Record<string, unknown>): Record<st
   return errs
 }
 
+/** Non-blocking notices: an id that names nothing yet, a wall kept for an installation. */
 function refWarnings(fields: FieldDef[], draft: Record<string, unknown>, refs: ContentRefs): Record<string, string> {
   const out: Record<string, string> = {}
   for (const f of fields) {
+    if (f.type === 'surface') {
+      const w = surfaceWarning(getPath(draft, f.path))
+      if (w) out[f.path] = w
+      continue
+    }
     if (f.type !== 'ref' || !f.ref) continue
     const v = getPath(draft, f.path)
     if (typeof v !== 'string' || !v) continue

@@ -13,8 +13,10 @@ import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type * as THREE from 'three'
 import { ZONES, ZONE_VISIBILITY, zoneAt, zoneDistance, type ZoneId } from '../config/layout'
+import { DEG, KEY, MUSEUM } from '../config/museum'
 import { visitor } from '../state/visitor'
 import { requestShadowRefresh } from '../lighting/SkyAndSun'
+import { perchZone } from './perch'
 
 const groups = new Map<THREE.Group, ZoneId[]>()
 let visible = new Set<ZoneId>(ZONES.map((z) => z.id))
@@ -36,6 +38,8 @@ function nearestZone(x: number, z: number): ZoneId | null {
   let best: ZoneId | null = null
   let bestD = Infinity
   for (const zn of ZONES) {
+    // the roof (level 2) lies over the court: only the perch puts the visitor there
+    if (zn.level === 2) continue
     const d = zoneDistance(zn, x, z)
     if (d < bestD) {
       bestD = d
@@ -43,6 +47,39 @@ function nearestZone(x: number, z: number): ZoneId | null {
     }
   }
   return best
+}
+
+/*
+ * Deep in the annex the description wall H closes the view north: the rotunda shows only past
+ * H's ends, along the sight lines that clear the annex mouth's corners. Each side's zones stay
+ * in the set while such a line exists (with a margin), and drop out once the visitor is too far
+ * in or too far to that side to see past the end.
+ */
+const H_WALL = MUSEUM.descriptionWall
+const H_OUT = H_WALL.r + H_WALL.thickness / 2 + 0.3
+/** H's ends (its entrance face, plus a margin): east (x > 0) and west. */
+const H_END = { east: [H_OUT * Math.cos(H_WALL.fromDeg * DEG), H_OUT * Math.sin(H_WALL.fromDeg * DEG)], west: [H_OUT * Math.cos(H_WALL.toDeg * DEG), H_OUT * Math.sin(H_WALL.toDeg * DEG)] } as const
+/** The annex mouth's corners, where its side walls meet the drum (a margin wider). */
+const MOUTH = { x: KEY.annexHalf + 0.3, z: Math.sqrt(KEY.lobeR * KEY.lobeR - KEY.annexHalf * KEY.annexHalf) }
+const PAST_EAST: ZoneId[] = ['ring-a', 'inner', 'duplex']
+const PAST_WEST: ZoneId[] = ['ring-c', 'hallway-d', 'inner', 'duplex']
+
+/** Whether a line from (x, z) in the annex clears the mouth's corner on side `s` and passes H's end there. */
+function seesPast(x: number, z: number, s: 1 | -1): boolean {
+  const [ex, ez] = s > 0 ? H_END.east : H_END.west
+  if (z <= MOUTH.z + 0.5) return true
+  // sideways run per metre northwards: to the mouth's corner, and to H's end
+  const toCorner = (s * MOUTH.x - x) / (z - MOUTH.z)
+  const toEnd = (ex - x) / (z - ez)
+  return s > 0 ? toCorner > toEnd : toCorner < toEnd
+}
+
+/** The annex's own set, narrowed to what the visitor can see from where they stand. */
+function annexSet(x: number, z: number): ZoneId[] {
+  const all = ZONE_VISIBILITY.annex ?? ['annex']
+  const east = seesPast(x, z, 1)
+  const west = seesPast(x, z, -1)
+  return all.filter((id) => (!PAST_EAST.includes(id) && !PAST_WEST.includes(id)) || (east && PAST_EAST.includes(id)) || (west && PAST_WEST.includes(id)))
 }
 
 /** Show every zone regardless of the visitor (e.g. the arrival flight over the roofs). */
@@ -62,11 +99,11 @@ export function ZoneCuller({ enabled = true }: { enabled?: boolean }) {
       }
       return
     }
-    const here = zoneAt(visitor.x, visitor.z)?.id ?? nearestZone(visitor.x, visitor.z)
+    const here = perchZone() ?? zoneAt(visitor.x, visitor.z)?.id ?? nearestZone(visitor.x, visitor.z)
     if (here) current = here
     const set = new Set<ZoneId>()
     for (const id of current ? [current, ...nearbyZones(visitor.x, visitor.z, current)] : ZONES.map((z) => z.id)) {
-      for (const v of ZONE_VISIBILITY[id] ?? [id]) set.add(v)
+      for (const v of id === 'annex' ? annexSet(visitor.x, visitor.z) : (ZONE_VISIBILITY[id] ?? [id])) set.add(v)
     }
     const key = [...set].sort().join(',')
     if (key !== last.current) {

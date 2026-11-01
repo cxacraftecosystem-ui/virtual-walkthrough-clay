@@ -1,6 +1,7 @@
 /**
  * Letterbox bars, exhibition title card and "Skip" for the cinematic arrival flight
- * (navigation/ArrivalFlight.tsx). Self-contained styles so it touches no shared stylesheet.
+ * (navigation/ArrivalFlight.tsx); in its Still form (reduced motion) the dip to black between
+ * the held views. Self-contained styles so it touches no shared stylesheet.
  */
 import { useEffect, useState } from 'react'
 import { EXHIBITION_TITLE } from '../config/infographics'
@@ -30,6 +31,7 @@ const CSS = `
 .ui-arrival.is-on .ui-arrival__skip { opacity: .85; }
 .ui-arrival__skip:hover, .ui-arrival__skip:focus-visible { background: rgba(245,241,232,.12); opacity: 1; outline: none; }
 .ui-arrival__dip { position: absolute; inset: 0; background: #0b0a09; opacity: 0; transition: opacity 300ms ease; }
+.a11y-reduce-motion .ui-arrival__bar { transition: none; }
 .ui-arrival__dip.is-on { opacity: 1; }
 body.is-arrival .ui-hud, body.is-arrival .ui-map, body.is-arrival .ui-joystick, body.is-arrival .ui-prompt {
   opacity: 0 !important; pointer-events: none !important; transition: opacity 600ms ease; }
@@ -40,6 +42,8 @@ export function ArrivalOverlay() {
   const active = useArrival((s) => s.active)
   const skipping = useArrival((s) => s.skipping)
   const t = useArrival((s) => s.t)
+  // Still form (reduced motion): the flight's held views change behind this dip
+  const stillDip = useArrival((s) => s.active && s.still && s.dip)
   const tr = useT()
   const loc = useLoc()
   // keep mounted briefly after the flight so the bars can slide away
@@ -86,7 +90,7 @@ export function ArrivalOverlay() {
         <div className="ui-arrival__rule" />
         <div className="ui-arrival__sub">{loc(EXHIBITION_TITLE, 'subtitle')}</div>
       </div>
-      <div className={`ui-arrival__dip${dip ? ' is-on' : ''}`} />
+      <div className={`ui-arrival__dip${dip || stillDip ? ' is-on' : ''}`} />
       {active && (
         <button type="button" className="ui-arrival__skip" aria-label={tr('arrival.skipHint')} onClick={skipArrival}>
           {tr('arrival.skip')} ›

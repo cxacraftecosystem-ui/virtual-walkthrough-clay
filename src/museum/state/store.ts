@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { detectInitialTier, type QualitySetting, type QualityTier } from '../config/quality'
 import type { User } from '../api/client'
+import { bucketOf, istDay, istHoursNow, presetHours } from '../lighting/atmosphere/dayCurve'
+import { useWeather, type Weather } from '../lighting/weather/weatherState'
 
 export type SelectionKind = 'artwork' | 'exhibit' | 'infographic' | 'object' | 'video'
 export interface Selection {
@@ -10,6 +12,10 @@ export interface Selection {
 
 export type Phase = 'loading' | 'ready' | 'entered'
 export type TimeOfDay = 'morning' | 'midday' | 'golden' | 'dusk' | 'night'
+/** 'live' follows the real sun over Kharagpur; 'manual' holds the visitor's (or a tour's) clock time. */
+export type TimeMode = 'live' | 'manual'
+/** Visitor's choice for the festival of lamps: 'auto' follows the curator (and the Diwali window). */
+export type FestivalChoice = 'auto' | 'on' | 'off'
 
 /** Social side panels (only available when the backend is reachable). */
 export type Drawer = 'favourites' | 'guestbook'
@@ -56,8 +62,19 @@ interface MuseumState {
   sceneCompiled: boolean
   /** Pointer-lock "mouse look": mouse movement turns the view, clicks hit the centre crosshair. */
   mouseLook: boolean
-  /** Sun position preset for the skylight daylight. */
+  /**
+   * The named moment of the current clock time (HUD label, soundscape). Setting it picks that
+   * moment's clock time on today's date (lighting/atmosphere/dayCurve.ts presetHours).
+   */
   timeOfDay: TimeOfDay
+  /** Live sun or a held clock time (SPECTACLE F9). */
+  timeMode: TimeMode
+  /** IST clock hours of the held time (0 … 24); in live mode, the last clock reading. */
+  dayHours: number
+  /** Clear sky or monsoon (mirrors lighting/weather/weatherState.ts, which eases the rain). */
+  weather: Weather
+  /** Festival of lamps (Diya Night, F28). */
+  festival: FestivalChoice
 
   setPhase: (p: Phase) => void
   setQuality: (q: QualitySetting) => void
@@ -72,6 +89,11 @@ interface MuseumState {
   setSceneCompiled: (v: boolean) => void
   setMouseLook: (v: boolean) => void
   setTimeOfDay: (t: TimeOfDay) => void
+  setTimeMode: (m: TimeMode) => void
+  /** Hold a clock time (manual mode). */
+  setDayHours: (h: number) => void
+  setWeather: (w: Weather) => void
+  setFestival: (f: FestivalChoice) => void
 
   // ── Accessibility (persisted; see src/museum/a11y/settings.ts) ────
   /** No camera glides, auto-rotation, cinematic intros or animated sway. Defaults to prefers-reduced-motion. */
@@ -163,7 +185,26 @@ export const useMuseum = create<MuseumState>((set) => ({
   mouseLook: false,
   setMouseLook: (mouseLook) => set({ mouseLook }),
   timeOfDay: 'midday',
-  setTimeOfDay: (timeOfDay) => set({ timeOfDay }),
+  timeMode: 'manual',
+  dayHours: 12,
+  setTimeOfDay: (timeOfDay) => set({ timeOfDay, timeMode: 'manual', dayHours: presetHours(istDay(), timeOfDay) }),
+  setTimeMode: (timeMode) =>
+    set(() => {
+      if (timeMode === 'manual') return { timeMode }
+      const dayHours = istHoursNow()
+      return { timeMode, dayHours, timeOfDay: bucketOf(istDay(), dayHours) }
+    }),
+  setDayHours: (h) => {
+    const dayHours = ((h % 24) + 24) % 24
+    set({ timeMode: 'manual', dayHours, timeOfDay: bucketOf(istDay(), dayHours) })
+  },
+  weather: 'clear',
+  setWeather: (weather) => {
+    useWeather.getState().setWeather(weather)
+    set({ weather })
+  },
+  festival: 'auto',
+  setFestival: (festival) => set({ festival }),
 
   ...readA11y(),
   setA11y: (p) => {

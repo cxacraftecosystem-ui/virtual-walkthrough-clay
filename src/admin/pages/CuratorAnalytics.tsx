@@ -6,6 +6,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { FLOOR_PLAN } from '../../museum/config/plan'
 import { BUNDLED_TOUR_STOPS } from '../../museum/config/tour'
+import { UPPER_ZONE_IDS } from '../fields'
 import { type CuratorData, exApi, type HeatmapData, type RetentionInfo } from '../exhibitionsApi'
 import { useExhibitionList } from '../ExhibitionSwitcher'
 import { Button, DataTable, EmptyState, Field, Input, Segmented, Select, Skeleton, errMsg, formatDate, formatDuration, useConfirm, useToast, type Column, type SelectOption } from '../ui'
@@ -30,6 +31,8 @@ const ymd = (ms: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 const validDate = (s: string) => DATE_RE.test(s) && !Number.isNaN(new Date(`${s}T00:00:00`).getTime())
+/** The ground-floor rooms of the plan (an upper storey would be drawn over the rooms below it). */
+const PLAN_ZONES = FLOOR_PLAN.zones.filter((z) => !UPPER_ZONE_IDS.has(z.id))
 const ZONE_NAME = new Map(FLOOR_PLAN.zones.map((z) => [z.id, z.name]))
 const PAD = 1
 
@@ -126,7 +129,7 @@ export function CuratorAnalytics() {
   const csv = (dataset: string, extra: Record<string, string | undefined> = {}) => exApi.exportUrl(dataset, { ...params, ...extra })
   const museumBase = ex?.path || '/gallery'
   const exOptions: SelectOption[] = (exhibitions ?? []).map((e) => ({ value: e.id, label: e.title, description: e.status === 'draft' ? 'Draft' : e.path }))
-  const zoneOptions: SelectOption[] = FLOOR_PLAN.zones.map((z) => ({ value: z.id, label: z.name }))
+  const zoneOptions: SelectOption[] = PLAN_ZONES.map((z) => ({ value: z.id, label: z.name }))
 
   type Att = CuratorData['attention'][number]
   const attColumns: Column<Att>[] = [
@@ -263,7 +266,7 @@ const MIN_LABEL_SCALE = 0.6
  * own), so the name is measured against the room's drawn width: a long name in a narrow room is set
  * smaller, and left off (the outline keeps it as a tooltip) when even that would spill into the next.
  */
-function ZoneOutline({ zone }: { zone: (typeof FLOOR_PLAN.zones)[number] }) {
+function ZoneOutline({ zone }: { zone: (typeof PLAN_ZONES)[number] }) {
   const pathRef = useRef<SVGPathElement>(null)
   const textRef = useRef<SVGTextElement>(null)
   const [scale, setScale] = useState(1)
@@ -308,7 +311,7 @@ function Heatmap({ data, zone }: { data: HeatmapData; zone: string }) {
   const max = data.maxSamples || 1
   // sqrt scale: a few long pauses should not wash out the rest of the plan
   const step = (n: number) => Math.min(STEPS - 1, Math.floor(Math.sqrt(n / max) * STEPS))
-  const zones = zone ? FLOOR_PLAN.zones.filter((z) => z.id === zone) : FLOOR_PLAN.zones
+  const zones = zone ? PLAN_ZONES.filter((z) => z.id === zone) : PLAN_ZONES
   const pct = (x: number, z: number) => ({ left: `${((x - x0) / W) * 100}%`, top: `${((z - z0) / H) * 100}%` })
 
   if (!data.cells.length)

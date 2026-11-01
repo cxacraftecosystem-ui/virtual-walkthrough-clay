@@ -27,6 +27,7 @@ import { VideoScreens } from './media/VideoScreens'
 import { VisitorController } from './navigation/VisitorController'
 import { SceneObjects } from './models/SceneObjects'
 import { Amenities } from './amenities/Amenities'
+import { Spectacle } from './spectacle/Spectacle'
 import { useMuseum } from './state/store'
 import { ErrorBoundary } from './utils/ErrorBoundary'
 
@@ -87,6 +88,9 @@ export function MuseumScene() {
         <SceneObjects />
         <ErrorBoundary fallback={null}>
           <Amenities />
+        </ErrorBoundary>
+        <ErrorBoundary fallback={null}>
+          <Spectacle />
         </ErrorBoundary>
       </Suspense>
       {/* post-processing can't render into a WebXR framebuffer: off while in VR */}

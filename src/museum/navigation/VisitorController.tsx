@@ -1,18 +1,31 @@
 /**
  * Museum walking controller: eye-level camera, damped look, WASD/arrows,
  * touch joystick, click-to-walk and focus glides — all collision-resolved.
+ *
+ * On a perch (navigation/perch.ts: the balcony, the Sky Rim, the Sphere Well's spiral) the visitor is on a rail, not a floor: input is
+ * projected onto the path's tangent, collision is skipped, the camera stands at
+ * `pathY(path, t) + eyeHeight` and may look further down (into the court). The rides up and down are
+ * played here too, frame by frame, from `ridePose`.
  */
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { MUSEUM } from '../config/museum'
+import { SCENE_OBJECTS } from '../config/objects'
 import { interactiveItems } from '../interaction/registry'
 import { useMuseum, type SelectionKind } from '../state/store'
 import { visitor } from '../state/visitor'
 import { resolveCircle, segmentBlocked } from './collision'
+import { advance, pathPoint, pathY, projectOnPath, ridePose, usePerch } from './perch'
+import { finishRide, leavePerch } from './perchActions'
+import { useFovOverride } from './fovOverride'
 
 const V = MUSEUM.visitor
 const PITCH_LIMIT = (V.pitchLimitDeg * Math.PI) / 180
+/** On a perch the visitor may look further down: into the court from the balcony, 20 m from the rim. */
+const PERCH_PITCH_DOWN = (78 * Math.PI) / 180
+const pitchDown = () => (usePerch.getState().perch ? PERCH_PITCH_DOWN : PITCH_LIMIT)
+const clampPitch = (p: number) => THREE.MathUtils.clamp(p, -pitchDown(), PITCH_LIMIT)
 const TURN_SPEED = 1.6 // rad/s for arrow-key turning
 const MOVE_KEYS = ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Shift']
 const tmp = { x: 0, z: 0 }
@@ -34,17 +47,23 @@ export function VisitorController() {
   const look = useRef({ yaw: visitor.yaw, pitch: visitor.pitch, lastYaw: visitor.yaw, lastPitch: visitor.pitch })
   const stuck = useRef({ t: 0, d: Infinity })
   const proximityTimer = useRef(0)
+  /** Speed along the perch rail (m/s, signed). */
+  const perchVel = useRef(0)
 
-  // Architectural FOV; guarantee a minimum horizontal FOV on portrait screens.
+  // Architectural FOV; guarantee a minimum horizontal FOV on portrait screens. A framed photo
+  // preset (Frames of Clay) may ask for its own while it is shown.
+  const fovOverride = useFovOverride((s) => s.fov)
   useEffect(() => {
     const aspect = size.width / Math.max(1, size.height)
     const minH = (V.minHorizontalFov * Math.PI) / 180
     const vFromH = (2 * Math.atan(Math.tan(minH / 2) / aspect) * 180) / Math.PI
-    camera.fov = Math.min(80, Math.max(V.fov, vFromH))
+    // a tall phone may open the vertical field further (up to 96°) so the facade and the court
+    // are not cropped to a slit
+    camera.fov = fovOverride ?? Math.min(aspect < 0.7 ? 96 : 80, Math.max(V.fov, vFromH))
     camera.near = 0.05
     camera.far = 3000
     camera.updateProjectionMatrix()
-  }, [camera, size])
+  }, [camera, size, fovOverride])
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -88,7 +107,7 @@ export function VisitorController() {
       if (dx === 0 && dy === 0) return
       const s = V.lookSensitivity * (e.pointerType === 'touch' ? 1.5 : 1)
       look.current.yaw += dx * s
-      look.current.pitch = THREE.MathUtils.clamp(look.current.pitch + dy * s, -PITCH_LIMIT, PITCH_LIMIT)
+      look.current.pitch = clampPitch(look.current.pitch + dy * s)
       // Manual look overrides any automatic turn of an ongoing walk.
       const t = visitor.walkTarget
       if (t && t.yaw !== undefined) visitor.walkTarget = { ...t, yaw: undefined, pitch: undefined }
@@ -128,7 +147,7 @@ export function VisitorController() {
       if (document.pointerLockElement !== el) return
       const s = V.lookSensitivity * 0.75
       look.current.yaw -= e.movementX * s
-      look.current.pitch = THREE.MathUtils.clamp(look.current.pitch - e.movementY * s, -PITCH_LIMIT, PITCH_LIMIT)
+      look.current.pitch = clampPitch(look.current.pitch - e.movementY * s)
       const t = visitor.walkTarget
       if (t && t.yaw !== undefined) visitor.walkTarget = { ...t, yaw: undefined, pitch: undefined }
     }
@@ -201,6 +220,74 @@ export function VisitorController() {
     const manual = Math.abs(fwd) + Math.abs(strafe) > 0.05
     if (manual || turn !== 0) visitor.walkTarget = null
     L.yaw += turn * TURN_SPEED * dt
+
+    // ── Perch: the ride up / down, or walking the rail ───────────────
+    const P = usePerch.getState()
+    if (P.ride) {
+      const r = P.ride
+      r.elapsed += Math.min(rawDt, 0.05) * 1000
+      const u = Math.min(1, r.elapsed / r.dur)
+      // Still form: hold the start, cut to the end behind the overlay's dip to black
+      const k01 = r.still ? (u < 0.5 ? 0 : 1) : u
+      const pose = ridePose(r.dir === 'up' ? k01 : 1 - k01, r.t, r.path)
+      camera.position.set(pose.x, pose.y, pose.z)
+      camera.lookAt(pose.lx, pose.ly, pose.lz)
+      visitor.x = pose.x
+      visitor.z = pose.z
+      visitor.vx = 0
+      visitor.vz = 0
+      visitor.walkTarget = null
+      if (st.nearby) st.setNearby(null)
+      if (u >= 1) finishRide()
+      return
+    }
+    if (P.perch) {
+      const path = P.perch
+      let t = P.t
+      const here = pathPoint(path, t)
+      // Someone placed the visitor (minimap, tour, harness): onto the rail if near it, else down.
+      if (Math.hypot(visitor.x - here.x, visitor.z - here.z) > 0.02) {
+        const pr = projectOnPath(path, visitor.x, visitor.z)
+        if (pr.dist > 0.9) {
+          leavePerch(false)
+          return
+        }
+        t = pr.t
+      }
+      visitor.walkTarget = null // floor clicks are for the ground
+      let vt = 0
+      if (manual) {
+        const sinP = Math.sin(visitor.yaw)
+        const cosP = Math.cos(visitor.yaw)
+        const len = Math.max(1, Math.hypot(fwd, strafe))
+        const speedP = k.has('Shift') ? V.briskSpeed : V.walkSpeed
+        const wx = (-sinP * (fwd / len) + cosP * (strafe / len)) * speedP
+        const wz = (-cosP * (fwd / len) - sinP * (strafe / len)) * speedP
+        const q = pathPoint(path, t)
+        vt = wx * q.tx + wz * q.tz
+      }
+      const a = 1 - Math.exp(-V.acceleration * dt)
+      perchVel.current += (vt - perchVel.current) * a
+      if (Math.abs(perchVel.current) < 1e-4) perchVel.current = 0
+      t = advance(path, t, perchVel.current * dt)
+      const q = pathPoint(path, t)
+      visitor.x = q.x
+      visitor.z = q.z
+      visitor.vx = q.tx * perchVel.current
+      visitor.vz = q.tz * perchVel.current
+      if (t !== P.t) usePerch.setState({ t })
+      L.pitch = clampPitch(L.pitch)
+      const la = 1 - Math.exp(-V.lookDamping * dt)
+      visitor.yaw += (L.yaw - visitor.yaw) * la
+      visitor.pitch += (L.pitch - visitor.pitch) * la
+      L.lastYaw = visitor.yaw
+      L.lastPitch = visitor.pitch
+      camera.position.set(visitor.x, pathY(path, t) + V.eyeHeight, visitor.z)
+      camera.rotation.set(visitor.pitch, visitor.yaw, 0, 'YXZ')
+      if (st.nearby) st.setNearby(null)
+      return
+    }
+    perchVel.current = 0
 
     // ── Desired velocity ─────────────────────────────────────────────
     const sinY = Math.sin(visitor.yaw)
@@ -296,6 +383,19 @@ export function VisitorController() {
         if (score < bestScore) {
           bestScore = score
           best = { kind: it.kind, id: it.id, title: it.title }
+        }
+      }
+      // A Clay Passport post the visitor stands at and faces wins E over an exhibit beside it
+      if (best) {
+        for (const o of SCENE_OBJECTS) {
+          if (o.kind !== 'stamp-post') continue
+          const dx = o.position[0] - visitor.x
+          const dz = o.position[2] - visitor.z
+          const d = Math.hypot(dx, dz)
+          if (d < 1.7 && d > 0.05 && (dx * fx + dz * fz) / d > 0.85) {
+            best = null
+            break
+          }
         }
       }
       const cur = st.nearby

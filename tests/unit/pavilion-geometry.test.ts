@@ -7,8 +7,9 @@
  */
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { PODIUM, PODIUM_SLOTS, SURFACES, WALLS, ZONES, shapeContains, surfacePoint, zoneAt, type SurfaceId } from '../../src/museum/config/layout'
-import { MUSEUM, polar } from '../../src/museum/config/museum'
+import { NORTH_WING_OUTLINE, PODIUM, PODIUM_SLOTS, SURFACES, WALLS, ZONES, shapeContains, surfacePoint, zoneAt, type SurfaceId } from '../../src/museum/config/layout'
+import { KEY, MUSEUM, polar } from '../../src/museum/config/museum'
+import { JALI_SLOTS, SAT_WALL, serpentineR } from '../../src/museum/config/satellites'
 import { FLOOR_PLAN } from '../../src/museum/config/plan'
 import { NAV_WAYPOINTS } from '../../src/museum/config/tour'
 import { mountFor, mountForPodium, RAIL_Y } from '../../src/museum/lighting/tracks'
@@ -17,12 +18,39 @@ import { pathLength, planPath, segmentClear } from '../../src/museum/tour/pathin
 
 const R = MUSEUM.visitor.collisionRadius
 const D = MUSEUM.drum
+/* Radii of the plan (GRAND §1.2): the court between the curb and F, the corridor between F and H. */
+const F = MUSEUM.innerMainWall
+const CURB = MUSEUM.oculus.rings[0]
+const COURT_R = (CURB + F.r - F.thickness / 2) / 2
+const CORRIDOR_R = (F.r + F.thickness / 2 + D.ringR) / 2
+const GALLERY_R = (CURB + MUSEUM.fins.r0) / 2
+const AMB_R = (D.ringR + D.thickness + D.r) / 2
 const collider = (id: string) => {
   const c = COLLIDERS.find((cc) => cc.id === id)
   assert.ok(c, `collider ${id}`)
   return c as Collider
 }
 const radius = (p: { x: number; z: number }) => Math.hypot(p.x, p.z)
+/** Ground-level zones (the roof's Sky Rim lies over the court and is reached by the perch only). */
+const GROUND = ZONES.filter((z) => z.level !== 2)
+/** Even-odd point-in-polygon. */
+const inPoly = (pts: [number, number][], x: number, z: number) => {
+  let inside = false
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, zi] = pts[i]
+    const [xj, zj] = pts[j]
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside
+  }
+  return inside
+}
+/**
+ * The open slots between the north wing's rooms, behind their jali screens: closed to visitors
+ * (the screen on the walk side, the 0.40 m gap to the plinth edge outside), so they have no zone.
+ */
+const inJaliPocket = (x: number, z: number) => {
+  const a = (Math.atan2(z, x) * 180) / Math.PI
+  return Math.hypot(x, z) > SAT_WALL.innerC && inPoly(NORTH_WING_OUTLINE, x, z) && JALI_SLOTS.some(([a0, a1]) => a > a0 && a < a1)
+}
 
 describe('arc collision', () => {
   it('pushes a visitor pressed against the gallery ring wall back into the room', () => {
@@ -63,7 +91,7 @@ describe('arc collision', () => {
     const s = MUSEUM.visitor.start
     const p = resolveCircle(s.x, s.z, R)
     assert.ok(Math.hypot(p.x - s.x, p.z - s.z) < 1e-9)
-    for (const zn of ZONES) {
+    for (const zn of GROUND) {
       const q = resolveCircle(zn.spawn.x, zn.spawn.z, R)
       assert.ok(Math.hypot(q.x - zn.spawn.x, q.z - zn.spawn.z) < 1e-9, `${zn.id} spawn is clear`)
     }
@@ -83,29 +111,30 @@ describe('arc collision', () => {
 
 describe('line of sight across arcs', () => {
   it('the inner main wall F blocks the view from the entry corridor into the oculus court', () => {
-    const [ax, az] = polar(7.0, 90)
-    const [bx, bz] = polar(4.5, 90)
+    const [ax, az] = polar(CORRIDOR_R, 90)
+    const [bx, bz] = polar(COURT_R, 90)
     assert.equal(segmentBlocked(ax, az, bx, bz), true)
   })
 
   it('a chord that stays between F and H is clear', () => {
-    const [ax, az] = polar(7.0, 70)
-    const [bx, bz] = polar(7.0, 100)
+    const [ax, az] = polar(CORRIDOR_R, 70)
+    const [bx, bz] = polar(CORRIDOR_R, 100)
     assert.equal(segmentBlocked(ax, az, bx, bz), false)
   })
 
-  it('a ray from the court to the ring wall between two podiums is clear', () => {
-    const [ax, az] = polar(4.0, 9.5)
-    const [bx, bz] = polar(D.ringR - 0.3, 9.5)
+  it('a ray from the curb to the ring wall between two podiums is clear', () => {
+    // between A1 and A2 (the gaps either side of A3 look past the Herd's island)
+    const [ax, az] = polar(CURB + 0.5, 20.5)
+    const [bx, bz] = polar(D.ringR - 0.3, 20.5)
     assert.equal(segmentBlocked(ax, az, bx, bz), false)
   })
 
-  it('the drum blocks a segment from inside to outside, but not one through the annex door', () => {
-    assert.equal(segmentBlocked(...polar(6, 180), ...polar(13, 180)), true)
-    assert.equal(segmentBlocked(0, 15, 0, 24), false)
+  it('the drum blocks a segment from inside to outside, but not one through the annex portal', () => {
+    assert.equal(segmentBlocked(...polar(GALLERY_R, 180), ...polar(D.r + 4, 180)), true)
+    assert.equal(segmentBlocked(0, KEY.annexMouthZ + 1, 0, KEY.annexOuterZ + 3), false)
   })
 
-  it('ignores low colliders when asked (the plinth curb is below eye level)', () => {
+  it('ignores low colliders when asked (the curb is below eye level)', () => {
     const plinth = collider('oculus-plinth')
     assert.equal(plinth.low, true)
     const [ax, az] = polar(4.5, 0)
@@ -121,35 +150,40 @@ describe('line of sight across arcs', () => {
 describe('zones', () => {
   const at = (r: number, aDeg: number) => zoneAt(...polar(r, aDeg))?.id
   it('resolves the sectors and polygons of the plan', () => {
-    assert.equal(at(5, 0), 'ring-a')
-    assert.equal(at(5, -60), 'ring-b')
-    assert.equal(at(5, 235), 'ring-c')
-    assert.equal(at(9.4, 190), 'hallway-d')
-    assert.equal(at(7.0, 90), 'entry-e')
-    assert.equal(at(9.4, 45), 'entry-e')
-    assert.equal(at(9.4, 90), 'annex')
-    assert.equal(zoneAt(0, 15)?.id, 'annex')
-    assert.equal(at(4.5, 90), 'inner')
+    assert.equal(at(GALLERY_R, 0), 'ring-a')
+    assert.equal(at(GALLERY_R, -60), 'ring-b')
+    assert.equal(at(GALLERY_R, 235), 'ring-c')
+    assert.equal(at(AMB_R, 190), 'hallway-d')
+    assert.equal(at(CORRIDOR_R, 90), 'entry-e')
+    assert.equal(at(AMB_R, 45), 'entry-e')
+    assert.equal(at(AMB_R, 90), 'annex')
+    assert.equal(zoneAt(0, KEY.annexSkylightZ)?.id, 'annex')
+    assert.equal(at(COURT_R, 90), 'inner')
+    assert.equal(at(1, 0), 'inner', 'the pool inside the curb')
     assert.equal(zoneAt(MUSEUM.visitor.start.x, MUSEUM.visitor.start.z)?.id, 'entrance-court')
-    assert.equal(at(13, 0), 'entrance-court')
-    assert.equal(at(10, 300), 'entrance-court', 'outside the narrower gallery ring')
-    assert.equal(zoneAt(40, 0), undefined)
+    assert.equal(at(D.r + 5, 60), 'entrance-court')
+    assert.equal(at(D.r + 2, 180), 'entrance-court', 'outside the lobe, west')
+    assert.equal(at(serpentineR(-100), -100), 'parikrama-west', 'outside the narrower gallery ring: the Parikrama walk')
+    assert.equal(at(serpentineR(-20), -20), 'parikrama-east')
+    assert.equal(at((SAT_WALL.innerFace + SAT_WALL.outerFace) / 2, -64), 'theatre')
+    assert.equal(zoneAt(MUSEUM.landscape.r * 2, 0), undefined)
   })
 
   it('every spawn lies in its own zone, inside its bounding rect', () => {
-    for (const z of ZONES) {
+    for (const z of GROUND) {
       assert.equal(zoneAt(z.spawn.x, z.spawn.z)?.id, z.id, z.id)
       assert.ok(z.spawn.x >= z.rect.minX && z.spawn.x <= z.rect.maxX && z.spawn.z >= z.rect.minZ && z.spawn.z <= z.rect.maxZ)
     }
   })
 
   it('zone footprints do not overlap, and the building interior is fully covered', () => {
-    for (let x = -15; x <= 15; x += 0.37) {
-      for (let z = -15; z <= 29; z += 0.41) {
-        const inside = ZONES.filter((zn) => zn.shape && shapeContains(zn.shape, x, z)).map((zn) => zn.id)
+    const L = MUSEUM.landscape.r
+    for (let x = -L; x <= L; x += 0.53) {
+      for (let z = -L; z <= MUSEUM.forecourt.endZ; z += 0.59) {
+        const inside = GROUND.filter((zn) => zn.shape && shapeContains(zn.shape, x, z)).map((zn) => zn.id)
         assert.ok(inside.length <= 1, `(${x.toFixed(2)}, ${z.toFixed(2)}) in ${inside.join(' and ')}`)
         // anywhere a visitor can stand (clear of every collider) belongs to some zone
-        if (z < MUSEUM.forecourt.endZ && COLLIDERS.every((c) => pointDistance(c, x, z) > R) && Math.hypot(x, z) < MUSEUM.landscape.r) {
+        if (z < MUSEUM.forecourt.endZ && COLLIDERS.every((c) => pointDistance(c, x, z) > R) && Math.hypot(x, z) < MUSEUM.landscape.r && !inJaliPocket(x, z)) {
           assert.equal(inside.length, 1, `(${x.toFixed(2)}, ${z.toFixed(2)}) has a zone`)
         }
       }
@@ -188,13 +222,17 @@ describe('display surfaces along walls', () => {
   })
 
   it('a flat frame hung anywhere on a surface never sinks into its (curved) wall', () => {
+    // the big convex faces (H's annex face, F, the hallway wall's outer face) stand frames off at
+    // their ends; the theatre screen spans 16° of its wall's chord (a curved screen follows the wall)
+    const big = /^(h-(east|west|description)|f-(outer|inner)-|f-inner-main|d-inner-)/
     for (const id of ids) {
       const s = SURFACES[id]
       const c = collider(s.wall)
+      const most = id === 'th-screen' ? 0.33 : big.test(id) ? 0.45 : 0.25
       for (let i = 0; i <= 8; i++) {
         const p = surfacePoint(id, (s.range[1] * i) / 8, 1.6, MUSEUM.display.wallStandOff)
         const d = pointDistance(c, p.position[0], p.position[2])
-        assert.ok(d > 0.001 && d < 0.25, `${id} @${i}/8: ${d.toFixed(4)} m off the wall`)
+        assert.ok(d > 0.001 && d < most, `${id} @${i}/8: ${d.toFixed(4)} m off the wall`)
       }
     }
   })
@@ -223,11 +261,11 @@ describe('display surfaces along walls', () => {
 })
 
 describe('podium ring', () => {
-  it('has the eleven drawn podiums, 3 / 5 / 3 through A → B → C', () => {
-    assert.equal(PODIUM_SLOTS.length, 11)
+  it('has the fourteen podiums, 4 / 6 / 4 through A → B → C (GRAND §1.2)', () => {
+    assert.equal(PODIUM_SLOTS.length, 14)
     assert.deepEqual(
       PODIUM_SLOTS.map((p) => p.id),
-      ['pod-a-1', 'pod-a-2', 'pod-a-3', 'pod-b-1', 'pod-b-2', 'pod-b-3', 'pod-b-4', 'pod-b-5', 'pod-c-1', 'pod-c-2', 'pod-c-3'],
+      ['pod-a-1', 'pod-a-2', 'pod-a-3', 'pod-a-4', 'pod-b-1', 'pod-b-2', 'pod-b-3', 'pod-b-4', 'pod-b-5', 'pod-b-6', 'pod-c-1', 'pod-c-2', 'pod-c-3', 'pod-c-4'],
     )
     assert.ok(Math.abs(PODIUM.size - 0.3048) < 1e-9 && Math.abs(PODIUM.height - 1.2192) < 1e-9)
   })
@@ -245,8 +283,8 @@ describe('podium ring', () => {
       const a = PODIUM_SLOTS[i - 1]
       const b = PODIUM_SLOTS[i]
       const gap = Math.hypot(a.x - b.x, a.z - b.z)
-      if (a.zone === b.zone) assert.ok(gap > 1.3 && gap < 1.7, `${a.id} → ${b.id}: ${gap.toFixed(2)} m`)
-      else assert.ok(gap > 1.7, `${a.id} → ${b.id} spans a fin`)
+      if (a.zone === b.zone) assert.ok(gap > 2.0 && gap < 3.5, `${a.id} → ${b.id}: ${gap.toFixed(2)} m`)
+      else assert.ok(gap > 3.5, `${a.id} → ${b.id} spans a formation gate`)
     }
   })
 
@@ -268,18 +306,18 @@ describe('path planning', () => {
 
   it('reaches every zone from the forecourt spawn', () => {
     const s = MUSEUM.visitor.start
-    for (const zn of ZONES) {
+    for (const zn of GROUND) {
       const path = planPath({ x: s.x, z: s.z }, { x: zn.spawn.x, z: zn.spawn.z })
       assert.ok(path && path.length > 0, `route to ${zn.id}`)
       // a sane length: never more than a lap of the site
-      assert.ok(pathLength({ x: s.x, z: s.z }, path!) < 90, `${zn.id}: ${pathLength({ x: s.x, z: s.z }, path!).toFixed(1)} m`)
+      assert.ok(pathLength({ x: s.x, z: s.z }, path!) < 2 * Math.PI * MUSEUM.landscape.r, `${zn.id}: ${pathLength({ x: s.x, z: s.z }, path!).toFixed(1)} m`)
     }
   })
 
   it('walks round F rather than through it, and through the door rather than the wall', () => {
-    const [fx, fz] = polar(4.6, 70)
+    const [fx, fz] = polar(COURT_R, 70)
     const from = { x: fx, z: fz } // oculus court, in front of F
-    const path = planPath(from, { x: 0, z: 7.0 })! // corridor behind F
+    const path = planPath(from, { x: 0, z: CORRIDOR_R })! // corridor behind F
     assert.ok(path.length >= 2, 'needs at least one waypoint')
     let p = from
     for (const q of path) {
@@ -291,7 +329,7 @@ describe('path planning', () => {
   it('every podium and every hanging surface can be walked to', () => {
     const s = MUSEUM.visitor.start
     for (const p of PODIUM_SLOTS) {
-      const [x, z] = polar(MUSEUM.podium.ringR - 1.2, p.angleDeg)
+      const [x, z] = polar(MUSEUM.podium.ringR - 1.0, p.angleDeg)
       assert.ok(planPath({ x: s.x, z: s.z }, { x, z }), p.id)
     }
     for (const id of Object.keys(SURFACES) as SurfaceId[]) {
@@ -305,8 +343,9 @@ describe('path planning', () => {
 describe('floor plan', () => {
   it('covers every zone, and draws walls and zones as closed SVG paths', () => {
     const b = FLOOR_PLAN.bounds
-    for (const z of ZONES) assert.ok(z.rect.minX >= b.minX && z.rect.maxX <= b.maxX && z.rect.minZ >= b.minZ && z.rect.maxZ <= b.maxZ, z.id)
-    assert.equal(FLOOR_PLAN.zones.length, ZONES.length)
+    for (const z of GROUND) assert.ok(z.rect.minX >= b.minX && z.rect.maxX <= b.maxX && z.rect.minZ >= b.minZ && z.rect.maxZ <= b.maxZ, z.id)
+    assert.equal(FLOOR_PLAN.zones.length, GROUND.length)
+    assert.ok(!FLOOR_PLAN.zones.some((z) => z.id === 'sky-rim'), 'the roof is not on the plan')
     for (const p of [...FLOOR_PLAN.walls, ...FLOOR_PLAN.zones]) {
       assert.match(p.d, /^M[-\d.]+ [-\d.]+/, p.id)
       assert.match(p.d, /Z$/, p.id)

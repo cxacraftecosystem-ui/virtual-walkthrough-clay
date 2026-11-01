@@ -1,0 +1,95 @@
+/* /credits — scoped under .credits-root. The global stylesheet locks html/body for the 3D app,
+ * so the page is its own full-viewport scroll container (as /guide is). */
+
+.credits-root {
+  --c-paper: #f7f3ea;
+  --c-ink: #1f1b17;
+  --c-muted: #5a5148;
+  --c-accent: #7a4a2c;
+  --c-line: rgba(31, 27, 23, 0.14);
+  --c-display: 'Cormorant Garamond', 'Cormorant', Garamond, 'Times New Roman', serif;
+  --c-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--c-paper);
+  color: var(--c-ink);
+  font: 400 1rem/1.6 var(--c-ui);
+}
+
+.credits-page {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 4rem;
+}
+
+.credits-kicker {
+  margin: 0;
+  color: var(--c-accent);
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.credits-head h1 {
+  margin: 0.2rem 0 0.8rem;
+  font: 500 2.6rem/1.1 var(--c-display);
+}
+
+.credits-lede {
+  margin: 0 0 0.6rem;
+  color: var(--c-muted);
+  max-width: 40rem;
+}
+
+.credits-back a,
+.credits-meta a {
+  color: var(--c-accent);
+  text-underline-offset: 2px;
+}
+
+.credits-root h2 {
+  margin: 2.6rem 0 0.3rem;
+  font: 500 1.6rem/1.2 var(--c-display);
+}
+
+.credits-note {
+  margin: 0 0 1rem;
+  color: var(--c-muted);
+  font-size: 0.92rem;
+}
+
+.credits-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--c-line);
+}
+
+.credits-item {
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--c-line);
+}
+
+.credits-title {
+  margin: 0;
+  font-weight: 500;
+}
+
+.credits-meta,
+.credits-attribution {
+  margin: 0.15rem 0 0;
+  color: var(--c-muted);
+  font-size: 0.9rem;
+}
+
+.credits-attribution {
+  font-style: italic;
+}
+
+.credits-root a:focus-visible {
+  outline: 2px solid #1f4fa3;
+  outline-offset: 2px;
+}

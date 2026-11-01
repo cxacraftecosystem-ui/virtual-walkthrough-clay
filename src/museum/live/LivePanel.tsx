@@ -1,19 +1,24 @@
 /**
  * Live tour HTML UI: invitation toast, tour panel (follow state, docent pointer, hand raise,
- * chat with docent mute), status toasts, and the HUD "Start live tour" control for curators.
- * Everything renders nothing while live presence is unavailable.
+ * chat with docent mute, the docent's Moments row), status toasts, and the HUD "Start live
+ * tour" control for curators. Everything renders nothing while live presence is unavailable.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
+import { PODIUM_SLOTS } from '../config/layout'
+import { useXT, type XKey } from '../spectacle/experienceText'
 import { useMuseum } from '../state/store'
-import { liveConfigured } from './config'
+import { visitor } from '../state/visitor'
+import { LIVE, liveConfigured } from './config'
 import {
+  DOCENT_MOMENTS,
   acknowledgeHand,
   dismissInvite,
   joinTour,
   leaveTour,
   muteVisitor,
   sendChat,
+  sendDocentCue,
   setFollowing,
   setHandRaised,
   startHosting,
@@ -167,6 +172,47 @@ function Chat({ hostingTour }: { hostingTour: boolean }) {
   )
 }
 
+const MOMENTS_CSS = `.live-moments { display: grid; gap: 6px; padding: 8px 12px 4px; }
+.live-moments__label { font: 500 10.5px/1 var(--font-ui); letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+.live-moments__row { display: flex; flex-wrap: wrap; gap: 6px; }
+.live-moments__podium { display: inline-flex; gap: 4px; align-items: center; }
+.live-moments__podium select { min-height: 32px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); background: transparent; color: var(--ink); font: 500 11px/1 var(--font-ui); }`
+
+/**
+ * Docent: Moments (SPECTACLE F33) — dim the theatre, run the Kiln Film, bring on the monsoon or
+ * Diya Night, ring the clay bells, spotlight a podium, gather everyone at the oculus. Each plays
+ * here and, signed, for every visitor following the tour.
+ */
+function DocentMoments() {
+  const x = useXT()
+  const [podium, setPodium] = useState(1)
+  return (
+    <div className="live-moments" role="group" aria-label="Moments">
+      <style>{MOMENTS_CSS}</style>
+      <span className="live-moments__label">Moments</span>
+      <div className="live-moments__row">
+        {DOCENT_MOMENTS.filter((id) => id !== 'podium:spot').map((id) => (
+          <button key={id} type="button" className="ui-btn ui-btn--ghost live-btn" onClick={() => sendDocentCue(id)}>
+            {x(`xp.moment.${id}` as XKey)}
+          </button>
+        ))}
+        <span className="live-moments__podium">
+          <button type="button" className="ui-btn ui-btn--ghost live-btn" onClick={() => sendDocentCue('podium:spot', { podium })}>
+            {x('xp.moment.podium:spot')}
+          </button>
+          <select aria-label="Podium" value={podium} onChange={(e) => setPodium(Number(e.target.value))}>
+            {PODIUM_SLOTS.map((p, i) => (
+              <option key={p.id} value={i + 1}>
+                {i + 1}
+              </option>
+            ))}
+          </select>
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function TourPanel() {
   const joined = useLive((s) => s.joined)
   const hosting = useLive((s) => s.hosting)
@@ -250,6 +296,8 @@ function TourPanel() {
             )}
           </div>
 
+          {hosting && <DocentMoments />}
+
           {hosting && hands.length > 0 && (
             <ul className="live-hands" aria-label="Raised hands">
               {hands.map((h) => (
@@ -291,6 +339,26 @@ function autoJoin(role: string | undefined) {
 
 function JoinLive({ onJoin, onDismiss }: { onJoin: () => void; onDismiss: () => void }) {
   const t = useT()
+  // the invitation folds to a small dot after a few seconds or the first scroll, so it never sits over the view
+  const [folded, setFolded] = useState(false)
+  useEffect(() => {
+    if (folded) return
+    const fold = () => setFolded(true)
+    const id = window.setTimeout(fold, LIVE.inviteFoldMs)
+    window.addEventListener('wheel', fold, { passive: true })
+    window.addEventListener('touchmove', fold, { passive: true })
+    return () => {
+      window.clearTimeout(id)
+      window.removeEventListener('wheel', fold)
+      window.removeEventListener('touchmove', fold)
+    }
+  }, [folded])
+  if (folded)
+    return (
+      <button type="button" className="live-invite live-invite--folded ui-panel ui-interactive" aria-label={t('live.join')} title={t('live.joinHint')} onClick={() => setFolded(false)}>
+        <span className="live-dot" aria-hidden="true" />
+      </button>
+    )
   return (
     <div className="live-invite ui-panel ui-interactive" role="region" aria-label={t('live.join')}>
       <span className="live-dot" aria-hidden="true" />
@@ -307,6 +375,24 @@ function JoinLive({ onJoin, onDismiss }: { onJoin: () => void; onDismiss: () => 
   )
 }
 
+/**
+ * On a phone the invitation waits for the visitor's first steps (≥ 1.5 m from where they
+ * entered): the opening view belongs to the pavilion. Wider screens show it at once.
+ */
+function useSettled(entered: boolean) {
+  const [ok, setOk] = useState(() => typeof window === 'undefined' || !window.matchMedia?.('(max-width: 640px)').matches)
+  useEffect(() => {
+    if (ok || !entered) return
+    const x0 = visitor.x
+    const z0 = visitor.z
+    const id = window.setInterval(() => {
+      if (Math.hypot(visitor.x - x0, visitor.z - z0) > 1.5) setOk(true)
+    }, 500)
+    return () => window.clearInterval(id)
+  }, [ok, entered])
+  return ok
+}
+
 /** Mount once in the UI overlay. Connects only after the visitor opts in (see autoJoin). */
 export function LivePanel() {
   const entered = useMuseum((s) => s.phase === 'entered')
@@ -321,11 +407,12 @@ export function LivePanel() {
     }
   })
   const configured = liveConfigured()
+  const settled = useSettled(entered)
   useEffect(() => {
     if (entered && (optedIn || autoJoin(role))) void startLive()
   }, [entered, optedIn, role])
   if (status === 'off') {
-    if (!entered || !configured || optedIn || dismissed) return <Toasts />
+    if (!entered || !configured || optedIn || dismissed || !settled) return <Toasts />
     return (
       <>
         <JoinLive

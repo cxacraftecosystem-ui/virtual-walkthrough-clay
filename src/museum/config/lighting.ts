@@ -98,8 +98,8 @@ export const LIGHTING = {
     colorK: 3000,
     /** 0 = pure 3000K, 1 = neutral white. Mimics the eye/camera's partial chromatic adaptation. */
     chromaticAdaptation: 0.45,
-    /** Default accent spotlight intensity (candela) per artwork. */
-    artworkIntensity: 22,
+    /** Default accent spotlight intensity (candela) per artwork (the drum is lit in pools). */
+    artworkIntensity: 30,
     /** Exhibit display-table spot intensity (candela). */
     tableIntensity: 12,
     penumbra: 0.85,
@@ -120,6 +120,100 @@ export const LIGHTING = {
     downlightIntensity: 22,
   },
 } as const
+
+/**
+ * COLOUR CHOREOGRAPHY (SPECTACLE F27): the light of each room, blended by the visitor's distance
+ * to the zones (2 m smoothstep) and eased at 1.5/s by lighting/atmosphere/choreography.ts.
+ *
+ *   colorK    tint of the fill and the accent lights (and the grade's white balance on H+)
+ *   fill      hemisphere / environment bounce (the old per-zone ambient)
+ *   exposure  the eye's adaptation to the room
+ *   shadow / high   split-tone of the H+ grade (ClayGrade), as hex; contrast around mid-grey
+ *
+ * Nobody should notice a single change; every room should feel different.
+ */
+export interface ZoneLight {
+  colorK: number
+  fill: number
+  exposure: number
+  shadow: string
+  high: string
+  contrast: number
+  /** Fraction of the fill kept at full night (open-air zones go dark; rooms keep lamp bounce). */
+  nightFloor?: number
+}
+
+const room = (colorK: number, fill: number, exposure = 1, shadow = '#5a3a32', high = '#ffe6cc', contrast = 1): ZoneLight => ({ colorK, fill, exposure, shadow, high, contrast })
+
+/** The brass wall sconce over each podium (p02): on the ring wall, aimed down at the piece (GRAND §3 #15). */
+export const SCONCE = { y: 2.95, setOff: 0.14 } as const
+
+/** Exposure value → renderer exposure multiplier (GRAND §6.2 gives the rooms in EV). */
+export const ev = (stops: number) => Math.pow(2, stops)
+
+/**
+ * GRAND §6.2 "dark grounds, bright objects": every room has its colour temperature (PDF p08
+ * "warm white to neutral") and its exposure in EV. The bounce fill is low everywhere indoors, so
+ * the walls fall away and the accent cones (lighting/atmosphere/accents) carry the objects. The
+ * split-tones are kept near neutral: the old pink/orange cast over the whole pavilion is gone.
+ */
+export const ZONE_LIGHT: Record<string, ZoneLight> = {
+  /** Forecourt: open daylight. */
+  'entrance-court': { ...room(5400, 1.15, ev(0), '#403c3a', '#fff6ea'), nightFloor: 0.04 },
+  /** The Earth Room (annex G, p05): 3400 K, −0.15 EV — a soft rose canyon under its skylight, never an orange cave. */
+  annex: { ...room(3400, 0.42, ev(-0.15), '#362622', '#fff0e4', 1.05), nightFloor: 0.2 },
+  /** Ambulatory and H: 3000 K, 0 EV. */
+  'entry-e': { ...room(3000, 0.45, ev(0), '#3a2a24', '#ffe8d0', 1.06), nightFloor: 0.15 },
+  /** A: 3000 K on the red lacquer ground, −0.1 EV (p02): the red ground stays dark by its own colour. */
+  'ring-a': { ...room(3000, 0.34, ev(-0.1), '#3a1c18', '#ffe4c8', 1.1), nightFloor: 0.15 },
+  /** B: 4000 K neutral, for the white niche wall of plaques (p08r). */
+  'ring-b': { ...room(4000, 0.6, ev(0), '#34302e', '#fbf6f0', 1.08), nightFloor: 0.15 },
+  /** C: 4300 K cool, −0.35 EV: black ware under one cool beam, on a charcoal wall that still reads. */
+  'ring-c': { ...room(4300, 0.5, ev(-0.35), '#24262e', '#f2f2f2', 1.1), nightFloor: 0.15 },
+  /** The Wine Hall ("Clay Elsewhere", p08l): 2700 K, −0.4 EV — wine walls, timber, spot-lit plinths. */
+  'hallway-d': { ...room(2700, 0.28, ev(-0.4), '#2a1216', '#ffdcb8', 1.12), nightFloor: 0.15 },
+  /** The court under the dome: daylight 5000–5600 K, +0.2 EV. */
+  inner: { ...room(5300, 0.5, ev(0.2), '#36302e', '#fff8ee', 1.06), nightFloor: 0.15 },
+  'parikrama-west': { ...room(5400, 1.05, ev(0), '#403632', '#fff4e6'), nightFloor: 0.12 },
+  'parikrama-east': { ...room(5400, 1.05, ev(0), '#403632', '#fff4e6'), nightFloor: 0.12 },
+  /** The atlas reads true: 4000 K neutral, 0 EV, so the map and the partner logos are never washed. */
+  atlas: room(4000, 1.15, ev(0.15), '#3a3836', '#faf8f4'),
+  /** A dim red theatre: 2400 K, −0.55 EV, with enough house fill that the rows and the vault read during the film. */
+  theatre: room(2400, 0.4, ev(-0.55), '#2e1210', '#ffcfa8', 1.04),
+  /** Kothi — the Red Room: 3000 K, −0.6 EV. */
+  library: { ...room(3000, 0.3, ev(-0.6), '#341210', '#ffe0c0', 1.1), nightFloor: 0.2 },
+  /** The Haat: 3500 K, 0 EV. */
+  shop: room(3500, 1.0, ev(0), '#3e3430', '#fff2e0'),
+  'sky-rim': { ...room(5400, 1.15, ev(0), '#403c3a', '#fff6ea'), nightFloor: 0.04 },
+  /** The balcony shares the rotunda's light (between A's warmth and the court's daylight). */
+  duplex: { ...room(4000, 0.42, ev(0), '#34302e', '#fbf4ec', 1.08), nightFloor: 0.15 },
+  /** The Sphere Well: 2700 K red, −0.6 EV. */
+  'sphere-well': { ...room(2700, 0.3, ev(-0.6), '#3a120e', '#ffd2a8', 1.1), nightFloor: 0.2 },
+}
+
+/**
+ * Cove lines (SPECTACLE §3 term 4, F5, F27; GRAND §6.2 #6): concealed LEDs washing a wall up or
+ * down from a line, as arcs about (cx, cz) at height y between a0 … a1 (deg); a long straight run
+ * is an arc of a very large radius. Up to 8. `id`s are what the curator's `cove-light {walls}` names.
+ */
+export interface CoveDef {
+  id: string
+  cx: number
+  cz: number
+  r: number
+  y: number
+  a0: number
+  a1: number
+  colorK: number
+  /** Brightness of the wash (irradiance at the wall just above the line). */
+  intensity: number
+  /** How far it reaches (m). */
+  reach: number
+  /** Washes up the wall (1, the default) or down it (−1). */
+  dir?: 1 | -1
+  /** A coloured line (hex) instead of a white of `colorK` (the red coves of F, p07l). */
+  color?: string
+}
 
 /** Tanner Helland's blackbody approximation → linear-ish sRGB hex (good enough for lighting design). */
 export function kelvinToRGB(kelvin: number): [number, number, number] {

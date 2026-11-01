@@ -71,3 +71,23 @@ Step rate follows walking speed: about 1.8 steps/s at normal pace, about 2.4 whe
 `window.__soundscape` shows the live state: `zone`, `channel`, `timeOfDay`, `material`,
 `speed`, `stepsPerSec`, `steps`, `stepsByMaterial`, bus `levels`, which `sources` are
 synth or file, event counters and the `files` probe results.
+
+## Which files exist: `manifest.json`
+
+`manifest.json` lists the recordings that are actually present, as paths under `/audio/`:
+
+```json
+{ "files": ["ambience/annex.mp3", "footsteps/stone-1.mp3", "music/drone.mp3"] }
+```
+
+Only listed files are requested, so a pavilion without recordings makes no failing requests.
+Add a file here when you add a recording. (Without a manifest every file is probed, as before.)
+
+## The score: `music/<stem>.mp3`
+
+The clay pavilion's adaptive score (`src/museum/spectacle/music.ts`) is synthesised from
+seven stems, cross-faded by the chapter of "Earth to Fire": `drone` (a tanpura-like drone on
+Sa), `fifth` (its Pa string, which opens at the Turn), `pulse` (a matka pulse), `water` (jal
+tarang over a soft wash), `air` (wind and a breath tone), `fire` (a wood fire's roar and
+crackle) and `coda` (a fall of clay bells). A looped recording named after a stem replaces
+it; keep loops in tune with C♯ (Sa ≈ 138.6 Hz) and level-matched.

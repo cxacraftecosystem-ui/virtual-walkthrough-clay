@@ -18,6 +18,51 @@ import { Bookcase, DrawingWall, LoungeSet, PatternLectern, ReadingTable, Resourc
 import { CreditsPanel } from './credits'
 import { ClayShelf, ClayVessel, OculusPlinth, Podium, TerracottaHorse, VotivePlaque } from './clay'
 import { BlockShelf, CarvingBench, DyeVat, FabricRolls, PigmentStation, PrintingTable, WashTank } from './workshop'
+// spectacle kinds (WP0 stubs; each owned by the package named in models/propSchemas.ts)
+import { ArchiveCabinet } from './archiveCabinet'
+import { ListeningPost } from './listeningPost'
+import { SoilArchive } from './soilArchive'
+import { LanternCanopy } from './lanternCanopy'
+import { ProgrammeBoard } from './programmeBoard'
+import { CompassMandala } from './compassMandala'
+import { TheatreHouse } from './theatreHouse'
+import { LivingAlpana } from './livingAlpana'
+import { ClayChimes } from './clayChimes'
+import { WaterRing } from './waterRing'
+import { GhostPotter } from './ghostPotter'
+import { KulhadHelix } from './kulhadHelix'
+import { ToolMandala } from './toolMandala'
+import { StrataWall } from './strataWall'
+import { WaterRill } from './waterRill'
+import { CourtFloorMandala } from '../architecture/CourtFloorMandala'
+import { DuplexFrieze } from '../architecture/DuplexFrieze'
+import { ClayBed } from './clayBed'
+import { KilnWindow } from './kilnWindow'
+import { GhatamSet } from './ghatamSet'
+import { HorseProcession } from './horseProcession'
+import { PitFiring } from './pitFiring'
+import { StampPost } from './stampPost'
+import { PhotoSpot } from './photoSpot'
+import { PerchDoor } from './perchDoor'
+import { SpectacleSingleton } from './spectacleSingleton'
+import { AtmosphereKind, CoveLightKind, DiyaFieldKind, OculusLightKind } from '../lighting/atmosphere/kinds'
+// grand kinds (P0 stubs; each owned by the package named in models/propSchemas.ts)
+import { SourcedModel } from './sourcedModel'
+import { AyyanarHorse } from './ayyanarHorse'
+import { ReliefRegister } from './reliefRegister'
+import { LippanWall } from './lippanWall'
+import { CoilPot } from './coilPot'
+import { KumartuliFigure } from './kumartuliFigure'
+import { MajuliMask } from './majuliMask'
+import { ErodedFormation } from './erodedFormation'
+import { RoundTable } from './roundTable'
+import { Lotus } from './lotus'
+import { SpiralStair } from './spiralStair'
+import { ClaySphere } from './claySphere'
+import { WinePlinth } from './winePlinth'
+import { CurvedShelf } from './curvedShelf'
+import { RoundPlinth } from './roundPlinth'
+import { CourtyardGarden } from './courtyardGarden'
 
 export type { ModelProps } from './types'
 
@@ -68,4 +113,50 @@ export const PROCEDURAL_MODELS: Record<ProceduralModelId, ComponentType<ModelPro
   'oculus-plinth': OculusPlinth,
   'clay-shelf': ClayShelf,
   'potters-wheel': PottersWheel,
+  'archive-cabinet': ArchiveCabinet,
+  'listening-post': ListeningPost,
+  'soil-archive': SoilArchive,
+  'lantern-canopy': LanternCanopy,
+  'programme-board': ProgrammeBoard,
+  'compass-mandala': CompassMandala,
+  'theatre-house': TheatreHouse,
+  'living-alpana': LivingAlpana,
+  'clay-chimes': ClayChimes,
+  'water-ring': WaterRing,
+  'ghost-potter': GhostPotter,
+  'kulhad-helix': KulhadHelix,
+  'tool-mandala': ToolMandala,
+  'strata-wall': StrataWall,
+  'water-rill': WaterRill,
+  'court-mandala': CourtFloorMandala,
+  'duplex-frieze': DuplexFrieze,
+  'clay-bed': ClayBed,
+  'kiln-window': KilnWindow,
+  'ghatam-set': GhatamSet,
+  'horse-procession': HorseProcession,
+  'pit-firing': PitFiring,
+  'stamp-post': StampPost,
+  'photo-spot': PhotoSpot,
+  'perch-door': PerchDoor,
+  spectacle: SpectacleSingleton,
+  atmosphere: AtmosphereKind,
+  'oculus-light': OculusLightKind,
+  'cove-light': CoveLightKind,
+  'diya-field': DiyaFieldKind,
+  'sourced-model': SourcedModel,
+  'ayyanar-horse': AyyanarHorse,
+  'relief-register': ReliefRegister,
+  'lippan-wall': LippanWall,
+  'coil-pot': CoilPot,
+  'kumartuli-figure': KumartuliFigure,
+  'majuli-mask': MajuliMask,
+  'eroded-formation': ErodedFormation,
+  'round-table': RoundTable,
+  'lotus': Lotus,
+  'spiral-stair': SpiralStair,
+  'clay-sphere': ClaySphere,
+  'wine-plinth': WinePlinth,
+  'curved-shelf': CurvedShelf,
+  'round-plinth': RoundPlinth,
+  'courtyard-garden': CourtyardGarden,
 }

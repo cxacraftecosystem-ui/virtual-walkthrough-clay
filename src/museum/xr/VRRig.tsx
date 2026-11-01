@@ -11,16 +11,26 @@
  *  • Trigger: select the artwork/object under the controller ray (walls occlude) → a world-space
  *    info card in front of you; trigger on the card or B/Y closes it.
  *  • Comfort vignette: brief blink on teleport, peripheral dim on snap turn.
+ *  • Hotspots (SPECTACLE F33): an arc landing near the court's curb snaps onto it, and near a
+ *    perch door (while the rides are offered) it rides that door's first perch instead: the
+ *    balcony from the east stair, the well's floor from its rim.
+ *  • The perches (F4, GRAND §8 P5) in two steps, each behind a blink: the ride's middle (on the
+ *    stair, over the roof, half way down the well), then the perch (or the door, coming back).
+ *    On a perch the origin stands at the perch's floor (down the spiral, at its height there),
+ *    walls are not checked, the thumbstick forward/back steps 2.5 m along it, and pulling it
+ *    back hard and holding (1 s) comes down. No screen-space effects are used in XR.
  */
 import { useFrame, useThree } from '@react-three/fiber'
 import { XROrigin } from '@react-three/xr'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { zoneAt } from '../config/layout'
-import { MUSEUM } from '../config/museum'
+import { KEY, MUSEUM } from '../config/museum'
 import { interactiveItems } from '../interaction/registry'
 import { ignoreLow, resolveCircle, segmentBlocked } from '../navigation/collision'
 import { isZoneVisible } from '../navigation/zoneCulling'
+import { PERCH_DOORS, advance, doorOf, pathPoint, pathY, perchEnabled, projectOnPath, rideMidpoint, usePerch, type PerchId } from '../navigation/perch'
+import { climb, descend, finishRide } from '../navigation/perchActions'
 import type { SelectionKind } from '../state/store'
 import { visitor } from '../state/visitor'
 import { CARD_H, CARD_W, cardInfo, drawCard } from './vrCard'
@@ -32,10 +42,21 @@ const GRAVITY = 9.8
 const ARC_STEPS = 48
 const ARC_DT = 0.035
 const RAY_LEN = 12
+/** Court curb hotspots: eight standing points round the oculus plinth (snap radius 1.2 m). */
+const CURB = Array.from({ length: 8 }, (_, i) => {
+  const a = (i / 8) * Math.PI * 2
+  return new THREE.Vector3(Math.cos(a) * (KEY.curbR + 0.9), 0, Math.sin(a) * (KEY.curbR + 0.9))
+})
+const SNAP_R = 1.2
+/** Rim steps (m along the ring) per thumbstick push, and the hold to come down (s). */
+const RIM_STEP = 2.5
+const DESCEND_HOLD = 1
 
 
 interface Hand {
   aiming: boolean
+  /** The arc lands on a perch door: releasing rides to this perch. */
+  climb: PerchId | null
   snapArmed: boolean
   trigger: boolean
   bButton: boolean
@@ -48,6 +69,7 @@ interface Hand {
 
 const newHand = (): Hand => ({
   aiming: false,
+  climb: null,
   snapArmed: false,
   trigger: false,
   bButton: false,
@@ -119,6 +141,7 @@ export function VRRig() {
   const hands = useRef<Record<string, Hand>>({ left: newHand(), right: newHand() })
   const vig = useRef({ vig: 0, fade: 0 })
   const [card, setCard] = useState<{ kind: SelectionKind; id: string } | null>(null)
+  const perchRef = useRef({ step: -1, rimArmed: false, hold: 0 })
   const cardMesh = useRef<THREE.Mesh>(null)
 
   const parts = useMemo(() => {
@@ -221,8 +244,63 @@ export function VRRig() {
     _e.setFromQuaternion(_q, 'YXZ')
     const headYaw = _e.y
 
+    // ── Perch: two-step ride, or standing on the rim ──────────────────
+    const P = usePerch.getState()
+    const PR = perchRef.current
+    const placeHead = (x: number, y: number, z: number) => {
+      o.position.x += x - head.x
+      o.position.z += z - head.z
+      o.position.y = y
+      head.x = x
+      head.z = z
+      vig.current.fade = 1
+      o.updateMatrixWorld()
+    }
+    if (P.ride) {
+      const r = P.ride
+      r.elapsed += dt * 1000
+      const u = r.elapsed / r.dur
+      const step = u < 0.5 ? 0 : 1
+      if (step !== PR.step) {
+        PR.step = step
+        if (step === 0) {
+          const mid = rideMidpoint(r.path, r.t)
+          placeHead(mid.x, mid.y, mid.z)
+        } else if (r.dir === 'up') {
+          const q = pathPoint(r.path, r.t)
+          placeHead(q.x, pathY(r.path, r.t), q.z)
+        } else {
+          const d = doorOf(r.path.id)
+          placeHead(d.stand[0], 0, d.stand[1])
+        }
+      }
+      if (u >= 1) {
+        PR.step = -1
+        finishRide()
+      }
+    } else if (P.perch) {
+      PR.step = -1
+      const pr = projectOnPath(P.perch, head.x, head.z)
+      const floor = pathY(P.perch, pr.t)
+      if (o.position.y !== floor) o.position.y = floor
+      if (pr.dist > 0.6) {
+        const q = pathPoint(P.perch, pr.t)
+        placeHead(q.x, floor, q.z)
+      }
+      usePerch.setState({ t: pr.t })
+    } else if (o.position.y !== 0) {
+      o.position.y = 0
+      PR.step = -1
+      o.updateMatrixWorld()
+    }
+    const onPerch = !!P.perch
+
     // physical walking vs walls: push the origin back
-    resolveCircle(head.x, head.z, R, tmp)
+    if (!onPerch) resolveCircle(head.x, head.z, R, tmp)
+    else {
+      tmp.x = head.x
+      tmp.z = head.z
+    }
     if (Math.abs(tmp.x - head.x) > 1e-4 || Math.abs(tmp.z - head.z) > 1e-4) {
       o.position.x += tmp.x - head.x
       o.position.z += tmp.z - head.z
@@ -259,14 +337,38 @@ export function VRRig() {
       const ax = gp.axes.length >= 4 ? gp.axes[2] : (gp.axes[0] ?? 0)
       const ay = gp.axes.length >= 4 ? gp.axes[3] : (gp.axes[1] ?? 0)
 
+      // on the rim: forward / back steps round the ring; hold back to come down
+      if (onPerch && P.perch && !P.ride) {
+        if (!PR.rimArmed && Math.abs(ay) > 0.6) {
+          PR.rimArmed = true
+          const q0 = pathPoint(P.perch, usePerch.getState().t)
+          // forward = the way the head faces, projected on the ring's tangent
+          const fwd = -Math.sin(headYaw) * q0.tx - Math.cos(headYaw) * q0.tz
+          const t1 = advance(P.perch, usePerch.getState().t, (ay < 0 ? 1 : -1) * Math.sign(fwd || 1) * RIM_STEP)
+          const q1 = pathPoint(P.perch, t1)
+          placeHead(q1.x, pathY(P.perch, t1), q1.z)
+          usePerch.setState({ t: t1 })
+        } else if (Math.abs(ay) < 0.3) PR.rimArmed = false
+        PR.hold = ay > 0.85 ? PR.hold + dt : 0
+        if (PR.hold > DESCEND_HOLD) {
+          PR.hold = 0
+          descend()
+        }
+      }
+
       // teleport aim
-      if (ay < -0.6 && Math.abs(ax) < 0.7) h.aiming = true
+      if (!onPerch && ay < -0.6 && Math.abs(ax) < 0.7) h.aiming = true
       if (h.aiming) {
         computeArc(h, arc)
+        snapHotspot(h)
         arcShown = true
         if (Math.abs(ay) < 0.25) {
           h.aiming = false
-          if (h.valid) {
+          if (h.valid && h.climb) {
+            vig.current.fade = 1
+            if (card) setCard(null)
+            climb(h.climb)
+          } else if (h.valid) {
             o.position.x += h.target.x - head.x
             o.position.z += h.target.z - head.z
             head.x = h.target.x
@@ -376,6 +478,28 @@ function cardHit(m: THREE.Mesh | null, o: THREE.Vector3, d: THREE.Vector3): numb
   const x = lo.x + ld.x * t
   const y = lo.y + ld.y * t
   return Math.abs(x) <= CARD_W / 2 && Math.abs(y) <= CARD_H / 2 ? t : null
+}
+
+/** Hotspots: the court's curb (snap onto it) and, while offered, a perch door (ride its first perch). */
+function snapHotspot(h: Hand) {
+  h.climb = null
+  if (perchEnabled()) {
+    for (const d of Object.values(PERCH_DOORS)) {
+      if (Math.hypot(h.target.x - d.stand[0], h.target.z - d.stand[1]) < SNAP_R) {
+        h.target.set(d.stand[0], 0, d.stand[1])
+        h.valid = true
+        h.climb = d.perches[0]
+        return
+      }
+    }
+  }
+  for (const c of CURB) {
+    if (Math.hypot(h.target.x - c.x, h.target.z - c.z) < SNAP_R) {
+      h.target.copy(c)
+      h.valid = true
+      return
+    }
+  }
 }
 
 /** Parabolic teleport arc; walls stop it; landing collision-resolved. Writes h.valid / h.target. */

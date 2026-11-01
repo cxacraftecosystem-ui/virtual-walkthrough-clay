@@ -697,3 +697,202 @@ export function getHaloTexture(): THREE.CanvasTexture {
   halo.name = 'medallion-halo'
   return halo
 }
+
+/* ------------------------------------------------------------------ */
+/* Earth section — the strata wall (SPECTACLE F6)                      */
+/* ------------------------------------------------------------------ */
+
+/** One layer of the section, listed bottom → top; `thickness` is relative (they are scaled to fill). */
+export interface StrataLayer {
+  name: string
+  color: string
+  thickness: number
+  kind: 'kaolin' | 'laterite' | 'clay' | 'silt' | 'sand' | 'topsoil'
+}
+
+/** A typical river-plain section (not a survey): kaolin, laterite, sand, clay, silt with lenses, topsoil. */
+export const DEFAULT_STRATA: StrataLayer[] = [
+  { name: 'Kaolin', color: '#ddd5c4', thickness: 0.5, kind: 'kaolin' },
+  { name: 'Laterite', color: '#9a4426', thickness: 0.85, kind: 'laterite' },
+  { name: 'Sand', color: '#c7a271', thickness: 0.4, kind: 'sand' },
+  { name: 'Clay', color: '#646d75', thickness: 0.35, kind: 'clay' },
+  { name: 'Silt', color: '#a8957a', thickness: 0.8, kind: 'silt' },
+  { name: 'Topsoil', color: '#3e2a1e', thickness: 0.5, kind: 'topsoil' },
+]
+
+const STRATA_KINDS = ['kaolin', 'laterite', 'clay', 'silt', 'sand', 'topsoil'] as const
+
+/** Parse the `layers` prop: one per line, `name|#colour|thickness|kind`, bottom first. */
+export function parseStrata(text: string): StrataLayer[] {
+  const out: StrataLayer[] = []
+  for (const line of text.split('\n')) {
+    const [name, color, th, kind] = line.split('|').map((s) => s.trim())
+    if (!name || !/^#[0-9a-f]{6}$/i.test(color ?? '')) continue
+    const t = Number(th)
+    out.push({ name, color, thickness: Number.isFinite(t) && t > 0 ? t : 0.5, kind: (STRATA_KINDS as readonly string[]).includes(kind) ? (kind as StrataLayer['kind']) : 'silt' })
+  }
+  return out.length >= 2 ? out : DEFAULT_STRATA
+}
+
+export interface StrataShader {
+  /**
+   * GLSL defining `void strata(vec2 p, out vec3 albedo, out float height)`: `p` is (metres along
+   * the wall, metres above the floor), `albedo` linear colour, `height` 0 … 1 (1 = proud).
+   */
+  glsl: string
+  /** Layer tops (m above the section's foot, before the waviness), for checks and labels. */
+  tops: number[]
+  /** Program cache key (layers + seed + detail). */
+  key: string
+}
+
+const glslF = (v: number) => (Number.isInteger(v) ? `${v}.0` : `${v}`)
+
+/**
+ * The earth section as a procedural shader, sharp at any distance (SPECTACLE F6): wavy layer
+ * contacts, chalky kaolin, laterite with iron nodules and pale vesicles, cross-bedded sand with
+ * pebbles, blue-grey clay, laminated silt with clay lenses, crumbly topsoil with roots reaching
+ * down. `y0 … y1` is the section's height on the wall; `octaves` the noise detail (by tier).
+ */
+export function genStrata(layers: StrataLayer[], seed: number, y0: number, y1: number, octaves: number): StrataShader {
+  const total = layers.reduce((s, l) => s + l.thickness, 0)
+  const tops: number[] = []
+  let acc = y0
+  for (const l of layers) {
+    acc += ((y1 - y0) * l.thickness) / total
+    tops.push(acc)
+  }
+  const col = (hex: string) => {
+    const c = new THREE.Color(hex)
+    return `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`
+  }
+  const rootLo = tops[Math.max(0, layers.length - 3)] ?? y0
+  const rootMid = tops[Math.max(0, layers.length - 2)] ?? y1
+  const sd = glslF(((seed * 9301 + 49297) % 233280) / 2332.8)
+  // the layer the point is in: compare against each wavy contact in turn
+  const pick = layers
+    .map((l, i) => {
+      const top = i === layers.length - 1 ? '1e9' : `${glslF(+tops[i].toFixed(4))} + contact(p.x, ${glslF(i + 1)})`
+      return `${i === 0 ? '' : 'else '}if (p.y < ${top}) { k = ${STRATA_KINDS.indexOf(l.kind)}; base = ${col(l.color)}; lo = ${i === 0 ? glslF(y0) : `${glslF(+tops[i - 1].toFixed(4))} + contact(p.x, ${glslF(i)})`}; hi = ${top}; }`
+    })
+    .join('\n  ')
+  const glsl = /* glsl */ `
+float sHash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+vec2 sHash2(vec2 p) { return vec2(sHash(p), sHash(p + 17.31)); }
+float sNoise(vec2 p) {
+  vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(sHash(i), sHash(i + vec2(1.0, 0.0)), u.x), mix(sHash(i + vec2(0.0, 1.0)), sHash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float sFbm(vec2 p) {
+  float a = 0.5, s = 0.0;
+  for (int i = 0; i < ${Math.max(2, octaves)}; i++) { s += a * sNoise(p); p = p * 2.03 + 11.7; a *= 0.5; }
+  return s;
+}
+/** Nearest feature in a jittered grid: (distance, cell id). */
+vec2 sCell(vec2 p) {
+  vec2 i = floor(p); vec2 f = fract(p); float d = 8.0; float id = 0.0;
+  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
+    vec2 g = vec2(float(x), float(y));
+    vec2 o = sHash2(i + g + ${sd});
+    float dd = length(g + o - f);
+    if (dd < d) { d = dd; id = sHash(i + g + 3.7); }
+  }
+  return vec2(d, id);
+}
+/** The wavy contact between layer n-1 and n, as an offset (m) along the wall. */
+float contact(float x, float n) {
+  return 0.11 * (sFbm(vec2(x * 0.45 + n * 7.1, n * 3.3)) - 0.5) + 0.035 * sin(x * 0.7 + n * 2.0) + 0.015 * (sNoise(vec2(x * 6.0, n)) - 0.5);
+}
+void strata(vec2 p0, out vec3 albedo, out float height) {
+  int k = 0; vec3 base = vec3(0.5); float lo = 0.0; float hi = 1.0;
+  // interfingered contacts: the layer test wanders a few centimetres
+  vec2 p = vec2(p0.x, p0.y + 0.025 * (sNoise(p0 * vec2(9.0, 4.0)) - 0.5));
+  ${pick}
+  p = p0;
+  float n1 = sFbm(p * vec2(2.2, 3.0));
+  float n2 = sNoise(p * 38.0);
+  float grain = sHash(floor(p * 420.0));
+  // colour drifts at two scales: no two metres of a section are alike
+  float big = sFbm(p * vec2(0.35, 0.9) + 21.0);
+  vec3 c = base * (0.78 + 0.34 * big) * (0.92 + 0.16 * n1);
+  float h = 0.45 + 0.1 * n1;
+  if (k == 0) {
+    // kaolin: chalky, faint pink iron stains
+    c = mix(c, c * vec3(1.05, 0.9, 0.86), smoothstep(0.55, 0.75, sFbm(p * vec2(1.4, 4.0) + 3.0)) * 0.6);
+    c *= 0.97 + 0.06 * grain;
+    h = 0.42 + 0.05 * n1;
+  } else if (k == 1) {
+    // laterite: mottled rust and ochre, dark iron nodules, pale vesicles
+    float m = sFbm(p * vec2(3.0, 5.0) + 9.0);
+    c = mix(c, vec3(0.62, 0.30, 0.12), smoothstep(0.45, 0.7, m) * 0.7);
+    c = mix(c, vec3(0.28, 0.10, 0.05), smoothstep(0.62, 0.8, sFbm(p * 6.0 + 2.0)) * 0.6);
+    // nodules at their true size (a few millimetres to a centimetre), never sticker-sized
+    vec2 wq = p * 52.0 + 0.9 * vec2(sNoise(p * 71.0), sNoise(p * 67.0 + 4.0));
+    vec2 nod = sCell(wq);
+    float nsz = mix(0.12, 0.34, sHash(vec2(nod.y, 5.0)));
+    float nodule = smoothstep(nsz, nsz * 0.55, nod.x) * step(0.62, nod.y);
+    c = mix(c, mix(vec3(0.17, 0.06, 0.035), vec3(0.32, 0.12, 0.05), sHash(vec2(nod.y, 1.0))), nodule * 0.8);
+    vec2 ves = sCell(p * 64.0 + 5.0 + 0.6 * sNoise(p * 80.0));
+    float pit = smoothstep(0.22, 0.1, ves.x) * step(0.9, ves.y);
+    c = mix(c, vec3(0.80, 0.56, 0.34), pit * 0.7);
+    h = 0.5 + 0.18 * nodule - 0.3 * pit + 0.08 * n2;
+  } else if (k == 2) {
+    // clay: blue-grey, smooth, faint horizontal banding
+    c *= 0.94 + 0.08 * sin(p.y * 90.0 + n1 * 4.0);
+    c = mix(c, vec3(0.16, 0.20, 0.25), 0.35);
+    h = 0.4 + 0.03 * n1;
+  } else if (k == 3) {
+    // silt: fine laminations; clay lenses
+    float lam = sin((p.y + 0.012 * sFbm(p * vec2(1.5, 0.5))) * 520.0);
+    c *= 0.96 + 0.05 * lam + 0.03 * grain;
+    h = 0.48 + 0.04 * lam;
+    float cell = floor(p.x / 1.7);
+    vec2 r = sHash2(vec2(cell, 4.0));
+    vec2 lc = vec2((cell + 0.25 + 0.5 * r.x) * 1.7, mix(lo, hi, 0.3 + 0.4 * r.y));
+    vec2 q = (p - lc) / vec2(0.35 + 0.35 * r.y, 0.035 + 0.03 * r.x);
+    float lens = smoothstep(1.0, 0.85, dot(q, q));
+    c = mix(c, vec3(0.36, 0.38, 0.40), lens);
+    h = mix(h, 0.4, lens);
+  } else if (k == 4) {
+    // sand: speckled grain, faint cross-bedding, pebbles
+    c *= 0.86 + 0.28 * grain;
+    float cross = sin((p.x * 0.8 + p.y * 2.2 + 0.05 * sin(p.x * 3.0)) * 140.0);
+    c *= 0.97 + 0.03 * cross;
+    vec2 pq = p * vec2(34.0, 44.0) + 0.7 * vec2(sNoise(p * 59.0), sNoise(p * 49.0 + 2.0));
+    vec2 pb = sCell(pq);
+    float psz = mix(0.16, 0.36, sHash(vec2(pb.y, 6.0)));
+    float peb = smoothstep(psz, psz * 0.75, pb.x) * step(0.86, pb.y);
+    vec3 pc = mix(vec3(0.28, 0.26, 0.24), vec3(0.58, 0.52, 0.44), sHash(vec2(pb.y, 2.0)));
+    c = mix(c, pc * (0.8 + 0.4 * (1.0 - pb.x / psz)), peb);
+    h = 0.5 + 0.1 * grain + 0.4 * peb * (1.0 - pb.x / psz);
+  } else {
+    // topsoil: dark, crumbly, with roots reaching down
+    float crumb = sFbm(p * 9.0 + 4.0);
+    c *= 0.75 + 0.5 * crumb;
+    h = 0.5 + 0.3 * (crumb - 0.5) + 0.08 * n2;
+  }
+  // roots: wandering dark threads from the topsoil down into the silt below it
+  float rootLo = ${glslF(+rootLo.toFixed(4))};
+  if (p.y > rootLo) {
+    float wx = p.x + 0.06 * sin(p.y * 7.0 + sNoise(vec2(p.x * 3.0, 1.0)) * 6.0) + 0.04 * (sFbm(vec2(p.y * 4.0, p.x)) - 0.5);
+    float lane = fract(wx * 2.6);
+    float id = floor(wx * 2.6);
+    float reach = mix(rootLo, ${glslF(+rootMid.toFixed(4))}, sHash(vec2(id, 7.0)));
+    float thick = mix(0.012, 0.03, sHash(vec2(id, 3.0))) * smoothstep(reach, reach + 0.25, p.y);
+    float root = smoothstep(thick, thick * 0.4, abs(lane - 0.5) / 2.6) * step(0.35, sHash(vec2(id, 9.0)));
+    c = mix(c, vec3(0.10, 0.06, 0.04), root * 0.85);
+    h = mix(h, 0.7, root);
+  }
+  // water has percolated down: faint iron-stained streaks
+  float streak = smoothstep(0.62, 0.85, sFbm(vec2(p.x * 7.0, p.y * 0.35) + 13.0));
+  c = mix(c, c * vec3(1.12, 0.86, 0.7), streak * 0.35);
+  // each contact: a darker skin and a small step
+  float t = (p.y - lo) / max(1e-3, hi - lo);
+  c *= 1.0 - 0.18 * exp(-(1.0 - t) * (hi - lo) * 60.0);
+  h -= 0.1 * exp(-t * (hi - lo) * 80.0);
+  albedo = c;
+  height = clamp(h, 0.0, 1.0);
+}
+`
+  return { glsl, tops, key: `${JSON.stringify(layers)}|${seed}|${octaves}|${y0}|${y1}` }
+}

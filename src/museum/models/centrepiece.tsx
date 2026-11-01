@@ -408,7 +408,8 @@ function AccentLights({ config, H }: { config: ModelProps['config']; H: number }
   const onRail = config.zone === 'inner' && railR > 0 && Math.hypot(px, pz) < 1
   const k = num(config, 'light', 1)
   const ceiling = ZONES.find((z) => z.id === config.zone)?.height ?? 6
-  const pendantY = Math.min(ceiling - 0.9, 5.2)
+  // a short monopoint just under the ceiling: a long bare stem read as a rod with nothing on it
+  const pendantY = ceiling - 0.24
   const rail = useMemo(() => {
     if (!onRail) return []
     return [-railR, railR].map((dx, i) => {

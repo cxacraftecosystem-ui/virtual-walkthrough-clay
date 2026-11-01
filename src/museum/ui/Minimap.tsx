@@ -8,6 +8,7 @@ import { SCENE_OBJECTS } from '../config/objects'
 import { IconMap, IconMinus } from './icons'
 import { translate, useLang, useT, type Lang } from '../i18n'
 import { zoneName } from '../i18n/content'
+import { perchZone, usePerch } from '../navigation/perch'
 
 /* ------------------------------------------------------------------ */
 /* Travel fade (shared by minimap "go to" and HUD reset)               */
@@ -62,6 +63,12 @@ export const MAP_ASPECT = (B.maxX - B.minX) / (B.maxZ - B.minZ)
 
 const VIEWBOX = `${B.minX} ${B.minZ} ${B.maxX - B.minX} ${B.maxZ - B.minZ}`
 
+/**
+ * Marks and labels are sized in plan metres: the grand plan is about 2.2 times the size of the
+ * pavilion they were drawn for, so they grow with it and keep their size on screen.
+ */
+const K = 2.2
+
 interface ZoneLabel {
   small: string
   big?: string
@@ -72,9 +79,11 @@ interface ZoneLabel {
 /** Label shown in the plan; the three galleries use a big letter. */
 function zoneLabel(id: ZoneId, lang: Lang = 'en'): ZoneLabel {
   const short = zoneName(id, lang, true)
-  if (id.startsWith('ring-')) return { small: translate(lang, 'map.gallery'), big: id.slice(-1).toUpperCase(), size: 0.72 }
-  if (id === 'entrance-court') return { small: short, size: 1.05 }
-  return { small: short, size: 0.7 }
+  if (id.startsWith('ring-')) return { small: translate(lang, 'map.gallery'), big: id.slice(-1).toUpperCase(), size: 0.72 * K }
+  if (id === 'entrance-court') return { small: short, size: 1.05 * K }
+  // the Parikrama is a narrow band round the ring: a smaller label keeps it off the galleries'
+  if (id.startsWith('parikrama-')) return { small: short, size: 0.5 * K }
+  return { small: short, size: 0.7 * K }
 }
 
 /** Furniture & installations drawn faintly for orientation (skip foliage/props). */
@@ -96,7 +105,7 @@ function footprintPoints(x: number, z: number, rotationY: number, w: number, d: 
     .join(' ')
 }
 
-const CONE_LEN = 4.6
+const CONE_LEN = 4.6 * K
 const CONE_HALF = (34 * Math.PI) / 180
 const CONE_PATH = `M0 0 L${-Math.sin(CONE_HALF) * CONE_LEN} ${-Math.cos(CONE_HALF) * CONE_LEN} A${CONE_LEN} ${CONE_LEN} 0 0 1 ${
   Math.sin(CONE_HALF) * CONE_LEN
@@ -112,6 +121,9 @@ export function Minimap() {
   const t = useT()
   const lang = useLang()
   const [current, setCurrent] = useState<ZoneId | undefined>(undefined)
+  // on a perch (the Sky Rim, the balcony, the Sphere Well) the plan shows a badge at its place
+  const perchOn = usePerch((s) => s.perch?.zone ?? null)
+  const perchAnchor = perchOn ? (ZONES.find((z) => z.id === perchOn)?.anchor ?? [0, 0]) : null
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 720)
 
   useEffect(() => {
@@ -133,7 +145,7 @@ export function Minimap() {
         g.setAttribute('transform', `translate(${visitor.x.toFixed(3)} ${visitor.z.toFixed(3)}) rotate(${deg.toFixed(2)})`)
       }
       if (frame++ % 15 === 0) {
-        const z = zoneAt(visitor.x, visitor.z)?.id
+        const z = perchZone() ?? zoneAt(visitor.x, visitor.z)?.id
         if (z !== lastZone) {
           lastZone = z
           setCurrent(z)
@@ -227,10 +239,10 @@ export function Minimap() {
                   </path>
                   {l.big ? (
                     <>
-                      <text className="ui-map__label" x={cx} y={cy - 1.75} style={{ fontSize: l.size }}>
+                      <text className="ui-map__label" x={cx} y={cy - 1.75 * K} style={{ fontSize: l.size }}>
                         {l.small}
                       </text>
-                      <text className="ui-map__label ui-map__label--big" x={cx} y={cy + 0.35}>
+                      <text className="ui-map__label ui-map__label--big" x={cx} y={cy + 0.35 * K}>
                         {l.big}
                       </text>
                     </>
@@ -243,9 +255,15 @@ export function Minimap() {
               )
             })}
 
+            {perchOn && perchAnchor && (
+              <text className="ui-map__roof" x={perchAnchor[0]} y={perchOn === 'sky-rim' ? -MUSEUM.oculus.r - 0.9 * K : perchAnchor[1]}>
+                {zoneName(perchOn, lang, true)}
+              </text>
+            )}
+
             <g ref={markerRef} style={{ pointerEvents: 'none' }}>
               <path className="ui-map__cone" d={CONE_PATH} />
-              <circle className="ui-map__dot" r={0.5} />
+              <circle className="ui-map__dot" r={0.5 * K} />
             </g>
 
             <g transform={`translate(${B.minX + 1.6} ${B.minZ + 1.8}) scale(2.2)`} aria-hidden="true">

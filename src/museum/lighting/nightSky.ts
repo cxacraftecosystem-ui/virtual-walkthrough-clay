@@ -11,8 +11,13 @@ import * as THREE from 'three'
 export interface NightSkyUniforms {
   nightMix: { value: number }
   twilightMix: { value: number }
+  /** Pastel sunset wash at a low sun (0 … 1). */
+  sunsetMix: { value: number }
   moonDir: { value: THREE.Vector3 }
   duskSunDir: { value: THREE.Vector3 }
+  /** Monsoon cloud deck (0 … 1) and its one soft brightening (0 … 1). */
+  overcastMix: { value: number }
+  stormFlash: { value: number }
 }
 
 /** Uniform objects of every patched sky material (normally exactly one). */
@@ -21,8 +26,11 @@ export const nightSkyUniforms = new Set<NightSkyUniforms>()
 const DECLS = /* glsl */ `
 uniform float nightMix;
 uniform float twilightMix;
+uniform float sunsetMix;
 uniform vec3 moonDir;
 uniform vec3 duskSunDir;
+uniform float overcastMix;
+uniform float stormFlash;
 
 float mHash( vec3 p ) {
   p = fract( p * 0.3183099 + 0.1 );
@@ -51,8 +59,38 @@ vec3 museumStars( vec3 dir ) {
   return acc;
 }
 
+vec3 museumStorm( vec3 sky, vec3 dir ) {
+  if ( overcastMix <= 0.0 ) return sky;
+  // monsoon deck: a low, heavy grey with a lighter belly toward the horizon, slowly rolling
+  float h = max( dir.y, 0.0 );
+  vec2 p = dir.xz / max( dir.y + 0.12, 0.05 ) * 0.6 + vec2( time * 0.018, time * 0.007 );
+  float roll = 0.5 + 0.5 * sin( p.x * 1.7 + sin( p.y * 2.3 ) * 1.4 ) * sin( p.y * 1.3 - p.x * 0.6 );
+  vec3 deck = mix( vec3( 0.33, 0.34, 0.36 ), vec3( 0.16, 0.17, 0.2 ), pow( h, 0.55 ) ) * ( 0.85 + 0.3 * roll );
+  deck *= ( 1.0 - 0.94 * nightMix ) * ( 1.0 - 0.55 * twilightMix ) * ( 1.0 + 1.6 * stormFlash );
+  return mix( sky, deck, overcastMix );
+}
+
+// golden hour: keep the scattered sky's brightness, give it a sunset's pastel colours — peach and
+// rose toward the low sun and the horizon, a soft lilac overhead (what the oculus frames)
+vec3 museumSunset( vec3 base, vec3 dir ) {
+  if ( sunsetMix <= 0.0 ) return base;
+  float h = max( dir.y, 0.0 );
+  vec2 dd = normalize( dir.xz + vec2( 1e-5 ) );
+  float toward = max( dot( normalize( duskSunDir.xz + vec2( 1e-5 ) ), dd ), 0.0 );
+  float lum = dot( base, vec3( 0.2126, 0.7152, 0.0722 ) );
+  vec3 peach = vec3( 1.32, 0.86, 0.6 );
+  vec3 rose = vec3( 1.18, 0.78, 0.86 );
+  vec3 lilac = vec3( 0.86, 0.8, 1.22 );
+  vec3 hue = mix( mix( peach, rose, smoothstep( 0.0, 0.35, h ) ), lilac, smoothstep( 0.2, 0.85, h ) );
+  hue = mix( hue, peach * 1.15, pow( toward, 4.0 ) * exp( - h * 3.0 ) );
+  // a touch brighter where the zenith would go dark blue
+  vec3 tinted = hue * max( lum, 0.0 ) * ( 1.0 + 0.35 * h );
+  return mix( base, tinted, sunsetMix );
+}
+
 vec3 museumTwilight( vec3 base, vec3 dir ) {
-  if ( twilightMix <= 0.0 && nightMix <= 0.0 ) return base;
+  base = museumSunset( base, dir );
+  if ( twilightMix <= 0.0 && nightMix <= 0.0 ) return museumStorm( base, dir );
   float h = max( dir.y, 0.0 );
   vec2 dd = normalize( dir.xz + vec2( 1e-5 ) );
 
@@ -70,7 +108,7 @@ vec3 museumTwilight( vec3 base, vec3 dir ) {
   ng += museumStars( dir ) * smoothstep( 0.02, 0.22, dir.y ) * 0.32;
 
   vec3 sky = mix( base, tw, twilightMix );
-  return mix( sky, ng, nightMix );
+  return museumStorm( mix( sky, ng, nightMix ), dir );
 }
 `
 
@@ -80,8 +118,11 @@ export function patchNightSky(mat: THREE.ShaderMaterial) {
   const u: NightSkyUniforms = {
     nightMix: { value: 0 },
     twilightMix: { value: 0 },
+    sunsetMix: { value: 0 },
     moonDir: { value: new THREE.Vector3(0.4, 0.7, 0.5).normalize() },
     duskSunDir: { value: new THREE.Vector3(-1, 0, 0) },
+    overcastMix: { value: 0 },
+    stormFlash: { value: 0 },
   }
   Object.assign(mat.uniforms, u)
   const anchor = 'vec3 texColor = ( Lin + L0 ) * 0.04 + sundiscColor + vec3( 0.0, 0.0003, 0.00075 );'

@@ -6,8 +6,10 @@
 import type { ContentCollection } from '../museum/content/types'
 import { FRAME_STYLES } from '../museum/config/frames'
 import { SURFACES, ZONES } from '../museum/config/layout'
+import { PROCEDURAL_KINDS } from '../museum/config/objects'
+import { COMMON_PROPS, KIND_SCHEMAS, type PropSchema } from '../museum/models/propSchemas'
 
-export type FieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'media' | 'frame' | 'kv' | 'lines' | 'vec3' | 'color' | 'surface' | 'at' | 'ref'
+export type FieldType = 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'media' | 'frame' | 'kv' | 'lines' | 'vec3' | 'color' | 'surface' | 'at' | 'ref' | 'props'
 /** What a `ref` field points at: a maker profile, or another item of this exhibition. */
 export type RefTarget = 'artisan' | 'artworks' | 'exhibits'
 
@@ -51,6 +53,8 @@ export interface SurfaceRange {
   axisLabel: string
   label: string
   zone: string
+  /** The installation this surface is kept for (SURFACES[id].reserved), if any. */
+  reserved?: string
 }
 /** Valid `at` range [min, max] (m) of a surface, and how `at` is measured on it (a world axis, or along a curved wall). */
 export function surfaceRange(id: unknown): SurfaceRange | null {
@@ -59,11 +63,30 @@ export function surfaceRange(id: unknown): SurfaceRange | null {
   // widened on purpose: some buildings add 'along' (curved walls) to the layout's run axes
   const raw = s.runAxis as string
   const axis: RunAxis = raw === 'along' ? 'along' : raw === 'z' ? 'z' : 'x'
-  return { min: Math.min(...s.range), max: Math.max(...s.range), axis, axisLabel: AXIS_LABEL[axis], label: s.label, zone: s.zone }
+  const reserved = typeof s.reserved === 'string' && s.reserved ? s.reserved : undefined
+  return { min: Math.min(...s.range), max: Math.max(...s.range), axis, axisLabel: AXIS_LABEL[axis], label: s.label, zone: s.zone, ...(reserved ? { reserved } : {}) }
+}
+/** Non-blocking notice for a surface kept for an installation: "Kept for <reserved>". */
+export function surfaceWarning(id: unknown): string | undefined {
+  const r = surfaceRange(id)
+  return r?.reserved ? `Kept for ${r.reserved}` : undefined
 }
 /** Zone id → name, for lists and filters. */
 export const ZONE_NAMES: ReadonlyMap<string, string> = new Map(ZONES.map((z) => [z.id as string, z.name]))
-export const ZONE_IDS: readonly string[] = ZONES.map((z) => z.id)
+/** Zones on an upper storey (`level` 2 and up): reached from below, never a place to put things. */
+export const UPPER_ZONE_IDS: ReadonlySet<string> = new Set(ZONES.filter((z) => (z.level ?? 1) >= 2).map((z) => z.id as string))
+/** Ground-floor zones, in layout order: the zones content can be placed in (the first is the new-object default). */
+export const ZONE_IDS: readonly string[] = ZONES.map((z) => z.id as string).filter((id) => !UPPER_ZONE_IDS.has(id))
+
+/** Every built-in (procedural) model kind, and its curator-facing name where the building's prop schemas give one. */
+export const KIND_IDS: readonly string[] = PROCEDURAL_KINDS
+export const KIND_LABELS: Readonly<Record<string, string>> = Object.fromEntries(KIND_IDS.filter((k) => KIND_SCHEMAS[k]).map((k) => [k, KIND_SCHEMAS[k].label]))
+/** The typed props of a kind (its own, then the ones every object may carry; a kind's own entry wins on a shared key). */
+export function propSchemasOf(kind: unknown): PropSchema[] {
+  const own = typeof kind === 'string' && Object.prototype.hasOwnProperty.call(KIND_SCHEMAS, kind) ? KIND_SCHEMAS[kind].props : []
+  const keys = new Set(own.map((p) => p.key))
+  return [...own, ...COMMON_PROPS.filter((p) => !keys.has(p.key))]
+}
 /** The zone an item stands in: its wall's zone, else its own `zone` (objects). */
 export function itemZone(item: Record<string, unknown>): string | null {
   const r = surfaceRange(getPath(item, 'placement.surface'))
@@ -163,7 +186,7 @@ export const FIELDS: Record<ContentCollection, FieldDef[]> = {
   objects: [
     title,
     description,
-    text('kind', 'Built-in model (when there is no 3D model file)'),
+    { path: 'kind', label: 'Built-in model (when there is no 3D model file)', type: 'select', group: 'Details', options: KIND_IDS, optionLabels: KIND_LABELS, required: true },
     { path: 'model', label: '3D model (GLB/GLTF)', type: 'media', accept: 'model', group: 'Media' },
     num('modelScale', 'Model scale', 'Media', 0.01),
     { path: 'position', label: 'Position [x, y, z] (m)', type: 'vec3', group: 'Placement' },
@@ -171,6 +194,7 @@ export const FIELDS: Record<ContentCollection, FieldDef[]> = {
     { path: 'zone', label: 'Zone', type: 'select', group: 'Placement', options: ZONE_IDS, optionLabels: Object.fromEntries(ZONE_NAMES) },
     { path: 'interactive', label: 'Clickable (info panel)', type: 'checkbox', group: 'Flags' },
     { path: 'inspectable', label: 'Inspectable in 3D viewer', type: 'checkbox', group: 'Flags' },
+    { path: 'props', label: 'Model settings', type: 'props', group: 'Display', hint: 'Settings of the built-in model. Empty fields use the model’s default.' },
     placeholder,
   ],
 }
@@ -300,7 +324,16 @@ export function template(c: ContentCollection, id: string, existing: readonly Re
       }
     case 'objects': {
       const zone = commonValue(existing, 'zone')
-      return { id, title: 'New object', kind: 'planter', position: [0, 0, 0], rotationDeg: 0, zone: typeof zone === 'string' ? zone : ZONE_IDS[0], placeholder: true }
+      const kind = commonValue(existing, 'kind')
+      return {
+        id,
+        title: 'New object',
+        kind: typeof kind === 'string' && KIND_IDS.includes(kind) ? kind : KIND_IDS[0],
+        position: [0, 0, 0],
+        rotationDeg: 0,
+        zone: typeof zone === 'string' && ZONE_IDS.includes(zone) ? zone : ZONE_IDS[0],
+        placeholder: true,
+      }
     }
   }
 }

@@ -18,6 +18,8 @@ export function liveConfigured() {
 }
 
 export const LIVE = {
+  /** The "join the live gallery" invitation folds to a dot after this long (or the first scroll). */
+  inviteFoldMs: 6000,
   /** Position updates while moving (Hz). */
   posHz: 5,
   /** Keep-alive position update while idle (ms). */

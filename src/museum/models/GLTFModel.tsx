@@ -11,13 +11,15 @@
  *   KHR_mesh_quantization + EXT_texture_webp: drei's useGLTF enables MeshoptDecoder by default, and
  *   quantised attributes are converted to float before transforms are baked. Legacy Poly Haven paths
  *   (content stored in the DB before the switch) are mapped to their optimised GLB.
+ * - `material` replaces every part's material (the sourced models' clay finishes, GRAND §5.2);
+ *   `useMergedModel` hands the merged parts to the instance batcher (models/sourcedModel.tsx).
  */
 import { useGLTF } from '@react-three/drei'
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
-interface MergedModel {
+export interface MergedModel {
   parts: { geometry: THREE.BufferGeometry; material: THREE.Material }[]
   box: THREE.Box3
 }
@@ -54,6 +56,8 @@ function mergeScene(url: string, scene: THREE.Object3D): MergedModel {
     if (mats.length !== 1) return
     const g = dequantize(mesh.geometry.clone())
     g.applyMatrix4(mesh.matrixWorld)
+    // scans exported without normals would render flat black under a finish
+    if (!g.getAttribute('normal')) g.computeVertexNormals()
     let list = groups.get(mats[0])
     if (!list) groups.set(mats[0], (list = []))
     list.push(g)
@@ -88,6 +92,16 @@ function mergeScene(url: string, scene: THREE.Object3D): MergedModel {
     const mat = material as THREE.MeshStandardMaterial
     // Poly Haven foliage uses alpha MASK: make sure shadows respect it
     if (mat.alphaTest > 0) mat.side = THREE.DoubleSide
+    // A transmissive glTF material (KHR_materials_transmission, e.g. a lantern's glass) makes
+    // three.js render every opaque object a second time into a transmission target, every
+    // frame, for the whole scene. Plain alpha reads the same at gallery distance.
+    const phys = material as THREE.MeshPhysicalMaterial
+    if (phys.transmission > 0) {
+      phys.transmission = 0
+      phys.transparent = true
+      phys.opacity = Math.min(phys.opacity, 0.35)
+      phys.depthWrite = false
+    }
   }
   const res = { parts, box }
   merged.set(url, res)
@@ -100,9 +114,19 @@ export interface GLTFModelProps {
   scale?: number
   /** Target height (m) when `scale` is absent. */
   height?: number
+  /** One material for every part (a sourced model's clay finish, materials/sourcedFinish.ts). */
+  material?: THREE.Material | null
+  castShadow?: boolean
 }
 
-export function GLTFModel({ url, scale, height }: GLTFModelProps) {
+/** The merged parts and bounds of a loaded GLB (cached per URL): for instancing (models/sourcedModel.tsx). */
+export function useMergedModel(url: string): MergedModel {
+  const src = resolveModelUrl(url)
+  const { scene } = useGLTF(src, true, true)
+  return useMemo(() => mergeScene(src, scene), [src, scene])
+}
+
+export function GLTFModel({ url, scale, height, material, castShadow = true }: GLTFModelProps) {
   // Draco + meshopt decoders on: admin "3D scan import" output is EXT_meshopt_compression +
   // KHR_mesh_quantization + EXT_texture_webp (all handled by three-stdlib's GLTFLoader).
   const src = resolveModelUrl(url)
@@ -117,7 +141,7 @@ export function GLTFModel({ url, scale, height }: GLTFModelProps) {
   return (
     <group position={fit.offset} scale={fit.s}>
       {model.parts.map((p, i) => (
-        <mesh key={i} geometry={p.geometry} material={p.material} castShadow receiveShadow />
+        <mesh key={i} geometry={p.geometry} material={material ?? p.material} castShadow={castShadow} receiveShadow />
       ))}
     </group>
   )

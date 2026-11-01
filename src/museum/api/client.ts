@@ -63,6 +63,16 @@ export type AnalyticsEventType =
   | 'tour_step'
   /** Visitor position sample every 2 s (x, z, zone) → server heatmap rollup; never stored raw. */
   | 'pos'
+  /** Spectacle (the server keeps them once its allowlist has them): a Clay Passport stamp (itemId = stamp id), */
+  | 'stamp'
+  /** a ride to or from a perch (zone = the perch's zone, meta.dir), */
+  | 'perch'
+  /** a docent's moment received (itemId = cue id), */
+  | 'cue'
+  /** a film played to its end (itemId = film id), */
+  | 'film_end'
+  /** a moment replayed or a photo frame chosen (itemId = cue id / 'frame:<id>'). */
+  | 'moment'
 
 export interface AnalyticsEvent {
   /** epoch ms */

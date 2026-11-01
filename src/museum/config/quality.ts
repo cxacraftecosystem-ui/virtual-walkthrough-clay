@@ -41,6 +41,59 @@ export interface QualityPreset {
   probeSize: number
   /** Photo mode path-traces the still view by default (experimental: off everywhere; photo-bar toggle opts in). */
   pathTracing: boolean
+  /** Visual density of the spectacle moments (SPECTACLE §5). Geometry, collision, zones and tour never change. */
+  spectacle: SpectacleCaps
+}
+
+/**
+ * Per-tier caps for the spectacle moments. Counts are upper limits (an installation may ask for
+ * fewer); sizes are texture / render-target pixels. VR uses the Low particle caps.
+ */
+export interface SpectacleCaps {
+  /** Dust motes in the oculus sun shaft. */
+  motes: number
+  /** fbm noise in the shaft (off = smooth column). */
+  shaftNoise: boolean
+  helixCups: number
+  helixShadows: boolean
+  /** Lamps on Diya Night, the diya light map size (px) and its refresh rate (Hz; 0 = static). */
+  diyas: number
+  diyaMapPx: number
+  diyaMapHz: number
+  /** Rain streaks through the oculus; rain outdoors too. */
+  rainDrops: number
+  outdoorRain: boolean
+  poolMirror: boolean
+  caustics: boolean
+  /** Pit firing: smoke billboards, sparks, ember particles. */
+  smoke: number
+  sparks: number
+  embers: number
+  /** Parallax steps on the strata wall (0 = flat with a sweep band). */
+  strataPOM: number
+  /** Generated spectacle textures (mandalas, frieze, compass…). */
+  spectacleTexPx: number
+  /** Kiln Film render target [width, height, Hz, fbm octaves]. */
+  kilnFilmRT: [number, number, number, number]
+  clayBedRT: number
+  clayBedDisplace: boolean
+  lathePotSegs: number
+  pergolaShadows: boolean
+  jaliShadows: boolean
+  shopVessels: number
+  lanterns: number
+  /** Share of the library's books drawn. */
+  bookFrac: number
+  horseSpot: boolean
+  horseDiyas: boolean
+  heatShimmer: boolean
+  grade: boolean
+  grain: boolean
+  /** The Parikrama's alpana draws itself live; slow spins (mandalas, helix bands). */
+  alpanaLive: boolean
+  spin: boolean
+  /** Motes while perched on the Sky Rim. */
+  perchMotes: number
 }
 
 export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
@@ -65,6 +118,41 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
     zoneProbes: false,
     probeSize: 32,
     pathTracing: false,
+    spectacle: {
+      motes: 0,
+      shaftNoise: false,
+      helixCups: 200,
+      helixShadows: false,
+      diyas: 160,
+      diyaMapPx: 128,
+      diyaMapHz: 0,
+      rainDrops: 150,
+      outdoorRain: false,
+      poolMirror: false,
+      caustics: false,
+      smoke: 0,
+      sparks: 0,
+      embers: 60,
+      strataPOM: 0,
+      spectacleTexPx: 512,
+      kilnFilmRT: [384, 128, 12, 2],
+      clayBedRT: 128,
+      clayBedDisplace: false,
+      lathePotSegs: 24,
+      pergolaShadows: false,
+      jaliShadows: false,
+      shopVessels: 40,
+      lanterns: 12,
+      bookFrac: 0.6,
+      horseSpot: false,
+      horseDiyas: false,
+      heatShimmer: false,
+      grade: false,
+      grain: false,
+      alpanaLive: false,
+      spin: false,
+      perchMotes: 0,
+    },
   },
   medium: {
     label: 'Medium',
@@ -88,6 +176,41 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
     zoneProbes: true,
     probeSize: 64,
     pathTracing: false,
+    spectacle: {
+      motes: 400,
+      shaftNoise: true,
+      helixCups: 420,
+      helixShadows: false,
+      diyas: 320,
+      diyaMapPx: 256,
+      diyaMapHz: 10,
+      rainDrops: 600,
+      outdoorRain: true,
+      poolMirror: false,
+      caustics: true,
+      smoke: 12,
+      sparks: 0,
+      embers: 120,
+      strataPOM: 0,
+      spectacleTexPx: 1024,
+      kilnFilmRT: [768, 256, 24, 3],
+      clayBedRT: 256,
+      clayBedDisplace: false,
+      lathePotSegs: 48,
+      pergolaShadows: true,
+      jaliShadows: true,
+      shopVessels: 90,
+      lanterns: 30,
+      bookFrac: 1,
+      horseSpot: true,
+      horseDiyas: true,
+      heatShimmer: false,
+      grade: false,
+      grain: false,
+      alpanaLive: true,
+      spin: true,
+      perchMotes: 200,
+    },
   },
   high: {
     label: 'High',
@@ -110,6 +233,41 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
     zoneProbes: true,
     probeSize: 128,
     pathTracing: false,
+    spectacle: {
+      motes: 1000,
+      shaftNoise: true,
+      helixCups: 720,
+      helixShadows: true,
+      diyas: 600,
+      diyaMapPx: 512,
+      diyaMapHz: 20,
+      rainDrops: 1500,
+      outdoorRain: true,
+      poolMirror: true,
+      caustics: true,
+      smoke: 32,
+      sparks: 40,
+      embers: 200,
+      strataPOM: 12,
+      spectacleTexPx: 1024,
+      kilnFilmRT: [1024, 344, 30, 5],
+      clayBedRT: 512,
+      clayBedDisplace: true,
+      lathePotSegs: 48,
+      pergolaShadows: true,
+      jaliShadows: true,
+      shopVessels: 140,
+      lanterns: 30,
+      bookFrac: 1,
+      horseSpot: true,
+      horseDiyas: true,
+      heatShimmer: true,
+      grade: true,
+      grain: false,
+      alpanaLive: true,
+      spin: true,
+      perchMotes: 1000,
+    },
   },
   ultra: {
     label: 'Ultra',
@@ -132,6 +290,41 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
     zoneProbes: true,
     probeSize: 128,
     pathTracing: false,
+    spectacle: {
+      motes: 1600,
+      shaftNoise: true,
+      helixCups: 960,
+      helixShadows: true,
+      diyas: 600,
+      diyaMapPx: 512,
+      diyaMapHz: 30,
+      rainDrops: 2500,
+      outdoorRain: true,
+      poolMirror: true,
+      caustics: true,
+      smoke: 32,
+      sparks: 40,
+      embers: 200,
+      strataPOM: 16,
+      spectacleTexPx: 2048,
+      kilnFilmRT: [1536, 512, 60, 5],
+      clayBedRT: 512,
+      clayBedDisplace: true,
+      lathePotSegs: 48,
+      pergolaShadows: true,
+      jaliShadows: true,
+      shopVessels: 140,
+      lanterns: 30,
+      bookFrac: 1,
+      horseSpot: true,
+      horseDiyas: true,
+      heatShimmer: true,
+      grade: true,
+      grain: true,
+      alpanaLive: true,
+      spin: true,
+      perchMotes: 1600,
+    },
   },
 }
 

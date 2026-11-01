@@ -7,6 +7,7 @@ import { MediaPicker, mediaMatches } from '../../MediaPicker'
 import { SURFACE_GROUPS, getPath, surfaceRange, type FieldDef } from '../../fields'
 import { safeUrl } from '../../safeUrl'
 import { Button, Combobox, Field, IconButton, Input, Select, Switch, Textarea, type SelectOption } from '../../ui'
+import { PropsEditor } from './PropsEditor'
 import { useContentRefs } from './refs'
 
 export const fieldDomId = (path: string) => `fld-${path.replace(/[^A-Za-z0-9_-]/g, '-')}`
@@ -234,6 +235,18 @@ export function FieldControl({
         </Field>
       )
     }
+    case 'props':
+      return (
+        <PropsEditor
+          id={id}
+          def={def}
+          value={value}
+          kind={draft.kind}
+          onChange={onChange}
+          onBlur={onBlur}
+          renderMedia={(d, v, set) => <FieldControl key={d.path} def={d} value={v} draft={draft} onChange={set} onBlur={onBlur} />}
+        />
+      )
     case 'lines': {
       const arr = Array.isArray(value) ? (value as unknown[]).map(String) : []
       return (

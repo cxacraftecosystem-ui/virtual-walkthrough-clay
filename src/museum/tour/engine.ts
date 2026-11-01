@@ -5,9 +5,21 @@
  *
  * Any manual movement (keys, joystick, click-to-walk, minimap travel) pauses the tour;
  * `resume()` re-plans from wherever the visitor is.
+ *
+ * "Earth to Fire" (SPECTACLE F30): every stop belongs to a chapter and may carry cues
+ * (config/tour.ts `TourCue`). Setting off for a stop in a new chapter fires `chapter:<name>`
+ * and the stop's score stem (`music:<stem>`), so the music leads the walk; arriving fires its
+ * light preset (`light:<preset>`), its time of day (`time:<preset>`, also applied to the
+ * store) and its moments (`fx`), all from source 'tour'. A stop with `until` waits for that cue
+ * (e.g. the end of a film chapter) — never less than a short read, never longer than its dwell.
+ *
+ * Perch stops (GRAND §8 P5: the balcony, the Sphere Well): the tour walks to the perch's door,
+ * rides from there to the stop's place on the perch and arrives when the ride does; setting off
+ * from a perch for a ground stop, it first rides back down to the door. While the rides are off
+ * (`?perch=0`) the perch stops are passed over.
  */
 import { create } from 'zustand'
-import { TOUR, TOUR_STOPS, type TourStop, type TourView } from '../config/tour'
+import { TOUR, TOUR_STOPS, type TourChapter, type TourStop, type TourView } from '../config/tour'
 import { MUSEUM } from '../config/museum'
 import { useMuseum } from '../state/store'
 import { teleport, visitor, yawToRad, type WalkTarget } from '../state/visitor'
@@ -16,6 +28,11 @@ import { track } from '../analytics/tracker'
 import { pathLength, planPath, type P2 } from './pathing'
 import { bcp47, getLang, useLangStore, type Lang } from '../i18n'
 import { hasTourTranslation, tourField } from '../i18n/tourText'
+import { fireCue, onCue } from '../spectacle/cues'
+import { DEG as RAD_PER_DEG } from '../config/museum'
+import { RIDE_MAX_SECONDS, doorOf, doorOutYaw, perchEnabled, usePerch } from '../navigation/perch'
+import { descend, leavePerch, rideTo } from '../navigation/perchActions'
+import type { TimeOfDay } from '../state/store'
 
 const DEG = Math.PI / 180
 /** Switch to the next waypoint this close to the current one (keeps the walk fluid). */
@@ -35,6 +52,8 @@ interface TourState {
   narration: boolean
   /** 0–1 progress through the current stop's dwell. */
   progress: number
+  /** Chapter of the stop being visited ("Earth to Fire"), or null. */
+  chapter: TourChapter | null
 }
 
 export const useTour = create<TourState>(() => ({
@@ -45,6 +64,7 @@ export const useTour = create<TourState>(() => ({
   pauseReason: null,
   narration: false,
   progress: 0,
+  chapter: null,
 }))
 
 export const narrationSupported = () => typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'
@@ -66,6 +86,11 @@ const run = {
   manualAt: 0,
   travelToken: 0,
   lastProgress: -1,
+  /** The stop's `until` cue: listening (unsubscribe) and whether it has fired. */
+  untilOff: null as (() => void) | null,
+  untilHit: false,
+  /** Waiting on a ride (up to a perch stop, or down before leaving one): unsubscribe. */
+  rideOff: null as (() => void) | null,
 }
 
 const set = useTour.setState
@@ -181,6 +206,51 @@ function stopSpeaking() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Cues ("Earth to Fire")                                              */
+/* ------------------------------------------------------------------ */
+
+/** A stop that waits for a cue still gives the visitor this long to read its caption. */
+const UNTIL_MIN_MS = 6000
+
+const TIME_OF: Record<string, TimeOfDay> = { morning: 'morning', noon: 'midday', midday: 'midday', golden: 'golden', dusk: 'dusk', night: 'night' }
+
+/** Setting off for a stop: a new chapter, and the score stem that leads the walk. */
+function cueDeparture(stop: TourStop) {
+  if (stop.chapter && stop.chapter !== get().chapter) {
+    set({ chapter: stop.chapter })
+    fireCue(`chapter:${stop.chapter}`, { source: 'tour', data: { stop: stop.id } })
+  }
+  if (stop.cue?.music) fireCue(`music:${stop.cue.music}`, { source: 'tour', data: { stop: stop.id, chapter: stop.chapter } })
+}
+
+/** Arriving: the stop's light, time of day and moments; start waiting for its `until` cue. */
+function cueArrival(stop: TourStop) {
+  clearUntil()
+  const c = stop.cue
+  if (!c) return
+  const data = { stop: stop.id, chapter: stop.chapter }
+  if (c.light) fireCue(`light:${c.light}`, { source: 'tour', data })
+  if (c.time) {
+    const tod = TIME_OF[c.time]
+    if (tod && useMuseum.getState().timeOfDay !== tod) useMuseum.getState().setTimeOfDay(tod)
+    fireCue(`time:${c.time}`, { source: 'tour', data })
+  }
+  for (const id of c.fx ?? []) fireCue(id, { source: 'tour', data })
+  if (c.until) {
+    run.untilHit = false
+    run.untilOff = onCue(c.until, () => {
+      run.untilHit = true
+    })
+  }
+}
+
+function clearUntil() {
+  run.untilOff?.()
+  run.untilOff = null
+  run.untilHit = false
+}
+
+/* ------------------------------------------------------------------ */
 /* Walking                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -237,22 +307,94 @@ function jumpTo(view: TourView) {
   }, 1400)
 }
 
+/** Stop waiting on a ride. */
+function clearRide() {
+  run.rideOff?.()
+  run.rideOff = null
+}
+
+/**
+ * Wait for a ride's cue (`perch:arrive` up, `perch:leave` down), then `next`; if the ride never
+ * ends (a stalled tab), carry on anyway after the longest ride.
+ */
+function awaitRide(cue: 'perch:arrive' | 'perch:leave', next: () => void) {
+  clearRide()
+  const token = run.travelToken
+  let done = false
+  const go = () => {
+    if (done) return
+    done = true
+    clearRide()
+    if (token === run.travelToken && get().active) next()
+  }
+  const off = onCue(cue, go)
+  const timer = window.setTimeout(() => {
+    if (done || token !== run.travelToken) return
+    // never stall: settle wherever the ride should have ended
+    if (cue === 'perch:leave' && usePerch.getState().perch) leavePerch(true)
+    go()
+  }, (RIDE_MAX_SECONDS + 3) * 1000)
+  run.rideOff = () => {
+    off()
+    window.clearTimeout(timer)
+  }
+}
+
+/** Where the tour walks to for a stop: its view, or for a perch stop the perch's door. */
+function groundView(stop: TourStop): TourView {
+  if (!stop.perch) return stop.view
+  const d = doorOf(stop.perch.id)
+  // facing the door, back to where the ride will leave from
+  return { x: d.stand[0], z: d.stand[1], yawDeg: (doorOutYaw(d) + 180) % 360, pitchDeg: 4 }
+}
+
+/** The next stop the tour can show from `i` on (perch stops only while the rides are offered). */
+function showable(i: number): number {
+  let k = i
+  while (k < TOUR_STOPS.length && TOUR_STOPS[k].perch && !perchEnabled()) k++
+  return k
+}
+
 function goStop(i: number) {
+  i = showable(i)
   const stop = TOUR_STOPS[i]
-  if (!stop) return
+  if (!stop) {
+    if (i >= TOUR_STOPS.length && get().active) {
+      set({ phase: 'done', progress: 1 })
+      track('tour_complete', { meta: { stops: TOUR_STOPS.length } })
+    }
+    return
+  }
   run.travelToken++
   stopSpeaking()
   clearWalk()
-  run.view = stop.view
+  clearRide()
+  run.view = groundView(stop)
   run.elapsed = 0
   run.lastProgress = -1
+  clearUntil()
   set({ index: i, phase: 'walking', paused: false, pauseReason: null, progress: 0 })
 
+  // on a perch: ride back down to its door before setting off (or stay, for a stop on the same perch)
+  const P = usePerch.getState()
+  if (P.ride) leavePerch(true)
+  else if (P.perch) {
+    if (stop.perch?.id === P.perch.id) {
+      leavePerch(false)
+    } else {
+      awaitRide('perch:leave', () => goStop(i))
+      descend()
+      return
+    }
+  }
+  cueDeparture(stop)
+
   const from = { x: visitor.x, z: visitor.z }
-  const path = planPath(from, stop.view)
+  const target = run.view
+  const path = planPath(from, target)
   // Reduced motion: never glide the camera between stops — soft fade-cut instead.
   if (!path || pathLength(from, path) > TOUR.teleportBeyond || useMuseum.getState().reducedMotion) {
-    jumpTo(stop.view)
+    jumpTo(target)
     return
   }
   run.path = path
@@ -263,19 +405,32 @@ function goStop(i: number) {
 function arrive() {
   const s = get()
   if (!s.active || s.phase !== 'walking') return
+  const stop = TOUR_STOPS[s.index]
+  // a perch stop: at its door now; ride to the stop's place, then arrive
+  if (stop.perch && usePerch.getState().perch?.id !== stop.perch.id) {
+    run.target = null
+    run.path = []
+    const perch = stop.perch
+    awaitRide('perch:arrive', () => {
+      run.view = { x: visitor.x, z: visitor.z, yawDeg: ((-visitor.yaw / RAD_PER_DEG) % 360 + 360) % 360, pitchDeg: visitor.pitch / RAD_PER_DEG }
+      arrive()
+    })
+    rideTo(perch.id, perch.t)
+    return
+  }
   run.travelToken++
   run.target = null
   run.path = []
-  const stop = TOUR_STOPS[s.index]
   run.dwellMs = (stop.dwellSec ?? TOUR.dwellSec) * 1000
   run.elapsed = 0
   set({ phase: 'viewing', progress: 0 })
   speak(stop)
+  cueArrival(stop)
 }
 
 function finishStop() {
   const s = get()
-  if (s.index >= TOUR_STOPS.length - 1) {
+  if (showable(s.index + 1) >= TOUR_STOPS.length) {
     set({ phase: 'done', progress: 1 })
     track('tour_complete', { meta: { stops: TOUR_STOPS.length } })
     return
@@ -286,7 +441,8 @@ function finishStop() {
 function pauseFor(reason: 'user' | 'manual') {
   const s = get()
   if (!s.active || s.paused || s.phase === 'done') return
-  run.travelToken++ // cancel pending fade-arrivals
+  run.travelToken++ // cancel pending fade-arrivals and ride waits
+  clearRide()
   if (s.phase === 'walking') clearWalk()
   stopSpeaking()
   set({ paused: true, pauseReason: reason })
@@ -349,6 +505,11 @@ function tick(now: number) {
     run.lastProgress = progress
     set({ progress })
   }
+  // a stop waiting for a cue (the end of a film chapter) moves on once it has fired
+  if (run.untilOff && run.untilHit && run.elapsed >= UNTIL_MIN_MS && !run.speaking) {
+    finishStop()
+    return
+  }
   if (run.elapsed >= run.dwellMs) finishStop()
 }
 
@@ -365,7 +526,9 @@ export const tour = {
     m.setHelpOpen(false)
     m.setDrawer(null)
     if (!get().active) track('tour_start', { meta: { from: TOUR_STOPS[index]?.id ?? '' } })
-    set({ active: true })
+    // the tour starts on the ground: off a perch first (at its door)
+    if (usePerch.getState().perch || usePerch.getState().ride) leavePerch(true)
+    set({ active: true, chapter: get().active ? get().chapter : null })
     cancelAnimationFrame(run.raf)
     run.last = 0
     run.raf = requestAnimationFrame(tick)
@@ -374,13 +537,15 @@ export const tour = {
   /** Idempotent: safe to call at any point (mid-walk, mid-fade, while narrating, twice). */
   exit() {
     run.travelToken++ // cancels pending fade-arrivals and the jumpTo fallback
+    clearRide()
     cancelAnimationFrame(run.raf)
     run.raf = 0
     stopSpeaking()
     clearWalk()
+    clearUntil()
     run.view = null
     run.elapsed = 0
-    set({ active: false, paused: false, pauseReason: null, phase: 'walking', progress: 0 })
+    set({ active: false, paused: false, pauseReason: null, phase: 'walking', progress: 0, chapter: null })
   },
   pause() {
     pauseFor('user')
@@ -405,12 +570,15 @@ export const tour = {
   next() {
     const s = get()
     if (!s.active) return
-    if (s.index < TOUR_STOPS.length - 1) goStop(s.index + 1)
+    if (showable(s.index + 1) < TOUR_STOPS.length) goStop(s.index + 1)
   },
   prev() {
     const s = get()
     if (!s.active) return
-    goStop(Math.max(0, s.index - 1))
+    // back past any stop the tour cannot show
+    let k = s.index - 1
+    while (k > 0 && TOUR_STOPS[k].perch && !perchEnabled()) k--
+    goStop(Math.max(0, k))
   },
   restart() {
     tour.start(0)

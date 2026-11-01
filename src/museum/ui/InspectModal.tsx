@@ -2,6 +2,10 @@
  * Full-screen 3D inspection viewer for an exhibit — or, with
  * `inspect('object:<id>')`, for an inspectable scene object (procedural model or GLB).
  * Has its own <Canvas> (independent of the museum canvas) with a soft studio setup.
+ *
+ * "Inside the clay" (SPECTACLE F34): when the curator has recorded how a piece was built
+ * (`props.section`: coil, slab, thrown or moulded) and the piece is not a placeholder, the
+ * viewer offers a slow cut through its wall (ui/insideClay.tsx).
  */
 
 import { useCallback, useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react'
@@ -19,6 +23,8 @@ import { getSceneObject, type SceneObjectConfig } from '../config/objects'
 import { ModelClock } from '../models/modelMaterials'
 import { OBJECT_INSPECT_PREFIX, ObjectModel, objectBounds } from '../models/SceneObjects'
 import { ARButton } from '../xr/ARView'
+import { useXT } from '../spectacle/experienceText'
+import { SectionCut, isSection } from './insideClay'
 import './InspectModal.css'
 
 type OrbitControlsImpl = ComponentRef<typeof OrbitControls>
@@ -189,7 +195,10 @@ export function InspectModal() {
   const [autoRotate, setAutoRotate] = useState(() => !useMuseum.getState().reducedMotion)
   const closeBtn = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
+  const objectRef = useRef<THREE.Group>(null)
+  const [cut, setCut] = useState(false)
   const t = useT()
+  const x = useXT()
   const lang = useLang()
   useFocusTrap(dialogRef, !!inspecting, { autoFocus: false })
 
@@ -201,6 +210,7 @@ export function InspectModal() {
       setClosing(false)
       setAutoRotate(!useMuseum.getState().reducedMotion)
       setResetToken(0)
+      setCut(false)
       if (document.pointerLockElement) document.exitPointerLock?.()
       return
     }
@@ -232,6 +242,8 @@ export function InspectModal() {
   const ex = shown.type === 'exhibit' ? shown.ex : null
   const obj = shown.type === 'object' ? shown.obj : null
   const artwork = ex ? getArtwork(ex.artworkId) : undefined
+  // "Inside the clay": only what the curator has recorded, never for a placeholder
+  const section = obj && !obj.placeholder && isSection(obj.props?.section) ? obj.props.section : null
   const eyebrow = ex ? (loc(ex, 'tradition', lang) ?? '') : obj ? zoneName(obj.zone, lang) : ''
   const title = (ex ? loc(ex, 'title', lang) : obj ? loc(obj, 'title', lang) : '') ?? ''
   const description = ex ? loc(ex, 'description', lang) : obj ? loc(obj, 'description', lang) : undefined
@@ -261,9 +273,10 @@ export function InspectModal() {
       <div className="inspect-stage">
         <Canvas
           className="inspect-canvas"
-          shadows
+          // PCF ('percentage'): three r186 removed PCFSoftShadowMap, which a bare `shadows` asks for.
+          shadows="percentage"
           dpr={[1, 2]}
-          gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+          gl={{ antialias: true, alpha: true, stencil: true, powerPreference: 'high-performance' }}
           camera={{ fov: FOV, near: 0.005, far: 20, position: [0.25, 0.3, 0.45] }}
         >
           <StudioLights />
@@ -273,7 +286,10 @@ export function InspectModal() {
             ) : obj ? (
               <>
                 <ModelClock />
-                <StudioObject config={obj} />
+                <group ref={objectRef}>
+                  <StudioObject config={obj} />
+                </group>
+                {section && <SectionCut target={objectRef} kind={section} on={cut} />}
               </>
             ) : null}
           </StudioRig>
@@ -291,6 +307,19 @@ export function InspectModal() {
             {t('inspect.reset')}
           </button>
           <ARButton inspectId={inspecting} title={title} />
+          {section && (
+            <button
+              type="button"
+              className="inspect-btn"
+              aria-pressed={cut}
+              onClick={() => {
+                setCut(!cut)
+                if (!cut) setAutoRotate(false)
+              }}
+            >
+              {cut ? x('xp.sectionClose') : t('spectacle.insideClay')}
+            </button>
+          )}
         </div>
         <p className="inspect-hint">{t('inspect.hint')}</p>
       </div>
@@ -316,6 +345,11 @@ export function InspectModal() {
           </dl>
         )}
         {description && <p className="inspect-desc">{description}</p>}
+        {section && cut && (
+          <p className="inspect-desc" aria-live="polite">
+            <strong>{x(`xp.section.${section}`)}.</strong> {x('xp.sectionNote')}
+          </p>
+        )}
         {artwork && (
           <div className="inspect-related">
             <span className="inspect-related-label">{t('inspect.related')}</span>

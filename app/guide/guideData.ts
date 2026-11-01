@@ -16,8 +16,12 @@ import type { MuseumContent } from '../../src/museum/content/types'
 import { getContent } from '../../src/server/contentStore'
 import { services } from '../../src/server/services'
 
-/** Visiting order, as the guided tour walks it (forecourt → entrance hall → entry ways → galleries A, B, C → oculus court → hallway). */
-export const ROOM_ORDER: ZoneId[] = ['entrance-court', 'annex', 'entry-e', 'ring-a', 'ring-b', 'ring-c', 'inner', 'hallway-d']
+/**
+ * Visiting order, as the guided tour walks it: the forecourt, the Earth Room, the entry ways, the
+ * court, galleries A, B and C, the balcony, the hallway, the Parikrama and the north wing's rooms,
+ * and the Sphere Well.
+ */
+export const ROOM_ORDER: ZoneId[] = ['entrance-court', 'annex', 'entry-e', 'inner', 'ring-a', 'ring-b', 'ring-c', 'duplex', 'hallway-d', 'parikrama-west', 'atlas', 'theatre', 'library', 'shop', 'parikrama-east', 'sphere-well', 'sky-rim']
 
 export interface GuideArtisan {
   id: string

@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
 import { box, Builder, cyl, cylX, lathe, Parts, rbox, rng, useBuilt } from './kit'
-import { makeSwayMaterial, useModelMaterials } from './modelMaterials'
+import { makeSwayMaterial, tinted, useModelMaterials } from './modelMaterials'
 import { imageTexture } from './textures'
 import { fp, geoKey, num, str, type ModelProps } from './types'
 import { foliageMaterial } from './courtyard'
@@ -209,7 +209,53 @@ export function Column({ config }: ModelProps) {
 /* Theatre seating row                                                 */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A theatre row. With `props.arcR` (the clay pavilion's Agni Theatre) the row curves round the
+ * drum centre at that radius, as a rammed-earth step with a clay backrest, a cloth seat cushion
+ * and bolster per place; the object then stands half the row's sagitta nearer the drum (see
+ * config/spectacleObjects/rooms.ts) so its footprint covers the curve. Without it: the hand
+ * block museum's straight upholstered row.
+ */
 export function TheatreSeating({ config }: ModelProps) {
+  return num(config, 'arcR', 0) > 0 ? <ClayArcRow config={config} /> : <StraightRow config={config} />
+}
+
+function ClayArcRow({ config }: ModelProps) {
+  const m = useModelMaterials()
+  const [W] = fp(config, [4.8, 0.88])
+  const n = Math.max(1, Math.round(num(config, 'seats', 8)))
+  const R = num(config, 'arcR', 11.4)
+  const seat = useMemo(() => tinted(m.upholstery, '#8e3426', { roughness: 1 }), [m.upholstery])
+  const bolster = useMemo(() => tinted(m.upholstery, '#c4824a', { roughness: 1 }), [m.upholstery])
+  const parts = useBuilt(geoKey('theatre-seating-arc', config), () => {
+    const b = new Builder()
+    // the curve's centre lies behind the row (towards the drum), |position| away
+    const cz = -Math.hypot(config.position[0], config.position[2])
+    const depth = 0.6
+    const half = Math.asin(Math.min(0.98, (W / 2 - 0.05) / R))
+    const pitch = (2 * half) / n
+    // one segment of step per place (plus half-places at the ends), each turned to the curve
+    const at = (t: number, r: number): [number, number, number] => [r * Math.sin(t), 0, cz + r * Math.cos(t)]
+    for (let i = 0; i < n; i++) {
+      const t = -half + pitch * (i + 0.5)
+      const segW = 2 * R * Math.sin(pitch / 2) + 0.004
+      const [x, , z] = at(t, R)
+      const rot: [number, number, number] = [0, t, 0]
+      const P = (lx: number, ly: number, lz: number): [number, number, number] => [x + lx * Math.cos(t) + lz * Math.sin(t), ly, z - lx * Math.sin(t) + lz * Math.cos(t)]
+      b.add('step', rbox(segW, 0.36, depth, 0.01, 2, 'x'), { p: P(0, 0.18, 0), r: rot })
+      b.add('back', rbox(segW, 0.52, 0.1, 0.02, 2, 'x'), { p: P(0, 0.36 + 0.26, -depth / 2 + 0.05), r: rot })
+      b.add('cap', rbox(segW, 0.03, 0.14, 0.006, 2, 'x'), { p: P(0, 0.36 + 0.53, -depth / 2 + 0.05), r: rot })
+      b.add('seat', rbox(segW - 0.07, 0.07, depth - 0.16, 0.025, 3, 'x'), { p: P(0, 0.36 + 0.035, 0.03), r: rot })
+      b.add('bolster', rbox(segW - 0.12, 0.16, 0.12, 0.05, 3, 'x'), { p: P(0, 0.36 + 0.15, -depth / 2 + 0.16), r: [-0.2, t, 0] })
+      // a brass seat number stud on the step's face
+      b.add('brass', rbox(0.04, 0.04, 0.006, 0.003, 1), { p: P(0, 0.24, depth / 2 + 0.003), r: rot })
+    }
+    return b
+  })
+  return <Parts parts={parts} materials={{ step: m.rammedEarth, back: m.oxblood, cap: m.oxbloodLacquer, seat, bolster, brass: m.brass }} />
+}
+
+function StraightRow({ config }: ModelProps) {
   const m = useModelMaterials()
   const [W, D] = fp(config, [7.2, 0.62])
   const n = Math.max(1, Math.round(num(config, 'seats', 8)))

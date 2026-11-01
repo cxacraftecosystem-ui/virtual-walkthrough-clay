@@ -1,0 +1,351 @@
+/* Light and weather (ui/AtmosphereMenu.tsx, ui/DayDial.tsx, spectacle/overlays/atmosphere.tsx). */
+
+/* While the popover is open the HUD rises above the invitations and toasts that float over it. */
+body.ui-atmos-open .ui-hud {
+  z-index: 7;
+}
+
+.ui-atmos .ui-icon-btn {
+  position: relative;
+}
+
+.ui-atmos__live {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c96a58;
+  box-shadow: 0 0 0 2px var(--panel-solid);
+}
+
+.ui-atmos__panel {
+  width: 284px;
+  padding: 10px 12px 12px;
+}
+
+.ui-atmos__head,
+.ui-atmos__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ui-atmos__row {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+
+.ui-atmos__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ui-atmos__chip,
+.ui-atmos__segbtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+.ui-atmos__chip:hover:not(:disabled),
+.ui-atmos__segbtn:hover {
+  border-color: var(--ink);
+}
+
+.ui-atmos__chip[aria-pressed='true'],
+.ui-atmos__segbtn[aria-checked='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.ui-atmos__chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ui-atmos__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c96a58;
+}
+
+.ui-atmos__chip[aria-pressed='true'] .ui-atmos__dot {
+  background: var(--accent-ink);
+  animation: ui-atmos-pulse 2.4s var(--ease) infinite;
+}
+
+@keyframes ui-atmos-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.ui-atmos__seg {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ui-atmos__switch {
+  appearance: none;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  align-items: center;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ui-atmos__switch small {
+  grid-column: 1;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ui-atmos__knob {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--hairline-strong);
+  transition: background 0.2s var(--ease);
+}
+
+.ui-atmos__knob::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 1px 2px rgba(43, 38, 33, 0.3);
+  transition: transform 0.2s var(--ease);
+}
+
+.ui-atmos__switch[aria-checked='true'] .ui-atmos__knob {
+  background: var(--accent);
+}
+
+.ui-atmos__switch[aria-checked='true'] .ui-atmos__knob::after {
+  transform: translateX(14px);
+}
+
+/* Day dial */
+
+.ui-daydial {
+  position: relative;
+  margin-top: 6px;
+}
+
+.ui-daydial[data-disabled] {
+  opacity: 0.6;
+}
+
+.ui-daydial__clock {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.ui-daydial__time {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-daydial__clock small {
+  margin-top: 2px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.ui-daydial__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 6px;
+  touch-action: none;
+  cursor: grab;
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.ui-daydial[data-disabled] .ui-daydial__svg {
+  cursor: default;
+}
+
+.ui-daydial__svg:active {
+  cursor: grabbing;
+}
+
+.ui-daydial__svg:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.ui-daydial__horizon {
+  stroke: var(--hairline-strong);
+  stroke-width: 1;
+}
+
+.ui-daydial__path {
+  fill: none;
+  stroke: #b8774f;
+  stroke-width: 1.5;
+  stroke-dasharray: 1 0;
+}
+
+.ui-daydial__tick {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.ui-daydial__label {
+  font-size: 9.5px;
+  fill: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-daydial__halo {
+  fill: #e0a06a;
+  opacity: 0.28;
+}
+
+.ui-daydial__halo--night {
+  fill: #6c7a96;
+  opacity: 0.22;
+}
+
+.ui-daydial__sun {
+  fill: #e09a52;
+  stroke: #fff6e8;
+  stroke-width: 1.5;
+}
+
+.ui-daydial__sun--night {
+  fill: var(--paper);
+  stroke: #6c7a96;
+}
+
+/* Overlay: the night toast and the petrichor line */
+
+.ui-atmos-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--edge) + var(--safe-b) + 84px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(560px, calc(100vw - 2 * var(--edge)));
+  padding: 12px 14px 12px 18px;
+  pointer-events: auto;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--panel-solid);
+  animation: ui-atmos-rise 0.4s var(--ease) both;
+  z-index: 30;
+}
+
+.ui-atmos-toast__actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.ui-atmos-toast .ui-btn {
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: 11px;
+}
+
+.ui-atmos-note {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--edge) + var(--safe-b) + 84px);
+  transform: translateX(-50%);
+  max-width: min(520px, calc(100vw - 2 * var(--edge)));
+  padding: 10px 16px;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-style: italic;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--ink);
+  background: var(--panel-solid);
+  animation: ui-atmos-rise 0.6s var(--ease) both;
+  z-index: 30;
+}
+
+@keyframes ui-atmos-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (max-width: 520px) {
+  .ui-atmos__panel {
+    width: min(284px, calc(100vw - 2 * var(--edge) - 56px));
+  }
+  .ui-atmos-toast {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-atmos-toast,
+  .ui-atmos-note {
+    animation: none;
+  }
+  .ui-atmos__chip[aria-pressed='true'] .ui-atmos__dot {
+    animation: none;
+  }
+}

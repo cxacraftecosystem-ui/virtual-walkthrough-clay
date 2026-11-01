@@ -807,6 +807,12 @@ details.group[open] > summary { margin-bottom: 12px; }
 details.group > summary:hover { color: rgb(var(--ink-900)); }
 details.group > summary .hint { text-transform: none; letter-spacing: 0; font-weight: 400; }
 .lang-block + .lang-block { margin-top: 16px; }
+.props-editor { display: grid; gap: 12px; padding: 16px; border: 1px solid rgb(var(--line-200)); border-radius: var(--r-md); background: rgb(var(--surface-50)); }
+.props-head { display: grid; gap: 2px; }
+.props-head > h4 { margin: 0; font: 600 0.8125rem var(--font-sans); color: rgb(var(--ink-900)); }
+.props-other > summary { cursor: pointer; font-size: 0.8125rem; color: rgb(var(--ink-700)); padding: 4px 0; border-radius: var(--r-sm); }
+.props-other[open] > summary { margin-bottom: 8px; }
+.json-editor.small { min-height: 0; }
 .lang-block > h4 { margin: 0 0 10px; font: 600 0.8125rem var(--font-sans); color: rgb(var(--ink-900)); }
 .media-input { display: flex; gap: 8px; align-items: center; }
 .media-input input { flex: 1; }

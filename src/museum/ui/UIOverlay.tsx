@@ -26,6 +26,7 @@ import { A11yLayer } from '../a11y/A11yLayer'
 import { ClayStudio } from '../studio/ClayStudio'
 import { ErrorBoundary } from '../utils/ErrorBoundary'
 import { StaffLayer } from '../staff/StaffGate'
+import { SpectacleOverlays } from '../spectacle/SpectacleOverlays'
 
 function isTypingTarget(t: EventTarget | null) {
   if (!(t instanceof HTMLElement)) return false
@@ -181,6 +182,9 @@ export function UIOverlay() {
       </ErrorBoundary>
       <ErrorBoundary fallback={null}>
         <ClayStudio />
+      </ErrorBoundary>
+      <ErrorBoundary fallback={null}>
+        <SpectacleOverlays />
       </ErrorBoundary>
       <ErrorBoundary fallback={null}>
         <TravelFade />

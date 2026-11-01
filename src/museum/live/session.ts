@@ -2,10 +2,14 @@
  * Realtime session: one Supabase Realtime channel per exhibition (`live:<room>`).
  *
  *  presence  key = per-tab client id; meta { name, hand, joined, docent } (tracked on change)
- *  broadcast 'p'     visitor position { id, x, z, y, t }            — 5 Hz while moving, keep-alive when idle
+ *  broadcast 'p'     visitor position { id, x, z, y, t, h? }        — 5 Hz while moving, keep-alive when idle
+ *                    (y = yaw; h = floor height while on the roof perch, absent on the ground —
+ *                    older clients ignore it)
  *  broadcast 'chat'  { tour, mid, from, name, text, t }             — sender + receiver rate-limited, filtered
  *  broadcast 'd'     SIGNED docent envelope { tour, from, seq, t, k, d, s }
- *                    k ∈ announce (d = { token, name }) | at | focus | mute | lower | chat | end
+ *                    k ∈ announce (d = { token, name }) | at | focus | mute | lower | chat | cue | end
+ *                    cue: d = { id, data? } — one of DOCENT_MOMENTS (SPECTACLE F33), played by
+ *                    every joined follower as a 'docent' cue (spectacle/cues.ts)
  *
  * Docent trust (see src/server/handlers/live.ts): the announce carries a server-minted HMAC token
  * binding the docent's user + public key; followers verify it with GET /api/live/verify, then
@@ -13,6 +17,10 @@
  * role claims are never trusted.
  */
 import { createClient, type RealtimeChannel, type SupabaseClient } from '@supabase/supabase-js'
+import { track } from '../analytics/tracker'
+import { perchZone, usePerch } from '../navigation/perch'
+import { fireCue } from '../spectacle/cues'
+import { DOCENT_MOMENTS, type DocentMoment } from '../spectacle/momentList'
 import { useMuseum } from '../state/store'
 import { visitor } from '../state/visitor'
 import { itemSummary } from '../ui/items'
@@ -21,6 +29,20 @@ import { LIVE, LIVE_ROOM, SUPABASE_ANON_KEY, SUPABASE_URL, liveConfigured } from
 import { createDocentKeys, cryptoAvailable, importDocentKey, signingInput, signMessage, verifyMessage } from './crypto'
 import { followDocent, installFollowOverride, resetFollow } from './follow'
 import { liveToast, peers, useLive, type ChatMsg, type Peer } from './store'
+
+/* ------------------------------------------------------------------ docent moments (SPECTACLE F33) */
+
+export { DOCENT_MOMENTS }
+
+const isDocentMoment = (v: unknown): v is DocentMoment => typeof v === 'string' && (DOCENT_MOMENTS as readonly string[]).includes(v)
+
+/** Docent: play a moment here and for every follower. */
+export function sendDocentCue(id: DocentMoment, data?: { podium?: number }) {
+  if (!host) return
+  const clean = data && Number.isFinite(data.podium) ? { podium: Math.max(1, Math.min(99, Math.round(data.podium!))) } : undefined
+  fireCue(id, { source: 'docent', data: { ...clean, self: true } })
+  void sendSigned('cue', clean ? { id, data: clean } : { id })
+}
 
 /* ------------------------------------------------------------------ identity */
 
@@ -412,6 +434,13 @@ async function onDocent(m: unknown) {
       if (text) pushChat({ mid: String(data.mid ?? rid(6)).slice(0, 16), from, name: vt.name, text, t: Date.now(), docent: true })
       break
     }
+    case 'cue': {
+      if (!joined || !isDocentMoment(data.id)) break
+      const d = isObj(data.data) && Number.isFinite(Number(data.data.podium)) ? { podium: Math.max(1, Math.min(99, Math.round(Number(data.data.podium)))) } : {}
+      fireCue(data.id, { source: 'docent', data: { ...d, docent: vt.name } })
+      track('cue', { itemId: data.id, meta: { source: 'docent' } })
+      break
+    }
     case 'end': {
       removeTour(tour, 'The live tour has ended — thank you for joining')
       break
@@ -625,8 +654,10 @@ function tick() {
       const x = Math.round(visitor.x * 100) / 100
       const z = Math.round(visitor.z * 100) / 100
       const y = Math.round(visitor.yaw * 1000) / 1000
-      if (host) void sendSigned('at', { x, z, y })
-      else send('p', { id: L.selfId, x, z, y, t: now })
+      // on the roof perch, the floor height too (older clients ignore the extra field)
+      const h = perchZone() ? usePerch.getState().perch?.y : undefined
+      if (host) void sendSigned('at', h === undefined ? { x, z, y } : { x, z, y, h })
+      else send('p', h === undefined ? { id: L.selfId, x, z, y, t: now } : { id: L.selfId, x, z, y, h, t: now })
     }
   }
 

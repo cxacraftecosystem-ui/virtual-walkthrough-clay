@@ -18,9 +18,8 @@
  * Never throws; a no-op when the backend is offline (static site).
  */
 import { api, checkBackend, type AnalyticsEvent, type AnalyticsEventType, type ItemKind } from '../api/client'
-import { zoneAt } from '../config/layout'
+import { visitorZone } from './zone'
 import { useMuseum } from '../state/store'
-import { visitor } from '../state/visitor'
 import { startCuratorTracking } from './curatorTracking'
 import { newSessionId } from './ids'
 import { createOutbox } from './outbox'
@@ -92,7 +91,7 @@ function startZoneTracking() {
   const poll = () => {
     try {
       if (useMuseum.getState().phase !== 'entered') return
-      const z = zoneAt(visitor.x, visitor.z)?.id
+      const z = visitorZone()
       // keep the last zone while crossing thresholds/doorways (outside every rect)
       if (!z || z === zone) return
       const now = Date.now()
@@ -116,7 +115,7 @@ function startItemTracking() {
   const viewed = (s: ReturnType<typeof useMuseum.getState>) => s.selection ?? (s.nearby ? { kind: s.nearby.kind, id: s.nearby.id } : null)
   const close = (now: number) => {
     if (current && now - current.since >= 1000) {
-      track('item_dwell', { itemKind: current.kind, itemId: current.id, seconds: secs(now - current.since), zone: zoneAt(visitor.x, visitor.z)?.id })
+      track('item_dwell', { itemKind: current.kind, itemId: current.id, seconds: secs(now - current.since), zone: visitorZone() })
     }
   }
   useMuseum.subscribe((s, prev) => {
@@ -127,7 +126,7 @@ function startItemTracking() {
         const now = Date.now()
         close(now)
         current = v ? { kind: v.kind, id: v.id, since: now } : null
-        if (v) track('item_view', { itemKind: v.kind, itemId: v.id, zone: zoneAt(visitor.x, visitor.z)?.id })
+        if (v) track('item_view', { itemKind: v.kind, itemId: v.id, zone: visitorZone() })
       }
       // panels
       if (s.selection && (s.selection.kind !== prev.selection?.kind || s.selection.id !== prev.selection?.id)) {
@@ -171,7 +170,7 @@ function startVideoTracking() {
       const now = Date.now()
       if (now - (last.get(id) ?? 0) < 30000) return
       last.set(id, now)
-      track('video_play', { itemKind: 'video', itemId: id, zone: zoneAt(visitor.x, visitor.z)?.id })
+      track('video_play', { itemKind: 'video', itemId: id, zone: visitorZone() })
     } catch {
       /* ignore */
     }

@@ -2,8 +2,13 @@
  * Reading Room & Library furniture (zone 'library'):
  *
  *   'bookcase'        walnut bookcase; the books are ONE instanced mesh (varied sizes,
- *                     muted cloth colours, tooled bands — no lettering)
- *   'reading-table'   long oak reading table, chairs both sides, brass reading lamps
+ *                     muted cloth colours, tooled bands — no lettering). With `curveR` (the
+ *                     Kothi Library) it follows a curved wall of that radius round the drum
+ *                     centre: bays of clay-plastered niches with walnut shelves, each bay turned
+ *                     to the curve, the books re-posed bay by bay (the tier may show fewer)
+ *   'reading-table'   long oak reading table, chairs both sides, brass reading lamps; with
+ *                     `round` a round walnut top (radius `r`) on a thrown clay pedestal, chairs
+ *                     on the diagonals and one brass lamp
  *   'lounge-set'      two upholstered lounge chairs and a side table with a lamp
  *   'pattern-lectern' lectern with an open sample book of printed swatches
  *   'drawing-wall'    framed design drawings for printing blocks (placeholder art)
@@ -18,15 +23,19 @@ import { resolveHref } from '../content/artisans'
 import { useAsyncTexture } from '../utils/useAsyncTexture'
 import { resourceBoardTexture, sampleBookSpread, spineTexture } from './amenityTextures'
 import { useLocalSpots } from './amenityLights'
-import { box, Builder, cyl, Parts, rbox, rng, useBuilt } from './kit'
+import { box, Builder, cyl, lathe, Parts, rbox, rng, useBuilt } from './kit'
+import { SAT_WALL } from '../config/satellites'
 import { tinted, useModelMaterials } from './modelMaterials'
+import { useSpectacle } from '../spectacle/settings'
 import { InMuseumScene } from './sceneContext'
 import { designSheetTexture } from './textures'
 import { fp, geoKey, num, type ModelProps } from './types'
 
-const BOOK_COLOURS = ['#6d2a22', '#8a3b2b', '#2c3f6b', '#243049', '#3b5a3a', '#5b6b45', '#b7862f', '#9a7b4f', '#e4d9c3', '#d8cbb0', '#3a3431', '#5e4432', '#7a4b5a', '#48606a']
+/** Cloth-bound spines in the pavilion's earth range: oxblood, madder, ochre, khadi, slate, kohl. */
+const BOOK_COLOURS = ['#6d2a22', '#8a3b2b', '#a4553a', '#7c4a32', '#b7862f', '#9a7b4f', '#c9a77c', '#e4d9c3', '#d8cbb0', '#3a3431', '#5e4432', '#6b5a4c', '#4e4a46', '#7a5a4a']
 
-const lampShadeMat = new THREE.MeshStandardMaterial({ color: '#3f5b45', roughness: 0.35, metalness: 0.2, emissive: new THREE.Color('#1c2a1f'), emissiveIntensity: 0.4 })
+// a glazed terracotta shade (not a green banker's lamp)
+const lampShadeMat = new THREE.MeshStandardMaterial({ color: '#9a4a30', roughness: 0.45, metalness: 0, emissive: new THREE.Color('#3a1a10'), emissiveIntensity: 0.4 })
 const lampGlowMat = new THREE.MeshStandardMaterial({ color: '#fff4dc', emissive: new THREE.Color('#ffd6a0'), emissiveIntensity: 2.4, toneMapped: true })
 const linenShadeMat = new THREE.MeshStandardMaterial({ color: '#efe3cc', roughness: 0.95, emissive: new THREE.Color('#ffcf94'), emissiveIntensity: 0.55, side: THREE.DoubleSide })
 
@@ -93,6 +102,10 @@ function layBooks(W: number, D: number, shelves: number[], bays: number, t: numb
 }
 
 export function Bookcase({ config }: ModelProps) {
+  return num(config, 'curveR', 0) > 0 ? <CurvedBookcase config={config} /> : <StraightBookcase config={config} />
+}
+
+function StraightBookcase({ config }: ModelProps) {
   const m = useModelMaterials()
   const [W, D] = fp(config, [3.4, 0.4])
   const H = config.height ?? 2.9
@@ -147,6 +160,104 @@ export function Bookcase({ config }: ModelProps) {
   )
 }
 
+/**
+ * A bookcase on a curved wall (radius `curveR` round the drum centre, which lies `|position|`
+ * along local +z): bays ~0.7 m wide, each a clay-plastered niche with walnut shelves, turned to
+ * the curve; the books are one instanced mesh for the whole case.
+ */
+function CurvedBookcase({ config }: ModelProps) {
+  const m = useModelMaterials()
+  const sp = useSpectacle()
+  const [W, D] = fp(config, [2.1, 0.4])
+  const H = config.height ?? 2.45
+  const seed = num(config, 'seed', 41)
+  const Rw = num(config, 'curveR', SAT_WALL.outerFace)
+  const cz = Math.hypot(config.position[0], config.position[2])
+  const t = 0.05
+  // the case's back stands 1 cm off the wall; rMid is its middle radius from the drum centre
+  const rMid = Rw - 0.01 - D / 2
+  const bays = Math.max(1, Math.round(W / 0.7))
+  const span = W / rMid
+  const bw = 2 * rMid * Math.sin(span / bays / 2) * 1.002
+  const shelves = useMemo(() => {
+    const out = [0.12]
+    const n = 6
+    const step = (H - 0.2 - 0.12) / n
+    for (let i = 1; i <= n; i++) out.push(0.12 + i * step)
+    return out
+  }, [H])
+  /** Bay i: its centre (x, z) in local space and its turn about y. */
+  const bays3 = useMemo(
+    () =>
+      Array.from({ length: bays }, (_, i) => {
+        const a = -span / 2 + (span * (i + 0.5)) / bays
+        return { x: rMid * Math.sin(a), z: cz - rMid * Math.cos(a), ry: -a }
+      }),
+    [bays, span, rMid, cz],
+  )
+  const parts = useBuilt(geoKey('bookcase-curved', config), () => {
+    const b = new Builder()
+    for (const { x, z, ry } of bays3) {
+      const P = (lx: number, ly: number, lz: number): [number, number, number] => [x + lx * Math.cos(ry) + lz * Math.sin(ry), ly, z - lx * Math.sin(ry) + lz * Math.cos(ry)]
+      const R: [number, number, number] = [0, ry, 0]
+      b.add('back', box(bw, H - 0.12, 0.02, 'y'), { p: P(0, 0.1 + (H - 0.12) / 2, -D / 2 + 0.01), r: R })
+      b.add('shadow', box(bw, 0.1, D - 0.06), { p: P(0, 0.05, 0), r: R })
+      // clay piers (half a pier at each end of a bay) and a clay crown
+      for (const sx of [-1, 1]) b.add('clay', rbox(t / 2, H - 0.06, D, 0.004, 2, 'y'), { p: P(sx * (bw / 2 - t / 4), (H - 0.06) / 2, 0), r: R })
+      b.add('clay', rbox(bw, 0.1, D + 0.03, 0.01, 2, 'x'), { p: P(0, H - 0.05, 0.015), r: R })
+      for (const y of shelves) b.add('walnut', rbox(bw - t, 0.026, D - 0.03, 0.003, 2, 'x'), { p: P(0, y + 0.013, -0.005), r: R })
+      // a brass rail under the crown
+      b.add('brass', box(bw - 0.02, 0.01, 0.01), { p: P(0, H - 0.12, D / 2 + 0.006), r: R })
+    }
+    return b
+  })
+  const clayMat = useMemo(() => tinted(m.terracotta, '#b98a6c', { roughness: 0.96 }), [m.terracotta])
+  // the books: laid bay by bay in each bay's frame, then turned to the curve (the tier may thin them)
+  const frac = sp.caps.bookFrac
+  const books = useMemo(() => {
+    const out: BookSet = { matrices: [], colors: [] }
+    const keep = rng(seed * 13)
+    bays3.forEach(({ x, z, ry }, i) => {
+      const set = layBooks(bw, D, shelves, 1, t, seed * 7 + i)
+      const bay = new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry), new THREE.Vector3(1, 1, 1))
+      set.matrices.forEach((mx, k) => {
+        if (keep() > frac) return
+        out.matrices.push(new THREE.Matrix4().multiplyMatrices(bay, mx))
+        out.colors.push(set.colors[k])
+      })
+    })
+    return out
+  }, [bays3, bw, D, shelves, seed, frac])
+  const geo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), [])
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ map: spineTexture(), roughness: 0.82, metalness: 0, envMapIntensity: 0.6 }), [])
+  const ref = useRef<THREE.InstancedMesh>(null)
+  useLayoutEffect(() => {
+    const im = ref.current
+    if (!im) return
+    books.matrices.forEach((mx, i) => {
+      im.setMatrixAt(i, mx)
+      im.setColorAt(i, books.colors[i])
+    })
+    im.count = books.matrices.length
+    im.instanceMatrix.needsUpdate = true
+    if (im.instanceColor) im.instanceColor.needsUpdate = true
+    im.computeBoundingSphere()
+  }, [books])
+  useEffect(
+    () => () => {
+      geo.dispose()
+      mat.dispose()
+    },
+    [geo, mat],
+  )
+  return (
+    <group>
+      <Parts parts={parts} materials={{ walnut: m.walnut, back: m.darkTimber, shadow: m.shadowGap, brass: m.brass, clay: clayMat }} />
+      <instancedMesh key={books.matrices.length} ref={ref} args={[geo, mat, Math.max(1, books.matrices.length)]} castShadow={false} receiveShadow raycast={() => null} />
+    </group>
+  )
+}
+
 /* ------------------------------------------------------------------ */
 /* Chairs, lamps                                                       */
 /* ------------------------------------------------------------------ */
@@ -177,6 +288,56 @@ function tableLamp(b: Builder, x: number, y: number, z: number) {
 /* ------------------------------------------------------------------ */
 
 export function ReadingTable({ config }: ModelProps) {
+  return config.props?.round === true ? <RoundReadingTable config={config} /> : <LongReadingTable config={config} />
+}
+
+/** A round walnut top on a thrown clay pedestal, chairs on the diagonals, one brass lamp. */
+function RoundReadingTable({ config }: ModelProps) {
+  const m = useModelMaterials()
+  const H = config.height ?? 0.76
+  const R = num(config, 'r', 0.7)
+  const chairs = Math.max(0, Math.round(num(config, 'chairs', 4)))
+  const seat = useMemo(() => tinted(m.upholstery, '#6d3a2c', { roughness: 1 }), [m.upholstery])
+  const parts = useBuilt(geoKey('reading-table-round', config), () => {
+    const b = new Builder()
+    b.add('walnut', cyl(R, R, 0.045, 64), { p: [0, H - 0.0225, 0] })
+    b.add('leather', cyl(R * 0.62, R * 0.62, 0.003, 48), { p: [0, H + 0.0015, 0] })
+    // the pedestal: a thrown, waisted clay column on a wide foot
+    b.add('clay', lathe([[0, 0], [R * 0.5, 0], [R * 0.52, 0.04], [R * 0.3, 0.12], [R * 0.16, 0.32], [R * 0.14, H * 0.6], [R * 0.2, H - 0.07], [R * 0.32, H - 0.045], [0, H - 0.045]], 40))
+    for (let i = 0; i < chairs; i++) {
+      const a = Math.PI / 4 + (i * Math.PI * 2) / Math.max(1, chairs)
+      const d = R + 0.12
+      // facing the table's centre
+      chair(b, Math.sin(a) * d, Math.cos(a) * d, a + Math.PI)
+    }
+    tableLamp(b, 0, H, 0)
+    const r = rng(19)
+    for (let i = 0; i < 2; i++) b.add('book', box(0.2, 0.03, 0.27), { p: [-0.25 + i * 0.5, H + 0.018, 0.28 - i * 0.5], r: [0, (r() - 0.5) * 0.8, 0] })
+    b.add('paper', box(0.3, 0.005, 0.22), { p: [0.18, H + 0.006, 0.2], r: [0, -0.3, 0] })
+    return b
+  })
+  useLocalSpots(config, [{ from: [0, H + 2.4, 0], to: [0, H, 0], intensity: 9, angle: 0.65 }])
+  const shade = useMemo(() => new THREE.CylinderGeometry(0.035, 0.09, 0.09, 24, 1, true), [])
+  const bulb = useMemo(() => new THREE.SphereGeometry(0.025, 12, 8), [])
+  useEffect(
+    () => () => {
+      shade.dispose()
+      bulb.dispose()
+    },
+    [shade, bulb],
+  )
+  return (
+    <group>
+      <Parts parts={parts} materials={{ walnut: m.walnut, clay: m.terracotta, oak: m.oak, seat, brass: m.brass, leather: m.upholsteryDark, book: m.upholstery, paper: m.paper }} />
+      <group position={[0.16, H + 0.37, 0]}>
+        <mesh geometry={shade} material={lampShadeMat} />
+        <mesh geometry={bulb} material={lampGlowMat} position={[0, -0.02, 0]} />
+      </group>
+    </group>
+  )
+}
+
+function LongReadingTable({ config }: ModelProps) {
   const m = useModelMaterials()
   const [L, Dtot] = fp(config, [2.6, 1.7])
   const H = config.height ?? 0.76

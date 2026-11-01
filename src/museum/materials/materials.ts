@@ -11,6 +11,8 @@ import * as THREE from 'three'
 import { QUALITY_PRESETS, withDevOverrides, type QualityTier } from '../config/quality'
 import { useMuseum } from '../state/store'
 import { disposeTextureSets, getFluteNormalMap, getTextureSet, type PBRTextureSet, type TextureKind } from './proceduralTextures'
+import { injectAtmosphere } from '../lighting/atmosphere/inject'
+import { applyPbr, pbrTint, type PbrSetId } from './pbrSets'
 
 export type MaterialKey =
   | 'plaster'
@@ -70,6 +72,37 @@ export type MaterialKey =
   | 'clayCeiling'
   /** Exterior paving: warm sandstone slabs (forecourt, landscape plinth). */
   | 'sandPaving'
+  // ── the grand plan's library finishes (GRAND §6.1, materials/pbrSets.ts) ──
+  /** The dome's coffered interior: rose clay (Clay005). */
+  | 'domeCoffer'
+  /** Smooth blush plaster: the dome's terraces and light-well, annex upper walls (PaintedPlaster017). */
+  | 'blushPlaster'
+  /** The dome's exterior: terracotta tile (RoofingTiles013A). */
+  | 'roofTile'
+  /** Glazed terracotta: dome ribs, the collar, copings, the curb cap (GlazedTerracotta001). */
+  | 'glazedTerracotta'
+  /** Gallery A: deep red lacquered limewash (p02). */
+  | 'redLacquer'
+  /** Gallery B: bright white limewash (Plaster001, p08r). */
+  | 'whiteLime'
+  /** Gallery C: charcoal clay plaster. */
+  | 'charcoalClay'
+  /** The court floor: warm polished terrazzo (Terrazzo004). */
+  | 'terrazzo'
+  /** The Wine Hall floor, the balcony handrail: timber (Wood092, p08l). */
+  | 'timberFloor'
+  /** The Wine Hall's walls: deep wine clay (p08l). */
+  | 'wineWall'
+  /** The Parikrama and the Red Room: deep red lime plaster (p09). */
+  | 'redLime'
+  /** Bare earth: courtyards, berms, planted roofs, the Sphere Well floor (Ground054). */
+  | 'groundSoil'
+  /** Fired brick: the theatre vault, the Sphere Well's base course, forecourt edging (Bricks051). */
+  | 'bricks'
+  /** Layered raw clay (Clay009): eroded formations and raw-clay fields (use triplanar on organic meshes). */
+  | 'clayStrata'
+  /** Raw clay (Clay007): H's title panel, F's corridor face (the lippan's ground). */
+  | 'clayPanel'
 
 export type MuseumMaterials = Record<MaterialKey, THREE.Material>
 
@@ -157,6 +190,18 @@ function buildMaterials(tier: QualityTier): MuseumMaterials {
   const timber = tex('timber')
   const walnut = tex('walnut')
   const stone = tex('stone')
+  // the forecourt and the plinth: the same stone at 2.5 × the slab (1.5 m lime slabs, a large
+  // format that reads as architecture from the spawn, never a tile grid)
+  const paving: PBRTextureSet = (() => {
+    const k = 0.4
+    const [map, roughnessMap, normalMap] = [stone.map, stone.roughnessMap, stone.normalMap].map((t) => {
+      const c = t.clone()
+      c.repeat.set(t.repeat.x * k, t.repeat.y * k)
+      c.needsUpdate = true
+      return c
+    })
+    return { ...stone, map, roughnessMap, normalMap, tileMetres: stone.tileMetres / k }
+  })()
 
   // Wall finishes: smaller sets (albedo + normal only — constant roughness keeps memory low).
   const finish = (kind: TextureKind, base: number): PBRTextureSet => {
@@ -285,8 +330,74 @@ function buildMaterials(tier: QualityTier): MuseumMaterials {
     earthFloor: textured(earth, { name: 'earthFloor', color: '#d8b39b', normalScale: 0.45, envMapIntensity: 0.75 }),
     earthInlay: textured(earth, { name: 'earthInlay', color: '#8c3a2f', normalScale: 0.45, roughness: 0.85, envMapIntensity: 0.7 }),
     clayCeiling: limeFinish(lime, 'clayCeiling', '#f1ddd2', 0.4, 0.95),
-    sandPaving: textured(stone, { name: 'sandPaving', color: '#ead8c4', normalScale: 0.6, envMapIntensity: 0.6 }),
+    // pale lime, a little warm, never pink
+    sandPaving: textured(paving, { name: 'sandPaving', color: '#e2d6c2', normalScale: 0.7, envMapIntensity: 0.5 }),
+
+    domeCoffer: clayFinish('domeCoffer', '#d99886', 0.6, 1, 0.5),
+    blushPlaster: clayFinish('blushPlaster', '#efc7b8', 0.35, 0.95, 0.5),
+    roofTile: textured(rammed, { name: 'roofTile', color: '#b45a40', normalScale: 1, envMapIntensity: 0.5 }),
+    glazedTerracotta: clayFinish('glazedTerracotta', '#c76a4c', 0.4, 0.42, 1.0),
+    redLacquer: clayFinish('redLacquer', '#912a22', 0.3, 0.6, 0.7),
+    whiteLime: limeFinish(lime, 'whiteLime', '#f3efe8', 0.45, 0.92),
+    charcoalClay: clayFinish('charcoalClay', '#3d3633', 0.8, 1, 0.4),
+    terrazzo: textured(stone, { name: 'terrazzo', color: '#efe2d6', normalScale: 0.15, roughness: 0.35, envMapIntensity: 1.0 }),
+    timberFloor: textured(oak, { name: 'timberFloor', color: '#a8754f', normalScale: 0.35, roughness: 0.75, envMapIntensity: 0.8 }),
+    wineWall: clayFinish('wineWall', '#4f1d24', 0.5, 0.95, 0.4),
+    redLime: clayFinish('redLime', '#a32a1f', 0.55, 0.95, 0.45),
+    groundSoil: textured(earth, { name: 'groundSoil', color: '#8a6a52', normalScale: 0.9, envMapIntensity: 0.35 }),
+    bricks: new THREE.MeshStandardMaterial({ name: 'bricks', map: brick.map, normalMap: brick.normalMap, roughnessMap: brick.roughnessMap, normalScale: new THREE.Vector2(1, 1), roughness: 0.95, envMapIntensity: 0.45 }),
+    clayStrata: textured(raw, { name: 'clayStrata', color: '#c27d5f', normalScale: 1.1, envMapIntensity: 0.35 }),
+    clayPanel: textured(raw, { name: 'clayPanel', color: '#c79a7c', normalScale: 1, envMapIntensity: 0.35 }),
   }
+
+  // The library (GRAND §6.1): each finish's target albedo (a PDF swatch or its shade) on its set.
+  // A tier that leaves a set out keeps the procedural maps and colour above.
+  const LIB: [MaterialKey, PbrSetId, string, { normal?: number; rough?: number; tile?: number; ao?: boolean }?][] = [
+    ['clayRose', 'Clay005', '#cf8a7c', { normal: 0.6 }],
+    ['clayBlush', 'Clay005', '#e3b3a5', { normal: 0.5 }],
+    ['clayTerracotta', 'Clay005', '#b86f5b', { normal: 0.6 }],
+    ['clayOchre', 'Clay005', '#d29b6b', { normal: 0.6 }],
+    ['clayBuff', 'Clay005', '#e4cfb9', { normal: 0.5 }],
+    ['oxblood', 'Clay005', '#6e2620', { normal: 0.6 }],
+    ['oxbloodLacquer', 'Clay005', '#5e1f1b', { normal: 0.12, rough: 0.45 }],
+    ['rawClay', 'Clay009', '#b8775b', { normal: 1.2 }],
+    ['rammedEarth', 'Clay007', '#c27d63', { normal: 0.9, tile: 3.2 }],
+    ['earthFloor', 'Clay005', '#9f6c58', { normal: 0.35, rough: 0.62 }],
+    ['earthInlay', 'Clay005', '#6e2a22', { normal: 0.3, rough: 0.55 }],
+    ['clayCeiling', 'PaintedPlaster017', '#edd5c9', { normal: 0.35 }],
+    ['domeCoffer', 'Clay005', '#d6917f', { normal: 0.55, tile: 2.8 }],
+    ['blushPlaster', 'PaintedPlaster017', '#eebba8', { normal: 0.3 }],
+    ['roofTile', 'RoofingTiles013A', '#c46a4c', { normal: 1.0, tile: 1.6 }],
+    ['glazedTerracotta', 'GlazedTerracotta001', '#e2a58c', { normal: 0.5, rough: 0.55 }],
+    ['redLacquer', 'Clay005', '#8f2620', { normal: 0.25, rough: 0.62 }],
+    ['whiteLime', 'Plaster001', '#f8f6f1', { normal: 0.35 }],
+    // lifted so the wall reads ≈ #4a4644 in C's light (black ware on black read as a void)
+    ['charcoalClay', 'Clay005', '#7a7470', { normal: 0.7 }],
+    // a warm lime-and-brick terrazzo, never a grey granite counter
+    ['terrazzo', 'Terrazzo004', '#efcfb2', { normal: 0.2, rough: 0.7 }],
+    ['timberFloor', 'Wood092', '#c8915f', { normal: 0.7, rough: 0.7, tile: 2.4 }],
+    ['wineWall', 'Clay005', '#4a1a22', { normal: 0.45 }],
+    ['redLime', 'Clay005', '#a3261c', { normal: 0.5 }],
+    ['groundSoil', 'Ground054', '#d9c8b4', { normal: 1.0 }],
+    ['bricks', 'Bricks051', '#f2e2d8', { normal: 1.0, tile: 1.4 }],
+    ['clayStrata', 'Clay009', '#c27a5e', { normal: 1.2 }],
+    ['clayPanel', 'Clay007', '#c49478', { normal: 1.0 }],
+  ]
+  for (const [key, set, target, o = {}] of LIB) {
+    const m = mats[key] as THREE.MeshStandardMaterial
+    if (!applyPbr(m, set, tier, { tile: o.tile, anisotropy: aniso, ao: o.ao })) continue
+    m.color = pbrTint(set, target)
+    if (o.normal !== undefined) m.normalScale.set(o.normal, o.normal)
+    if (o.rough !== undefined) m.roughness = o.rough
+  }
+  // Gallery B's white limewash keeps reading white under a neutral room light: the bounce of its
+  // own picture lights and the court's daylight off the opposite wall (p08r), never a grey sheet
+  const white = mats.whiteLime as THREE.MeshStandardMaterial
+  white.emissive.set('#fff3e8')
+  white.emissiveIntensity = 0.1
+  // The shared light engine (oculus mask, lamps, glows, coves, wet floors): patched in before
+  // anything compiles or StaticMerge bakes the architecture (SPECTACLE §3).
+  for (const m of Object.values(mats)) injectAtmosphere(m, { coves: true })
   return mats
 }
 
@@ -306,7 +417,12 @@ function scheduleDisposal() {
     if (!currentTier) return
     for (const [tier, mats] of cache) {
       if (tier === currentTier) continue
-      for (const m of Object.values(mats)) m.dispose()
+      for (const m of Object.values(mats)) {
+        // the paving's maps are this tier's own clones of the stone set (the sets are disposed below)
+        const sm = m as THREE.MeshStandardMaterial
+        if (m.name === 'sandPaving') for (const t of [sm.map, sm.roughnessMap, sm.normalMap]) t?.dispose()
+        m.dispose()
+      }
       cache.delete(tier)
     }
     disposeTextureSets(...tierTextureSizes(currentTier))

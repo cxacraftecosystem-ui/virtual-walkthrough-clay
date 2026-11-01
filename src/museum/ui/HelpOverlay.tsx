@@ -6,6 +6,8 @@ import { useT, type T } from '../i18n'
 import { useFocusTrap } from '../a11y/focus'
 import { A11ySettings } from '../a11y/A11ySettings'
 import { TrailStartCard } from '../trail/TrailUI'
+import { useXT, type XKey } from '../spectacle/experienceText'
+import { MOMENTS, replayFirstVisits, replayMoment, seenMoments } from '../spectacle/moments'
 
 const HINT_MS = 7000
 
@@ -90,6 +92,65 @@ function List({ rows }: { rows: [string, ReactNode][] }) {
   )
 }
 
+const MOMENTS_CSS = `
+.ui-moments { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--hairline); }
+.ui-moments__intro { margin: 6px 0 10px; font-size: 12.5px; color: var(--muted); }
+.ui-moments__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 4px 14px; }
+.ui-moments__item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--hairline); font-size: 12.5px; }
+.ui-moments__name { display: inline-flex; align-items: center; gap: 7px; }
+.ui-moments__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hairline-strong); flex: none; }
+.ui-moments__dot.is-seen { background: var(--accent); }
+.ui-moments__play { appearance: none; border: 1px solid var(--hairline-strong); background: transparent; color: var(--ink); border-radius: 999px;
+  padding: 4px 10px; font: 500 11px/1 var(--font-ui); cursor: pointer; white-space: nowrap; }
+.ui-moments__play:hover, .ui-moments__play:focus-visible { border-color: var(--ink); background: rgba(43,38,33,.05); }
+.ui-moments__reset { appearance: none; border: 0; background: none; padding: 0; margin-top: 10px; font: 500 11.5px/1.2 var(--font-ui);
+  color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+`
+
+/** Help → Moments: see a moment again (SPECTACLE F30/F33); a dot marks the ones already seen. */
+function MomentsPanel() {
+  const t = useT()
+  const x = useXT()
+  const [seen] = useState(seenMoments)
+  const [reset, setReset] = useState(false)
+  return (
+    <section className="ui-moments" aria-labelledby="ui-moments-title">
+      <style>{MOMENTS_CSS}</style>
+      <h3 id="ui-moments-title" className="ui-kicker">
+        {t('spectacle.moments')}
+      </h3>
+      <p className="ui-moments__intro">{x('xp.momentsIntro')}</p>
+      <ul className="ui-moments__list">
+        {MOMENTS.map((m) => {
+          const name = x(`xp.moment.${m.id}` as XKey)
+          return (
+            <li key={m.id} className="ui-moments__item">
+              <span className="ui-moments__name">
+                <span className={`ui-moments__dot${seen.has(String(m.id)) ? ' is-seen' : ''}`} aria-hidden="true" />
+                {name}
+              </span>
+              <button type="button" className="ui-moments__play" aria-label={`${t('spectacle.replay')}: ${name}`} onClick={() => replayMoment(String(m.id))}>
+                {t('spectacle.replay')}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      <button
+        type="button"
+        className="ui-moments__reset"
+        onClick={() => {
+          replayFirstVisits()
+          setReset(true)
+        }}
+        aria-live="polite"
+      >
+        {reset ? x('xp.momentsResetDone') : x('xp.momentsReset')}
+      </button>
+    </section>
+  )
+}
+
 /** Full controls reference (H / ? button) plus the short hint strip after entering. */
 export function HelpOverlay() {
   const helpOpen = useMuseum((s) => s.helpOpen)
@@ -139,7 +200,12 @@ export function HelpOverlay() {
               </section>
             </div>
             <p className="ui-help__foot">{t('help.foot')}</p>
+            <p className="ui-help__foot">{t('help.perches')}</p>
+            <p className="ui-help__foot">
+              <a href="/credits">{t('help.credits')} →</a>
+            </p>
             <TrailStartCard />
+            <MomentsPanel />
             <A11ySettings />
           </div>
         </div>

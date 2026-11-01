@@ -331,3 +331,83 @@ export async function creditsTexture(kicker: string, logo: string, w: number, h:
   t.minFilter = THREE.LinearMipmapLinearFilter
   return t
 }
+
+/* ------------------------------------------------------------------ */
+/* The Haat's card tags                                                */
+/* ------------------------------------------------------------------ */
+
+/** One shop tag (props.tags line `form|village|technique|price|makerShare|link`). */
+export interface ShopTag {
+  form: string
+  village: string
+  technique: string
+  price: string
+  makerShare: string
+  link: string
+}
+
+export function parseShopTags(s: string): ShopTag[] {
+  return s
+    .split('\n')
+    .map((l) => l.split('|').map((p) => p.trim()))
+    .filter((p) => p.some(Boolean))
+    .map(([form = '', village = '', technique = '', price = '', makerShare = '', link = '']) => ({ form, village, technique, price, makerShare, link }))
+}
+
+export const TAG_ATLAS = { cols: 4, rows: 4 } as const
+
+/** Remap a geometry's 0..1 UVs into tag atlas cell `i`. Mutates and returns `geo`. */
+export function tagCellUV(geo: THREE.BufferGeometry, i: number): THREE.BufferGeometry {
+  const { cols, rows } = TAG_ATLAS
+  const cell = ((i % (cols * rows)) + cols * rows) % (cols * rows)
+  const u0 = (cell % cols) / cols
+  const v1 = 1 - Math.floor(cell / cols) / rows
+  const uv = geo.getAttribute('uv') as THREE.BufferAttribute | undefined
+  if (!uv) return geo
+  for (let k = 0; k < uv.count; k++) uv.setXY(k, u0 + uv.getX(k) / cols, v1 - 1 / rows + uv.getY(k) / rows)
+  uv.needsUpdate = true
+  return geo
+}
+
+/**
+ * Hand-written card tags (kraft card, a punched hole, ink): the maker's village, the technique,
+ * and — only when both are filled in — the price and the maker's share. Up to 16 tags; cell i is
+ * tag i. A tag with nothing to say is a blank card. Callers pass no tags while the object is a
+ * placeholder, so nothing is named before the workshop confirms it.
+ */
+export async function tagAtlas(tags: ShopTag[]): Promise<THREE.CanvasTexture> {
+  await ensureWallFonts()
+  const C = 256
+  const { cols, rows } = TAG_ATLAS
+  const { cv, ctx } = canvas(C * cols, Math.round(C * 0.6) * rows)
+  const ch = Math.round(C * 0.6)
+  for (let i = 0; i < cols * rows; i++) {
+    const x = (i % cols) * C
+    const y = Math.floor(i / cols) * ch
+    const r = mulberry32(hashString(`tag-${i}`))
+    ctx.fillStyle = '#c9a77a'
+    ctx.fillRect(x, y, C, ch)
+    for (let k = 0; k < 300; k++) {
+      ctx.fillStyle = `rgba(${90 + r() * 60},${60 + r() * 40},${30 + r() * 20},${r() * 0.12})`
+      ctx.fillRect(x + r() * C, y + r() * ch, 1 + r() * 2, 1 + r() * 2)
+    }
+    // the punched hole and its ring
+    ctx.fillStyle = '#3b2a1e'
+    ctx.beginPath()
+    ctx.arc(x + C * 0.1, y + ch / 2, C * 0.035, 0, Math.PI * 2)
+    ctx.fill()
+    const t = tags[i]
+    if (!t) continue
+    ctx.fillStyle = '#2b2018'
+    ctx.textAlign = 'left'
+    ctx.font = `500 ${Math.round(C * 0.13)}px ${SERIF}`
+    if (t.village) ctx.fillText(t.village, x + C * 0.2, y + ch * 0.38, C * 0.76)
+    ctx.font = `400 ${Math.round(C * 0.075)}px ${SANS}`
+    if (t.technique) ctx.fillText(t.technique, x + C * 0.2, y + ch * 0.6, C * 0.76)
+    if (t.price && t.makerShare) ctx.fillText(`${t.price} · ${t.makerShare}`, x + C * 0.2, y + ch * 0.82, C * 0.76)
+  }
+  const t = finish(cv)
+  t.generateMipmaps = true
+  t.minFilter = THREE.LinearMipmapLinearFilter
+  return t
+}

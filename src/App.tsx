@@ -17,6 +17,7 @@ import { ErrorBoundary } from './museum/utils/ErrorBoundary'
 import { tr } from './museum/i18n'
 import { reportError } from './museum/utils/errorReporter'
 import { webgpuGL, webgpuRequested } from './museum/utils/renderer'
+import { setSpectacleOff } from './museum/spectacle/settings'
 import { SITE } from './site'
 
 // Small automation/debug handle (used by scripts/screenshots.mjs and handy in the console).
@@ -71,6 +72,9 @@ function AdaptiveQuality() {
       onDecline={() => {
         const st = useMuseum.getState()
         const i = QUALITY_ORDER.indexOf(st.tier)
+        // Already on Low and still under ~30 fps (judged 5 s after arrival): drop the costly
+        // spectacle extras (shaft, motes, halos, mirror, smoke, grade), keep every geometry.
+        if (i <= 0) setSpectacleOff(true)
         if (i <= 0 || adaptive.changes >= 3) return
         adaptive.changes++
         adaptive.declined = true

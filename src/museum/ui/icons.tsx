@@ -195,6 +195,14 @@ export const IconSun = (p: P) => (
 )
 
 /** Photo mode: a camera. */
+export const IconMore = (p: P) => (
+  <Svg {...p}>
+    <circle cx="6" cy="12" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="18" cy="12" r="1.1" fill="currentColor" stroke="none" />
+  </Svg>
+)
+
 export const IconCamera = (p: P) => (
   <Svg {...p}>
     <path d="M4 8.5h3.2l1.6-2.3h6.4l1.6 2.3H20v10H4z" />

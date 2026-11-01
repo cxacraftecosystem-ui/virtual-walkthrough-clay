@@ -11,6 +11,14 @@ import { EXHIBITS } from '../config/exhibits'
 import { EXHIBITION_TITLE, INFOGRAPHICS, RECEPTION_WELCOME } from '../config/infographics'
 import { SCENE_OBJECTS } from '../config/objects'
 import { AMENITY_OBJECTS } from '../config/amenities'
+import { ROOM_OBJECTS } from '../config/spectacleObjects/rooms'
+import { COURT_OBJECTS } from '../config/spectacleObjects/court'
+import { ATMOS_OBJECTS } from '../config/spectacleObjects/atmosphere'
+import { CRAFT_OBJECTS } from '../config/spectacleObjects/craft'
+import { EXPERIENCE_OBJECTS } from '../config/spectacleObjects/experience'
+import { GRAND_CRAFTS_OBJECTS } from '../config/grandObjects/crafts'
+import { GRAND_INSTALLATIONS_OBJECTS } from '../config/grandObjects/installations'
+import { GRAND_EXPERIENCE_OBJECTS } from '../config/grandObjects/experience'
 import { VIDEOS } from '../config/videos'
 import { SURFACES } from '../config/layout'
 import type { MuseumContent } from './types'
@@ -51,6 +59,22 @@ function placeable(item: unknown): boolean {
   return typeof p.surface === 'string' && p.surface in SURFACES && (p.at === undefined || (typeof p.at === 'number' && Number.isFinite(p.at)))
 }
 
+/**
+ * The plan the bundled coordinates belong to (GRAND §1.3 #8): 2 = the grand rotunda. Server
+ * content whose `spectacle` object does not carry `props.layoutEpoch >= LAYOUT_EPOCH` was placed
+ * on an older, smaller plan; its objects and its tour would float in mid-air, so the bundled
+ * ones are kept (surface-hung content keeps its surface ids and still applies).
+ */
+export const LAYOUT_EPOCH = 2
+
+/** Does this content's object list carry the current layout epoch? */
+export function hasLayoutEpoch(objects: unknown): boolean {
+  if (!Array.isArray(objects)) return false
+  const s = objects.find((o) => o && typeof o === 'object' && (o as { kind?: unknown }).kind === 'spectacle') as { props?: { layoutEpoch?: unknown } } | undefined
+  const e = s?.props?.layoutEpoch
+  return typeof e === 'number' ? e >= LAYOUT_EPOCH : typeof e === 'string' && Number(e) >= LAYOUT_EPOCH
+}
+
 function replace<T>(target: T[], next: T[] | undefined) {
   if (!Array.isArray(next)) return
   const ok = next.filter(placeable)
@@ -63,14 +87,21 @@ function replace<T>(target: T[], next: T[] | undefined) {
 }
 
 export function applyContent(c: Partial<MuseumContent>) {
+  // content placed on an older plan: keep the bundled objects and tour (GRAND §1.3 #8)
+  const stale = Array.isArray(c.objects) && !hasLayoutEpoch(c.objects)
+  if (stale) console.warn(`[museum] the server's content predates layout epoch ${LAYOUT_EPOCH}: keeping the bundled objects and tour (re-seed it with scripts/grand-reseed-local.mjs locally)`)
   replace(ARTWORKS, c.artworks)
   replace(EXHIBITS, c.exhibits)
   replace(INFOGRAPHICS, c.infographics)
   replace(VIDEOS, c.videos)
-  replace(SCENE_OBJECTS, c.objects)
+  if (!stale) replace(SCENE_OBJECTS, c.objects)
   // Visitor-amenity fixtures (shop, library, credits wall — config/amenities.ts) are part of the
   // building: keep them when a server content set predates them (server versions win by id).
-  if (Array.isArray(c.objects)) for (const o of AMENITY_OBJECTS) if (!SCENE_OBJECTS.some((x) => x.id === o.id)) SCENE_OBJECTS.push(structuredClone(o))
+  // The spectacle installations (config/spectacleObjects/*) are kept the same way.
+  // The grand plan's lists (config/grandObjects/*) too.
+  if (Array.isArray(c.objects) && !stale)
+    for (const o of [...AMENITY_OBJECTS, ...ROOM_OBJECTS, ...COURT_OBJECTS, ...ATMOS_OBJECTS, ...CRAFT_OBJECTS, ...EXPERIENCE_OBJECTS, ...GRAND_CRAFTS_OBJECTS, ...GRAND_INSTALLATIONS_OBJECTS, ...GRAND_EXPERIENCE_OBJECTS])
+      if (!SCENE_OBJECTS.some((x) => x.id === o.id)) SCENE_OBJECTS.push(structuredClone(o))
   if (c.exhibition) Object.assign(EXHIBITION_TITLE, c.exhibition)
   if (c.welcome) Object.assign(RECEPTION_WELCOME, c.welcome)
   if (typeof c.version === 'number') contentVersion = c.version
@@ -78,7 +109,7 @@ export function applyContent(c: Partial<MuseumContent>) {
   const extra = c as { exhibitionMeta?: ExhibitionInfo; artisans?: Artisan[]; tour?: TourStop[] }
   if (extra.exhibitionMeta) Object.assign(CURRENT_EXHIBITION, extra.exhibitionMeta)
   replace(ARTISANS, extra.artisans)
-  TOUR_OVERRIDE.stops = Array.isArray(extra.tour) && extra.tour.length ? extra.tour : null
+  TOUR_OVERRIDE.stops = !stale && Array.isArray(extra.tour) && extra.tour.length ? extra.tour : null
   const accent = CURRENT_EXHIBITION.theme?.accent
   if (typeof document !== 'undefined' && isHexColor(accent)) document.documentElement.style.setProperty('--accent', accent)
 }

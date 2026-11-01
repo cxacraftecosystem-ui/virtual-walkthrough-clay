@@ -18,6 +18,12 @@ const EVENT_TYPES = new Set([
   'tour_start',
   'tour_complete',
   'tour_step',
+  // the clay pavilion's experiences; their fields pass the same caps as every other event below
+  'stamp', // a Clay Passport stamp collected (itemId: the stamp)
+  'perch', // climbed to a perch (zone: where it leads)
+  'cue', // a theatre or show cue played (itemId: the cue)
+  'film_end', // a film watched to its end (itemId, seconds)
+  'moment', // a timed moment seen (itemId: which one)
   'pos', // rolled up into analytics_heat (see curatorAnalytics.ts), never stored raw
 ])
 const MAX_BATCH = 200

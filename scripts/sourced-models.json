@@ -1,0 +1,536 @@
+{
+ "$comment": "GRAND §5.1: the input of scripts/optimize-sourced.mjs. `src` is relative to the staging folder, whose MANIFEST.json gives each model its licence, author and source (`from` names the MANIFEST entry when a variant has its own slug). `targetHeight` (m) bakes a uniform scale so the bounding-box height matches; null keeps the authored real-world scale; `targetWidth` fits the larger plan extent instead. `orient` is [[axis, deg], ...]. `role` sets the triangle cap; `instances` is a placement hint.",
+ "models": [
+  {
+   "slug": "wc-kaen-doki-jomon-flame-pot",
+   "src": "wikimedia/wc-kaen-doki-jomon-flame-pot/wc-kaen-doki-jomon-flame-pot.glb",
+   "role": "hero",
+   "targetHeight": 0.46,
+   "finish": "buff",
+   "instances": 1
+  },
+  {
+   "slug": "wc-dogu-clay-figurine",
+   "src": "wikimedia/wc-dogu-clay-figurine/wc-dogu-clay-figurine.glb",
+   "role": "display",
+   "orient": [
+    [
+     "z",
+     -90
+    ]
+   ],
+   "targetHeight": 0.2,
+   "finish": "buff",
+   "instances": 1
+  },
+  {
+   "slug": "si-colonoware-pot",
+   "src": "smithsonian/si-colonoware-pot/si-colonoware-pot.glb",
+   "role": "display",
+   "targetHeight": 0.24,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "si-stoneware-jug-commeraw",
+   "src": "smithsonian/si-stoneware-jug-commeraw/si-stoneware-jug-commeraw.glb",
+   "role": "display",
+   "targetHeight": 0.39,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "si-delft-ewer",
+   "src": "smithsonian/si-delft-ewer/si-delft-ewer.glb",
+   "role": "display",
+   "targetHeight": 0.23,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "si-kylix",
+   "src": "smithsonian/si-kylix/si-kylix.glb",
+   "role": "display",
+   "targetHeight": 0.075,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "wc-msr-vase-aryballisque",
+   "src": "wikimedia/wc-msr-vase-aryballisque/wc-msr-vase-aryballisque.glb",
+   "role": "display",
+   "targetHeight": 0.17,
+   "finish": "terracotta",
+   "instances": 1
+  },
+  {
+   "slug": "wc-roman-pottery-r3950",
+   "src": "wikimedia/wc-roman-pottery-r3950/wc-roman-pottery-r3950.glb",
+   "role": "display",
+   "targetHeight": 0.22,
+   "finish": "red-slip",
+   "instances": 1
+  },
+  {
+   "slug": "wc-roman-pottery-r3997",
+   "src": "wikimedia/wc-roman-pottery-r3997/wc-roman-pottery-r3997.glb",
+   "role": "display",
+   "targetHeight": 0.25,
+   "finish": "red-slip",
+   "instances": 1
+  },
+  {
+   "slug": "wc-iron-age-cup-lamp",
+   "src": "wikimedia/wc-iron-age-cup-lamp/wc-iron-age-cup-lamp.glb",
+   "role": "display",
+   "targetHeight": 0.06,
+   "finish": "stone",
+   "instances": 1
+  },
+  {
+   "slug": "wc-geto-dacian-biconical-vessel",
+   "src": "wikimedia/wc-geto-dacian-biconical-vessel/wc-geto-dacian-biconical-vessel.glb",
+   "role": "display",
+   "targetHeight": 0.3,
+   "finish": "buff",
+   "instances": 1
+  },
+  {
+   "slug": "wc-neolithic-pottery",
+   "src": "wikimedia/wc-neolithic-pottery/wc-neolithic-pottery.glb",
+   "role": "display",
+   "targetHeight": 0.2,
+   "finish": "buff",
+   "instances": 1
+  },
+  {
+   "slug": "wc-neolithic-clay-idol",
+   "src": "wikimedia/wc-neolithic-clay-idol/wc-neolithic-clay-idol.glb",
+   "role": "display",
+   "targetHeight": 0.15,
+   "finish": "buff",
+   "instances": 1
+  },
+  {
+   "slug": "wc-mahg-terracotta-man-holding-child",
+   "src": "wikimedia/wc-mahg-terracotta-man-holding-child/wc-mahg-terracotta-man-holding-child.glb",
+   "role": "display",
+   "targetHeight": 0.22,
+   "finish": "terracotta",
+   "instances": 1
+  },
+  {
+   "slug": "wc-mahg-terracotta-tambourine-player",
+   "src": "wikimedia/wc-mahg-terracotta-tambourine-player/wc-mahg-terracotta-tambourine-player.glb",
+   "role": "display",
+   "targetHeight": 0.2,
+   "finish": "terracotta",
+   "instances": 1
+  },
+  {
+   "slug": "wc-mahg-standing-man-figurine",
+   "src": "wikimedia/wc-mahg-standing-man-figurine/wc-mahg-standing-man-figurine.glb",
+   "role": "display",
+   "targetHeight": 0.2,
+   "finish": "terracotta",
+   "instances": 1
+  },
+  {
+   "slug": "wc-bust-singing-woman",
+   "src": "wikimedia/wc-bust-singing-woman/wc-bust-singing-woman.glb",
+   "role": "display",
+   "targetHeight": 0.15,
+   "finish": "terracotta",
+   "instances": 1
+  },
+  {
+   "slug": "si-fugitives-story-figurine",
+   "src": "smithsonian/si-fugitives-story-figurine/si-fugitives-story-figurine.glb",
+   "role": "display",
+   "targetHeight": 0.55,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "wc-sevres-pedestal-bowl",
+   "src": "wikimedia/wc-sevres-pedestal-bowl/wc-sevres-pedestal-bowl.glb",
+   "role": "display",
+   "targetHeight": 0.18,
+   "finish": "plaster",
+   "instances": 1
+  },
+  {
+   "slug": "wc-mia-ganesha",
+   "src": "wikimedia/wc-mia-ganesha/wc-mia-ganesha.glb",
+   "role": "display",
+   "targetHeight": 0.6,
+   "finish": "stone",
+   "instances": 1
+  },
+  {
+   "slug": "wc-mia-uma-maheshvara",
+   "src": "wikimedia/wc-mia-uma-maheshvara/wc-mia-uma-maheshvara.glb",
+   "role": "display",
+   "targetHeight": 0.6,
+   "finish": "stone",
+   "instances": 1
+  },
+  {
+   "slug": "si-gathering-of-buddhas",
+   "src": "smithsonian/si-gathering-of-buddhas/si-gathering-of-buddhas.glb",
+   "role": "display",
+   "targetWidth": 1.2,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "wc-forme-sortant-de-la-matiere",
+   "src": "wikimedia/wc-forme-sortant-de-la-matiere/wc-forme-sortant-de-la-matiere.glb",
+   "role": "hero",
+   "targetHeight": 0.5,
+   "finish": "grey-clay",
+   "instances": 1
+  },
+  {
+   "slug": "wc-revolved-vase-001",
+   "src": "wikimedia/wc-revolved-vase-001/wc-revolved-vase-001.glb",
+   "role": "display",
+   "targetHeight": 0.35,
+   "finish": "terracotta",
+   "instances": 4
+  },
+  {
+   "slug": "ph-planter-pot-clay",
+   "src": "polyhaven/planter_pot_clay/planter_pot_clay.glb",
+   "role": "dressing",
+   "targetHeight": 0.22,
+   "finish": "asis",
+   "instances": 8
+  },
+  {
+   "slug": "ph-ceramic-pot",
+   "src": "polyhaven/ceramic_pot/ceramic_pot.glb",
+   "role": "dressing",
+   "targetHeight": 0.37,
+   "finish": "asis",
+   "instances": 3
+  },
+  {
+   "slug": "ph-namaqualand-cliff-01",
+   "src": "polyhaven/namaqualand_cliff_01/namaqualand_cliff_01.glb",
+   "role": "rock",
+   "targetHeight": 6.5,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "ph-rock-face-01",
+   "src": "polyhaven/rock_face_01/rock_face_01.glb",
+   "role": "rock",
+   "targetHeight": 6.5,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "ph-namaqualand-boulder-03",
+   "src": "polyhaven/namaqualand_boulder_03/namaqualand_boulder_03.glb",
+   "role": "rock",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "ph-namaqualand-boulder-04",
+   "src": "polyhaven/namaqualand_boulder_04/namaqualand_boulder_04.glb",
+   "role": "rock",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "ph-namaqualand-boulder-05",
+   "src": "polyhaven/namaqualand_boulder_05/namaqualand_boulder_05.glb",
+   "role": "rock",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "ph-namaqualand-rocks-01",
+   "src": "polyhaven/namaqualand_rocks_01/namaqualand_rocks_01.glb",
+   "role": "dressing",
+   "keepRoots": [
+    "namaqualand_rocks_02_a"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 12
+  },
+  {
+   "slug": "ph-rock-07",
+   "src": "polyhaven/rock_07/rock_07.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 12
+  },
+  {
+   "slug": "ph-rock-09",
+   "src": "polyhaven/rock_09/rock_09.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 12
+  },
+  {
+   "slug": "ph-searsia-lucida",
+   "src": "polyhaven/searsia_lucida/searsia_lucida.glb",
+   "role": "tree",
+   "keepRoots": [
+    "searsia_lucida_a_LOD0"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 20
+  },
+  {
+   "slug": "ph-searsia-lucida-b",
+   "src": "polyhaven/searsia_lucida/searsia_lucida.glb",
+   "role": "tree",
+   "from": "ph-searsia-lucida",
+   "keepRoots": [
+    "searsia_lucida_b_LOD0"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 15
+  },
+  {
+   "slug": "ph-searsia-lucida-c",
+   "src": "polyhaven/searsia_lucida/searsia_lucida.glb",
+   "role": "tree",
+   "from": "ph-searsia-lucida",
+   "keepRoots": [
+    "searsia_lucida_c_LOD0"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 15
+  },
+  {
+   "slug": "ph-quiver-tree-01",
+   "src": "polyhaven/quiver_tree_01/quiver_tree_01.glb",
+   "role": "tree",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 2
+  },
+  {
+   "slug": "ph-shrub-02",
+   "src": "polyhaven/shrub_02/shrub_02.glb",
+   "role": "dressing",
+   "keepRoots": [
+    "shrub_02_a"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 12
+  },
+  {
+   "slug": "ph-shrub-03",
+   "src": "polyhaven/shrub_03/shrub_03.glb",
+   "role": "dressing",
+   "keepRoots": [
+    "shrub_03_a"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 20
+  },
+  {
+   "slug": "ph-shrub-04",
+   "src": "polyhaven/shrub_04/shrub_04.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 20
+  },
+  {
+   "slug": "ph-wild-rooibos-bush",
+   "src": "polyhaven/wild_rooibos_bush/wild_rooibos_bush.glb",
+   "role": "dressing",
+   "keepRoots": [
+    "wild_rooibos_bush_a"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 20
+  },
+  {
+   "slug": "ph-periwinkle-plant",
+   "src": "polyhaven/periwinkle_plant/periwinkle_plant.glb",
+   "role": "dressing",
+   "keepRoots": [
+    "periwinkle_plant_02_LOD0"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 20
+  },
+  {
+   "slug": "ph-fern-02",
+   "src": "polyhaven/fern_02/fern_02.glb",
+   "role": "dressing",
+   "keepRoots": [
+    "fern_02_b"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 12
+  },
+  {
+   "slug": "ph-calathea-orbifolia-01",
+   "src": "polyhaven/calathea_orbifolia_01/calathea_orbifolia_01.glb",
+   "role": "dressing",
+   "keepRoots": [
+    "calathea_orbifolia_01_a"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 4
+  },
+  {
+   "slug": "ph-anthurium-botany-01",
+   "src": "polyhaven/anthurium_botany_01/anthurium_botany_01.glb",
+   "role": "dressing",
+   "keepRoots": [
+    "anthurium_botany_01_b"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 4
+  },
+  {
+   "slug": "wc-hotei-water-basin",
+   "src": "wikimedia/wc-hotei-water-basin/wc-hotei-water-basin.glb",
+   "role": "display",
+   "targetHeight": 1.0,
+   "finish": "stone",
+   "instances": 1
+  },
+  {
+   "slug": "ph-stone-fire-pit",
+   "src": "polyhaven/stone_fire_pit/stone_fire_pit.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "ph-wooden-bucket-01",
+   "src": "polyhaven/wooden_bucket_01/wooden_bucket_01.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 3
+  },
+  {
+   "slug": "ph-wicker-basket-01",
+   "src": "polyhaven/wicker_basket_01/wicker_basket_01.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 6
+  },
+  {
+   "slug": "ph-trowel-01",
+   "src": "polyhaven/trowel_01/trowel_01.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "ph-wooden-spoon",
+   "src": "polyhaven/wooden_spoon/wooden_spoon.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "ph-folding-wooden-stool",
+   "src": "polyhaven/folding_wooden_stool/folding_wooden_stool.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 3
+  },
+  {
+   "slug": "ph-wooden-stool-01",
+   "src": "polyhaven/wooden_stool_01/wooden_stool_01.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 4
+  },
+  {
+   "slug": "ph-round-wooden-table-01",
+   "src": "polyhaven/round_wooden_table_01/round_wooden_table_01.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "ph-wooden-bookshelf-worn",
+   "src": "polyhaven/wooden_bookshelf_worn/wooden_bookshelf_worn.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 4
+  },
+  {
+   "slug": "ph-book-encyclopedia-set-01",
+   "src": "polyhaven/book_encyclopedia_set_01/book_encyclopedia_set_01.glb",
+   "role": "display",
+   "keepRoots": [
+    "book_encyclopedia_set_01_book01",
+    "book_encyclopedia_set_01_book02",
+    "book_encyclopedia_set_01_book03",
+    "book_encyclopedia_set_01_book04",
+    "book_encyclopedia_set_01_book05",
+    "book_encyclopedia_set_01_book06",
+    "book_encyclopedia_set_01_book07",
+    "book_encyclopedia_set_01_book08"
+   ],
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 8
+  },
+  {
+   "slug": "ph-wooden-display-shelves-01",
+   "src": "polyhaven/wooden_display_shelves_01/wooden_display_shelves_01.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 2
+  },
+  {
+   "slug": "ph-brass-diya-lantern",
+   "src": "polyhaven/brass_diya_lantern/brass_diya_lantern.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 14
+  },
+  {
+   "slug": "ph-lantern-01",
+   "src": "polyhaven/Lantern_01/Lantern_01.glb",
+   "role": "dressing",
+   "targetHeight": null,
+   "finish": "asis",
+   "instances": 8
+  }
+ ]
+}

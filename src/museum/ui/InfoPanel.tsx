@@ -3,7 +3,7 @@ import { itemKey, useMuseum, type Selection } from '../state/store'
 import { ARTWORKS } from '../config/artworks'
 import { EXHIBITS } from '../config/exhibits'
 import { INFOGRAPHICS } from '../config/infographics'
-import { SCENE_OBJECTS } from '../config/objects'
+import { SCENE_OBJECTS, type SceneCredit } from '../config/objects'
 import { VIDEOS } from '../config/videos'
 import { toggleFavorite } from '../api/social'
 import { CommentThread } from './Comments'
@@ -66,7 +66,7 @@ interface ViewModel {
   videoId?: string
   /** Artwork id for the full-screen "Examine closely" deep-zoom viewer. */
   examineId?: string
-  credit?: { author: string; source: string; license: string }
+  credit?: SceneCredit
   related?: { label: string; selection: Selection }
 }
 
@@ -297,19 +297,7 @@ export function InfoPanel() {
               </button>
             )}
 
-            {vm.credit && (
-              <p className="ui-info__credit">
-                {t('info.model')}: {vm.credit.author} ·{' '}
-                {/^https?:\/\//.test(vm.credit.source) ? (
-                  <a href={vm.credit.source} target="_blank" rel="noopener noreferrer" tabIndex={open ? 0 : -1}>
-                    {sourceLabel(vm.credit.source)}
-                  </a>
-                ) : (
-                  vm.credit.source
-                )}{' '}
-                · {vm.credit.license}
-              </p>
-            )}
+            {vm.credit && <CreditLine credit={vm.credit} tabIndex={open ? 0 : -1} />}
 
             <ItemLinks selection={shown} tabIndex={open ? 0 : -1} />
             <MakerCard selection={shown} tabIndex={open ? 0 : -1} />
@@ -367,6 +355,47 @@ function IconMagnifier() {
       <circle cx="10.5" cy="10.5" r="6" />
       <path d="M15 15l5 5M8 10.5h5M10.5 8v5" />
     </svg>
+  )
+}
+
+const LICENSE_NAME: Record<SceneCredit['license'], string> = { CC0: 'CC0', 'CC-BY-4.0': 'CC BY 4.0', PD: 'PD' }
+const LICENSE_URL: Record<SceneCredit['license'], string> = {
+  CC0: 'https://creativecommons.org/publicdomain/zero/1.0/',
+  'CC-BY-4.0': 'https://creativecommons.org/licenses/by/4.0/',
+  PD: 'https://commons.wikimedia.org/wiki/Commons:Licensing',
+}
+
+/**
+ * The credit of a downloaded or sourced model (GRAND §5.3): "3D: <source>" with its author and
+ * licence; a CC BY model's full attribution (title, author, source, licence link); a public
+ * domain one's note; and a link to every credit on /credits.
+ */
+function CreditLine({ credit, tabIndex }: { credit: SceneCredit; tabIndex: number }) {
+  const t = useT()
+  const src = /^https?:\/\//.test(credit.source)
+  const by = credit.license === 'CC-BY-4.0'
+  return (
+    <p className="ui-info__credit">
+      {t('info.model3d')}:{' '}
+      {by && credit.title ? <>“{credit.title}”, </> : null}
+      {credit.author} ·{' '}
+      {src ? (
+        <a href={credit.source} target="_blank" rel="noopener noreferrer" tabIndex={tabIndex}>
+          {sourceLabel(credit.source)}
+        </a>
+      ) : (
+        credit.source
+      )}{' '}
+      ·{' '}
+      <a href={credit.licenseUrl ?? LICENSE_URL[credit.license]} target="_blank" rel="noopener noreferrer license" tabIndex={tabIndex}>
+        {LICENSE_NAME[credit.license] ?? credit.license}
+      </a>
+      {credit.license === 'PD' && <> · {t('info.pd')}</>}
+      {' · '}
+      <a href="/credits" tabIndex={tabIndex}>
+        {t('info.creditsAll')}
+      </a>
+    </p>
   )
 }
 

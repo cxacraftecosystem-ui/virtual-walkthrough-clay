@@ -1,29 +1,36 @@
 /**
- * Lighting rig of the clay pavilion (PDF: "warm white to neutral", exposed daylight):
- *   1. Oculus daylight    — the sun (SkyAndSun) reaches the interior only through the open
- *                           oculus; a diffuse sky fill (RectAreaLight) hangs in the light well
- *   2. Track lights       — warm-white heads on the ring, oculus, entry and annex rails (TrackSpot)
- *   3. Accent spotlights  — one per artwork / panel / podium (see exhibits/, architecture/Pavilion)
- *   4. Cove glow          — RectAreaLights at the duplex band washing the upper drum, with the
- *                           additive glow film of architecture/Pavilion's CoveWash on every tier
- * Plus a light-former environment for PBR reflections and soft global fill.
+ * Lighting rig of the clay pavilion (PDF: "warm white to neutral", exposed daylight), at the
+ * grand scale (GRAND §6.2: dark grounds, bright objects):
+ *   1. Oculus daylight    — the sun (SkyAndSun) reaches the rotunda only through the Ø 10 m
+ *                           oculus; a diffuse sky fill (RectAreaLight) hangs in the light-well,
+ *                           another under the Earth Room's skylight
+ *   2. Track lights       — heads on the balcony soffit, the ambulatory and annex rails (TrackSpot),
+ *                           real lights from the SpotPool (the nearest few cast shadows)
+ *   3. Accent field       — up to 24 analytic cones on every podium, niche, plinth and piece
+ *                           (atmosphere/AccentField), each with its visible fixture (Fixtures)
+ *   4. Coves and the dome — analytic cove lines (atmosphere/CoveLights) and the dome's springing
+ *                           uplight, terrace rings and glowing light-well (atmosphere/DomeLight)
+ * Plus a light-former environment for PBR reflections and a low global fill, and the colour
+ * choreography (atmosphere/choreography.ts) that gives every room its temperature and exposure.
  */
 import { useFrame, useThree } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
-import { zoneAt } from '../config/layout'
-import { visitor } from '../state/visitor'
 import * as THREE from 'three'
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js'
 import { kelvinToHex, LIGHTING } from '../config/lighting'
-import { DEG, KEY, MUSEUM } from '../config/museum'
-import { OCULUS_STEPS } from '../architecture/CeilingAndSkylight'
-import { BAND_Y } from '../architecture/Wall'
+import { KEY, MUSEUM } from '../config/museum'
 import { QUALITY_PRESETS, withDevOverrides } from '../config/quality'
 import { useMuseum } from '../state/store'
 import { ShadowUpdater, SkyAndSun } from './SkyAndSun'
-import { SpotPool } from './SpotPool'
+import { SPOT_SHADOWS, SpotPool, spotShadowBudget, spotTint } from './SpotPool'
+import { Choreography, grade } from './atmosphere/choreography'
+import { CoveLights } from './atmosphere/CoveLights'
+import { AccentField } from './atmosphere/AccentField'
+import { DomeLight } from './atmosphere/DomeLight'
+import { ROOF_Y0, SLAB_Y } from './atmosphere/inject'
+import { Fixtures } from './Fixtures'
 import { GalleryEnvironment } from './GalleryEnvironment'
-import { ambience } from './timeOfDayState'
+import { ambience, sunState } from './timeOfDayState'
 import { TimeOfDayController } from './NightLights'
 import { probeState, ZoneProbes } from './ZoneProbes'
 import { isWebGPU } from '../utils/renderer'
@@ -63,92 +70,72 @@ function AreaLight({ position, dir, lengthAxis, width, height, intensity, color,
 }
 
 const DAY = kelvinToHex(LIGHTING.skylightFill.colorK)
-/** Cove LEDs: 3500 K, between the track's warm white and the daylight. */
-const COVE = kelvinToHex(3500, 0.3)
 const SKY_DOWN: [number, number, number] = [0, -1, 0]
 const ALONG_Z: [number, number, number] = [0, 0, 1]
 
 /** Clay bounce: a warm sky and a rose-earth ground for the hemisphere fill. */
 const HEMI_SKY = '#f0e3d8'
 const HEMI_GROUND = '#d3a18b'
-
-interface Cove {
-  /** Plan angle (deg) of the light's centre. */
-  aDeg: number
-  /** Interior face radius of the wall it washes. */
-  r: number
-  /** Length along the wall (m). */
-  length: number
-}
+/**
+ * At a low sun the fill is the open sky's: blue-violet from above, a neutral ground. The warmth of
+ * the golden hour lives only in the sun's own colour (dayCurve SUN_K), so the frame never turns
+ * sepia.
+ */
+const LOW_SUN_SKY = new THREE.Color('#c9d2ee')
+const LOW_SUN_GROUND = new THREE.Color('#aaa49e')
 
 /**
- * Cove washes at the duplex band, one per large stretch of drum: gallery A, B, C on the ring
- * wall and the entry ways on the lobe behind the description wall. Each sits just off the
- * wall, aimed up and out, so it lights the upper drum and lifts the ceiling.
+ * Global fill (hemisphere + environment) follows the room the visitor is in — the theatre is
+ * dark, the Haat bright — through the colour choreography's eased `grade` (no shader changes,
+ * just intensities and the fill's tint).
  */
-const COVES: Cove[] = [
-  { aDeg: 8, r: KEY.ringR, length: 4.2 },
-  { aDeg: -55, r: KEY.ringR, length: 5.2 },
-  { aDeg: -118, r: KEY.ringR, length: 4.2 },
-  { aDeg: 90, r: KEY.lobeR, length: 6 },
-]
-
-function coveProps(c: Cove) {
-  const a = c.aDeg * DEG
-  const ox = Math.cos(a)
-  const oz = Math.sin(a)
-  const d = 0.6
-  return {
-    position: [ox * (c.r - d), BAND_Y + 0.05, oz * (c.r - d)] as [number, number, number],
-    dir: [ox * 0.35, 1, oz * 0.35] as [number, number, number],
-    lengthAxis: [-oz, 0, ox] as [number, number, number],
-  }
-}
-const COVE_LIGHTS = COVES.map((c) => ({ key: c.aDeg, length: c.length, ...coveProps(c) }))
-
-/**
- * Global fill (hemisphere + environment) is scaled per zone — e.g. the theatre is dark —
- * and eased as the visitor walks between rooms (no shader changes, just intensities).
- */
-const ZONE_AMBIENT: Record<string, number> = {
-  'entrance-court': 1.25,
-  annex: 0.92,
-  'entry-e': 0.95,
-  'ring-a': 1,
-  'ring-b': 1,
-  'ring-c': 1,
-  'hallway-d': 0.85,
-  inner: 1.12,
-}
-/** Fraction of the hemisphere/env fill kept at full night (the rest is daylight bounce). */
-const NIGHT_FILL_FLOOR: Record<string, number> = { 'entrance-court': 0.04 }
-
 function ZoneAmbience({ base }: { base: number }) {
   const ref = useRef<THREE.HemisphereLight>(null)
   const scene = useThree((s) => s.scene)
-  const k = useRef(1)
-  const floor = useRef(0.3)
-  useFrame((_, dt) => {
-    const id = zoneAt(visitor.x, visitor.z)?.id
-    const target = id ? (ZONE_AMBIENT[id] ?? 1) : k.current
-    k.current += (target - k.current) * (1 - Math.exp(-2.5 * dt))
-    // How much fill survives at night: open-air zones go dark, interiors keep lamp bounce.
-    const floorTarget = id ? (NIGHT_FILL_FLOOR[id] ?? 0.3) : floor.current
-    floor.current += (floorTarget - floor.current) * (1 - Math.exp(-2.5 * dt))
-    // Hemisphere = bounce fill; mostly daylight, so it fades at dusk/night (lamps keep some).
-    const tod = floor.current + (1 - floor.current) * ambience.daylight
-    if (ref.current) ref.current.intensity = base * k.current * tod
+  const sky = useMemo(() => new THREE.Color(HEMI_SKY), [])
+  const ground = useMemo(() => new THREE.Color(HEMI_GROUND), [])
+  useFrame(() => {
+    // How much fill survives at night: open-air zones go dark, interiors keep a little lamp
+    // bounce (NIGHT_BOUNCE of the room's floor), so the lamps, diyas and spots make pools
+    const floor = grade.nightFloor * NIGHT_BOUNCE
+    const tod = floor + (1 - floor) * ambience.daylight
+    const l = ref.current
+    if (l) {
+      // the hemisphere is the flattest light of all: it falls faster than the fill (fill²)
+      l.intensity = base * grade.fill * Math.min(1, grade.fill) * tod
+      // L/M: the room's colour rides on the fill (H+ adds the grade pass)
+      l.color.copy(sky).lerp(tmp.copy(sky).multiply(grade.tint), TINT_FILL)
+      l.groundColor.copy(ground).lerp(tmp.copy(ground).multiply(grade.tint), TINT_FILL)
+      const low = sunState.curve.sunset * (1 - ambience.night)
+      if (low > 0) {
+        l.color.lerp(LOW_SUN_SKY, low)
+        l.groundColor.lerp(LOW_SUN_GROUND, low)
+      }
+    }
+    spotTint.color.copy(grade.tint)
+    spotTint.amount = TINT_SPOT
     // Per-zone probes (ZoneProbes) already carry each room's real brightness and time of day.
-    scene.environmentIntensity = LIGHTING.ambient.environmentIntensity * (probeState.active ? probeState.zoneGain : k.current * tod)
+    // The environment is the most even light of all, so a dim room (fill < 1) loses it fastest:
+    // that is what lets the drum fall into pools of light rather than a flat haze.
+    scene.environmentIntensity = LIGHTING.ambient.environmentIntensity * (probeState.active ? probeState.zoneGain : grade.fill * Math.min(1, grade.fill) * tod)
   })
   return <hemisphereLight ref={ref} args={[HEMI_SKY, HEMI_GROUND, base]} />
 }
 
+/** Share of a room's night floor kept as bounce: the night is dark, lit in pools. */
+const NIGHT_BOUNCE = 0.3
+/** How much of the room's colour reaches the fill and the accent lights. */
+const TINT_FILL = 0.35
+const TINT_SPOT = 0.22
+const tmp = new THREE.Color()
+
 export function Lighting() {
   const tier = useMuseum((s) => s.tier)
   const preset = withDevOverrides(QUALITY_PRESETS[tier])
+  const maxTextures = useThree((s) => s.gl.capabilities.maxTextures)
   const oculusSide = MUSEUM.oculus.r * 1.7
-  const wellY = OCULUS_STEPS[0].y - 0.02
+  const wellY = ROOF_Y0 - 0.02
+  const skySide = MUSEUM.annex.skylight.r * 1.7
   // Without area lights (low tier) lift the hemisphere fill to compensate.
   const hemi = LIGHTING.ambient.hemisphereIntensity * (preset.areaLights ? 1 : 2.4)
 
@@ -156,7 +143,12 @@ export function Lighting() {
     <>
       <SkyAndSun />
       <ShadowUpdater />
-      <SpotPool size={preset.spotPool} />
+      <Choreography />
+      <CoveLights />
+      <DomeLight />
+      <AccentField />
+      <Fixtures />
+      <SpotPool size={preset.spotPool} shadows={preset.shadows ? Math.min(SPOT_SHADOWS[tier], spotShadowBudget(maxTextures)) : 0} />
 
       <ZoneAmbience base={hemi} />
 
@@ -169,10 +161,8 @@ export function Lighting() {
         <>
           {/* Diffuse daylight through the oculus, from the mouth of the light well */}
           <AreaLight position={[0, wellY, 0]} dir={SKY_DOWN} lengthAxis={ALONG_Z} width={oculusSide} height={oculusSide} intensity={LIGHTING.skylightFill.intensity * 1.15} color={DAY} daylit />
-          {/* Cove glow at the duplex band */}
-          {COVE_LIGHTS.map((c) => (
-            <AreaLight key={c.key} position={c.position} dir={c.dir} lengthAxis={c.lengthAxis} width={0.14} height={c.length} intensity={LIGHTING.cove.intensity * 4} color={COVE} />
-          ))}
+          {/* … and through the Earth Room's skylight onto the round table */}
+          <AreaLight position={[0, SLAB_Y - 0.02, KEY.annexSkylightZ]} dir={SKY_DOWN} lengthAxis={ALONG_Z} width={skySide} height={skySide} intensity={LIGHTING.skylightFill.intensity * 1.6} color={DAY} daylit />
         </>
       )}
     </>

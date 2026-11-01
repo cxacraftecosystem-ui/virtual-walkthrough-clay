@@ -12,10 +12,18 @@
  * `zone` drives render culling (ZONE_VISIBILITY) — it must be the zone the object stands in.
  */
 import { COURT_CENTER, PODIUM, PODIUM_SLOTS, type ZoneId } from './layout'
-import { DEG, KEY, MUSEUM, polar, type Vec3 } from './museum'
+import { DEG, GRAND_FLAGS, KEY, MUSEUM, polar, type Vec3 } from './museum'
 import { STUDY_NOTE, type TraditionKey } from './artworks'
 import type { ContentI18n } from '../i18n/core'
 import { AMENITY_OBJECTS } from './amenities'
+import { ROOM_OBJECTS } from './spectacleObjects/rooms'
+import { COURT_OBJECTS } from './spectacleObjects/court'
+import { ATMOS_OBJECTS } from './spectacleObjects/atmosphere'
+import { CRAFT_OBJECTS } from './spectacleObjects/craft'
+import { EXPERIENCE_OBJECTS } from './spectacleObjects/experience'
+import { GRAND_CRAFTS_OBJECTS } from './grandObjects/crafts'
+import { GRAND_INSTALLATIONS_OBJECTS } from './grandObjects/installations'
+import { GRAND_EXPERIENCE_OBJECTS } from './grandObjects/experience'
 
 export type ProceduralModelId =
   | 'printing-table'
@@ -74,6 +82,164 @@ export type ProceduralModelId =
   | 'oculus-plinth'
   | 'clay-shelf'
   | 'potters-wheel'
+  /** Spectacle kinds (props: models/propSchemas.ts; lists: config/spectacleObjects/*). Satellite rooms and the Parikrama (WP1). */
+  | 'archive-cabinet'
+  | 'listening-post'
+  | 'soil-archive'
+  | 'lantern-canopy'
+  | 'programme-board'
+  | 'compass-mandala'
+  | 'theatre-house'
+  | 'living-alpana'
+  | 'clay-chimes'
+  /** Oculus court, mandalas, duplex band (WP3). */
+  | 'water-ring'
+  | 'ghost-potter'
+  | 'kulhad-helix'
+  | 'tool-mandala'
+  | 'strata-wall'
+  | 'water-rill'
+  | 'court-mandala'
+  | 'duplex-frieze'
+  /** Hands-on craft and sound (WP4). */
+  | 'clay-bed'
+  | 'kiln-window'
+  | 'ghatam-set'
+  | 'horse-procession'
+  | 'pit-firing'
+  /** Experience (WP5). */
+  | 'stamp-post'
+  | 'photo-spot'
+  | 'perch-door'
+  | 'spectacle'
+  /** Light and atmosphere (WP2). */
+  | 'atmosphere'
+  | 'oculus-light'
+  | 'cove-light'
+  | 'diya-field'
+  /** The grand plan (GRAND §7): crafts and the sourced-model runtime (P2), the PDF installations (P3). */
+  | 'sourced-model'
+  | 'ayyanar-horse'
+  | 'relief-register'
+  | 'lippan-wall'
+  | 'coil-pot'
+  | 'kumartuli-figure'
+  | 'majuli-mask'
+  | 'eroded-formation'
+  | 'round-table'
+  | 'lotus'
+  | 'spiral-stair'
+  | 'clay-sphere'
+  | 'wine-plinth'
+  | 'curved-shelf'
+  | 'round-plinth'
+  | 'courtyard-garden'
+
+/** Every ProceduralModelId once (a missing or extra key fails the type check). Lists for the admin's kind select. */
+const KIND_SET: Record<ProceduralModelId, true> = {
+  'printing-table': true,
+  'dye-vat': true,
+  'drying-line': true,
+  'block-shelf': true,
+  'pigment-station': true,
+  'wash-tank': true,
+  'fabric-rolls': true,
+  'carving-bench': true,
+  'textile-banner': true,
+  'plant-bed': true,
+  tree: true,
+  'water-channel': true,
+  'grand-desk': true,
+  planter: true,
+  speaker: true,
+  'theatre-seating': true,
+  'garden-bench': true,
+  column: true,
+  vessel: true,
+  stool: true,
+  crate: true,
+  centrepiece: true,
+  'map-wall': true,
+  vitrine: true,
+  pedestal: true,
+  'print-studio': true,
+  'visitors-wall': true,
+  splat: true,
+  'shop-shelf': true,
+  'shop-table': true,
+  'shop-counter': true,
+  'stole-rail': true,
+  bookcase: true,
+  'reading-table': true,
+  'lounge-set': true,
+  'pattern-lectern': true,
+  'drawing-wall': true,
+  'resource-board': true,
+  'credits-panel': true,
+  podium: true,
+  'clay-vessel': true,
+  'terracotta-horse': true,
+  'votive-plaque': true,
+  'oculus-plinth': true,
+  'clay-shelf': true,
+  'potters-wheel': true,
+  'archive-cabinet': true,
+  'listening-post': true,
+  'soil-archive': true,
+  'lantern-canopy': true,
+  'programme-board': true,
+  'compass-mandala': true,
+  'theatre-house': true,
+  'living-alpana': true,
+  'clay-chimes': true,
+  'water-ring': true,
+  'ghost-potter': true,
+  'kulhad-helix': true,
+  'tool-mandala': true,
+  'strata-wall': true,
+  'water-rill': true,
+  'court-mandala': true,
+  'duplex-frieze': true,
+  'clay-bed': true,
+  'kiln-window': true,
+  'ghatam-set': true,
+  'horse-procession': true,
+  'pit-firing': true,
+  'stamp-post': true,
+  'photo-spot': true,
+  'perch-door': true,
+  spectacle: true,
+  atmosphere: true,
+  'oculus-light': true,
+  'cove-light': true,
+  'diya-field': true,
+  'sourced-model': true,
+  'ayyanar-horse': true,
+  'relief-register': true,
+  'lippan-wall': true,
+  'coil-pot': true,
+  'kumartuli-figure': true,
+  'majuli-mask': true,
+  'eroded-formation': true,
+  'round-table': true,
+  'lotus': true,
+  'spiral-stair': true,
+  'clay-sphere': true,
+  'wine-plinth': true,
+  'curved-shelf': true,
+  'round-plinth': true,
+  'courtyard-garden': true,
+}
+export const PROCEDURAL_KINDS: readonly ProceduralModelId[] = Object.keys(KIND_SET) as ProceduralModelId[]
+
+/** Credit of a downloaded or sourced 3D model (GRAND §5.3). */
+export interface SceneCredit {
+  author: string
+  source: string
+  license: 'CC0' | 'CC-BY-4.0' | 'PD'
+  title?: string
+  licenseUrl?: string
+}
 
 export interface SceneObjectConfig {
   id: string
@@ -99,8 +265,8 @@ export interface SceneObjectConfig {
   description?: string
   /** Zone the object stands in. */
   zone: ZoneId
-  /** Attribution for downloaded CC0 assets. */
-  credit?: { author: string; source: string; license: 'CC0' }
+  /** Attribution for downloaded and sourced 3D models (GRAND §5.2): CC0, CC BY 4.0 or public domain. */
+  credit?: SceneCredit
   placeholder?: boolean
   /** Alternative text describing the object (guide, screen readers). */
   alt?: string
@@ -118,6 +284,11 @@ const PH = (author: string, id: string) => ({ author, source: `https://polyhaven
 /** Forecourt planters stand just beyond the annex corners, clear of the facade either side of the door. */
 const PLANTER_X = KEY.annexOuterHalf + 0.8
 const PLANTER_Z = KEY.annexOuterZ + 0.75
+
+/** Plinth benches: on the landscape between the lobe and the plinth's edge. */
+const PLINTH_BENCH_R = KEY.lobeOuterR + 3.2
+/** Hands-on pieces and the studio stand between the curb and the formation gates. */
+const AISLE_R = (MUSEUM.oculus.rings[0] + MUSEUM.fins.r0) / 2
 
 /** rotationDeg that turns an object's front (+z) to face outwards (away from the drum centre) at plan angle `aDeg`. */
 const facingOut = (aDeg: number) => Math.atan2(Math.cos(aDeg * DEG), Math.sin(aDeg * DEG)) / DEG
@@ -160,8 +331,8 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Horse — Study', 'घोड़ा — अध्ययन', 'ঘোড়া — চর্চা'],
     kind: 'terracotta-horse',
     size: 0.26,
-    height: 0.5,
-    props: { scale: 1 },
+    height: 0.6,
+    props: { scale: 1.2 },
     alt: [
       'A red terracotta horse standing square, with a tall straight neck, pricked ears and an open, hollow body.',
       'सीधा खड़ा लाल टेराकोटा घोड़ा — ऊँची सीधी गर्दन, खड़े कान और भीतर से खोखला शरीर।',
@@ -175,8 +346,8 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Small Horse — Study', 'छोटा घोड़ा — अध्ययन', 'ছোট ঘোড়া — চর্চা'],
     kind: 'terracotta-horse',
     size: 0.2,
-    height: 0.34,
-    props: { scale: 0.68 },
+    height: 0.48,
+    props: { scale: 0.96 },
     alt: [
       'A smaller red terracotta horse of the same upright form.',
       'उसी सीधे रूप का एक छोटा लाल टेराकोटा घोड़ा।',
@@ -190,7 +361,7 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Water Pot — Study', 'पानी का घड़ा — अध्ययन', 'জলের কলসি — চর্চা'],
     kind: 'clay-vessel',
     size: 0.26,
-    height: 0.3,
+    height: 0.4,
     props: { form: 'matka', clay: 'terracotta', burnish: 0.35 },
     alt: [
       'A round-bellied red clay water pot with a short rolled rim.',
@@ -206,7 +377,7 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Plaque: Rider — Study', 'पट्टिका: अश्वारोही — अध्ययन', 'ফলক: অশ্বারোহী — চর্চা'],
     kind: 'votive-plaque',
     size: 0.26,
-    height: 0.38,
+    height: 0.5,
     props: { motif: 'rider' },
     alt: [
       'A small arched clay plaque standing upright, with a horse and rider in relief, painted red, ochre and white.',
@@ -221,7 +392,7 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Cups — Study', 'कुल्हड़ — अध्ययन', 'ভাঁড় — চর্চা'],
     kind: 'clay-vessel',
     size: 0.2,
-    height: 0.12,
+    height: 0.16,
     props: { form: 'kulhad', clay: 'red', burnish: 0 },
     alt: ['A plain, unglazed red clay cup.', 'बिना चमक का एक सादा लाल मिट्टी का कुल्हड़।', 'চকচকে প্রলেপ ছাড়া একটি সাধারণ লাল মাটির ভাঁড়।'],
   },
@@ -232,7 +403,7 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Plaque: Seated Deity — Study', 'पट्टिका: आसीन देवता — अध्ययन', 'ফলক: উপবিষ্ট দেবতা — চর্চা'],
     kind: 'votive-plaque',
     size: 0.28,
-    height: 0.44,
+    height: 0.58,
     props: { motif: 'deity' },
     alt: [
       'An arched clay plaque with a seated figure in relief under a canopy, painted in earth colours.',
@@ -247,7 +418,7 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Oil Lamp — Study', 'दीया — अध्ययन', 'প্রদীপ — চর্চা'],
     kind: 'clay-vessel',
     size: 0.16,
-    height: 0.07,
+    height: 0.1,
     props: { form: 'diya', clay: 'red', burnish: 0 },
     alt: ['A small, shallow clay oil lamp with a pinched spout.', 'चुटकी से बनी टोंटी वाला छोटा, उथला मिट्टी का दीया।', 'চিমটি দিয়ে গড়া নলওয়ালা একটি ছোট, অগভীর মাটির প্রদীপ।'],
   },
@@ -258,7 +429,7 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Plaque: Serpent — Study', 'पट्टिका: नाग — अध्ययन', 'ফলক: নাগ — চর্চা'],
     kind: 'votive-plaque',
     size: 0.26,
-    height: 0.38,
+    height: 0.5,
     props: { motif: 'serpent' },
     alt: [
       'An arched clay plaque with a hooded serpent in relief, in red and cream.',
@@ -274,7 +445,7 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Kettle — Study', 'केतली — अध्ययन', 'কেটলি — চর্চা'],
     kind: 'clay-vessel',
     size: 0.26,
-    height: 0.26,
+    height: 0.4,
     props: { form: 'kettle', clay: 'black', burnish: 0.85 },
     alt: [
       'A black clay kettle with a short spout and a cane-bound handle, polished to a soft shine.',
@@ -289,7 +460,7 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Bowl — Study', 'कटोरा — अध्ययन', 'বাটি — চর্চা'],
     kind: 'clay-vessel',
     size: 0.26,
-    height: 0.12,
+    height: 0.18,
     props: { form: 'bowl', clay: 'black', burnish: 0.85 },
     alt: ['A wide, low black clay bowl with a burnished surface.', 'घिसकर चमकाई सतह वाला चौड़ा, नीचा काली मिट्टी का कटोरा।', 'ঘষে-মাজা তলের একটি চওড়া, নিচু কালো মাটির বাটি।'],
   },
@@ -300,7 +471,7 @@ const PODIUM_PIECES: PodiumPiece[] = [
     title: ['Cooking Pot — Study', 'खाना पकाने का बर्तन — अध्ययन', 'রান্নার হাঁড়ি — চর্চা'],
     kind: 'clay-vessel',
     size: 0.26,
-    height: 0.28,
+    height: 0.4,
     props: { form: 'matka', clay: 'black', burnish: 0.7 },
     alt: ['A round black clay cooking pot with a wide mouth.', 'चौड़े मुँह वाला गोल, काली मिट्टी का खाना पकाने का बर्तन।', 'চওড়া মুখের গোল, কালো মাটির রান্নার হাঁড়ি।'],
   },
@@ -329,6 +500,63 @@ function podiumObject(p: PodiumPiece): SceneObjectConfig {
   }
 }
 
+/**
+ * The visitors' clay studio: the potter's wheel in Gallery B (it opens studio/ClayStudio.tsx) and
+ * the Visitors' Shelf in the entrance hall. Mounted only with GRAND_FLAGS.clayStudio.
+ */
+const CLAY_STUDIO: SceneObjectConfig[] = [
+  {
+    id: 'potters-wheel',
+    title: 'Shape It Yourself — Potter’s Wheel',
+    kind: 'potters-wheel',
+    position: at(AISLE_R, -72.5),
+    rotationDeg: facingIn(-72.5),
+    footprint: [1.2, 1.0],
+    height: 0.56,
+    interactive: true,
+    description: 'A potter’s wheel for visitors. Raise a pot from the clay, finish its surface, and set it on the Visitors’ Shelf in the entrance hall.',
+    zone: 'ring-b',
+    alt: 'A low potter’s wheel with a pot on its head, turning slowly.',
+    i18n: {
+      hi: {
+        title: 'ख़ुद गढ़कर देखें — कुम्हार का चाक',
+        description: 'आगंतुकों के लिए एक कुम्हार का चाक। मिट्टी से एक बर्तन उठाइए, उसकी सतह को अंतिम रूप दीजिए, और उसे प्रवेश कक्ष में आगंतुकों की टाँड़ पर रख दीजिए।',
+        alt: 'एक नीचा कुम्हार का चाक, जिसके ऊपर एक बर्तन धीरे-धीरे घूम रहा है।',
+      },
+      bn: {
+        title: 'নিজে গড়ে দেখুন — কুমোরের চাক',
+        description: 'দর্শকদের জন্য একটি কুমোরের চাক। মাটি থেকে একটি পাত্র গড়ে তুলুন, তার তল শেষ করুন, আর প্রবেশকক্ষে দর্শকদের তাকে রেখে দিন।',
+        alt: 'একটি নিচু কুমোরের চাক, তার মাথায় একটি পাত্র ধীরে ধীরে ঘুরছে।',
+      },
+    },
+  },
+
+  // the Visitors' Shelf on the entrance hall's west wall (pots made at the wheel, after review)
+  {
+    id: 'visitors-wall',
+    title: 'The Visitors’ Shelf',
+    kind: 'visitors-wall',
+    position: [-KEY.annexHalf + 0.17, 0, (KEY.annexMouthZ + MUSEUM.annex.endZ) / 2 + 0.2],
+    rotationDeg: 90,
+    footprint: [3.8, 0.32],
+    height: 2.6,
+    props: { cols: 6, rows: 3, width: 3.6, bottom: 0.6, depth: 0.3 },
+    interactive: true,
+    description: 'Pots shaped by visitors at the potter’s wheel in Gallery B, set out here after review by the pavilion team.',
+    zone: 'annex',
+    i18n: {
+      hi: {
+        title: 'आगंतुकों की टाँड़',
+        description: 'गैलरी B में कुम्हार के चाक पर आगंतुकों के गढ़े बर्तन, मंडप की टीम की समीक्षा के बाद यहाँ रखे जाते हैं।',
+      },
+      bn: {
+        title: 'দর্শকদের তাক',
+        description: 'গ্যালারি B-তে কুমোরের চাকে দর্শকদের গড়া পাত্র, প্যাভিলিয়ন দলের পর্যালোচনার পরে এখানে রাখা হয়।',
+      },
+    },
+  },
+]
+
 /** Hallway shelves stand against the outer face of the hallway wall, facing the drum. */
 const SHELF_R = MUSEUM.hallwayWall.r + MUSEUM.hallwayWall.thickness / 2 + 0.2
 
@@ -351,7 +579,7 @@ export const SCENE_OBJECTS: SceneObjectConfig[] = [
     id: `plinth-bench-${i + 1}`,
     title: 'Bench',
     kind: 'garden-bench',
-    position: at(13.6, aDeg),
+    position: at(PLINTH_BENCH_R, aDeg),
     rotationDeg: facingOut(aDeg),
     footprint: [1.8, 0.5],
     zone: 'entrance-court',
@@ -388,65 +616,15 @@ export const SCENE_OBJECTS: SceneObjectConfig[] = [
     },
   },
 
-  // ── Gallery B: the visitors' potter's wheel, between the podiums and the court ─────
-  // Selecting it opens the clay studio (studio/ClayStudio.tsx); its head carries the visitor's pot.
-  {
-    id: 'potters-wheel',
-    title: 'Shape It Yourself — Potter’s Wheel',
-    kind: 'potters-wheel',
-    position: at(4.2, -72.5),
-    rotationDeg: facingIn(-72.5),
-    footprint: [1.2, 1.0],
-    height: 0.56,
-    interactive: true,
-    description: 'A potter’s wheel for visitors. Raise a pot from the clay, finish its surface, and set it on the Visitors’ Shelf in the entrance hall.',
-    zone: 'ring-b',
-    alt: 'A low potter’s wheel with a pot on its head, turning slowly.',
-    i18n: {
-      hi: {
-        title: 'ख़ुद गढ़कर देखें — कुम्हार का चाक',
-        description: 'आगंतुकों के लिए एक कुम्हार का चाक। मिट्टी से एक बर्तन उठाइए, उसकी सतह को अंतिम रूप दीजिए, और उसे प्रवेश कक्ष में आगंतुकों की टाँड़ पर रख दीजिए।',
-        alt: 'एक नीचा कुम्हार का चाक, जिसके ऊपर एक बर्तन धीरे-धीरे घूम रहा है।',
-      },
-      bn: {
-        title: 'নিজে গড়ে দেখুন — কুমোরের চাক',
-        description: 'দর্শকদের জন্য একটি কুমোরের চাক। মাটি থেকে একটি পাত্র গড়ে তুলুন, তার তল শেষ করুন, আর প্রবেশকক্ষে দর্শকদের তাকে রেখে দিন।',
-        alt: 'একটি নিচু কুমোরের চাক, তার মাথায় একটি পাত্র ধীরে ধীরে ঘুরছে।',
-      },
-    },
-  },
-
-  // ── Entrance hall, west wall: the Visitors' Shelf (pots made at the wheel, after review) ──
-  {
-    id: 'visitors-wall',
-    title: 'The Visitors’ Shelf',
-    kind: 'visitors-wall',
-    position: [-KEY.annexHalf + 0.17, 0, (KEY.annexMouthZ + MUSEUM.annex.endZ) / 2 + 0.2],
-    rotationDeg: 90,
-    footprint: [3.8, 0.32],
-    height: 2.6,
-    props: { cols: 6, rows: 3, width: 3.6, bottom: 0.6, depth: 0.3 },
-    interactive: true,
-    description: 'Pots shaped by visitors at the potter’s wheel in Gallery B, set out here after review by the pavilion team.',
-    zone: 'annex',
-    i18n: {
-      hi: {
-        title: 'आगंतुकों की टाँड़',
-        description: 'गैलरी B में कुम्हार के चाक पर आगंतुकों के गढ़े बर्तन, मंडप की टीम की समीक्षा के बाद यहाँ रखे जाते हैं।',
-      },
-      bn: {
-        title: 'দর্শকদের তাক',
-        description: 'গ্যালারি B-তে কুমোরের চাকে দর্শকদের গড়া পাত্র, প্যাভিলিয়ন দলের পর্যালোচনার পরে এখানে রাখা হয়।',
-      },
-    },
-  },
+  // ── The clay studio (GRAND §0.2: taken down for the time being; GRAND_FLAGS.clayStudio restores it) ──
+  ...(GRAND_FLAGS.clayStudio ? CLAY_STUDIO : []),
 
   // ── Gallery C: a bench facing the works on the curved wall ──────────────────────
   {
     id: 'bench-c',
     title: 'Bench',
     kind: 'garden-bench',
-    position: at(6.2, 185),
+    position: at(MUSEUM.podium.ringR - 3, 185),
     rotationDeg: facingOut(185),
     footprint: [1.8, 0.45],
     zone: 'ring-c',
@@ -485,6 +663,18 @@ export const SCENE_OBJECTS: SceneObjectConfig[] = [
     },
   })),
   ...AMENITY_OBJECTS,
+
+  // ── Spectacle: each package's own list (config/spectacleObjects/*) ──────────────
+  ...ROOM_OBJECTS,
+  ...COURT_OBJECTS,
+  ...ATMOS_OBJECTS,
+  ...CRAFT_OBJECTS,
+  ...EXPERIENCE_OBJECTS,
+
+  // ── The grand plan: each package's own list (config/grandObjects/*) ─────────────
+  ...GRAND_CRAFTS_OBJECTS,
+  ...GRAND_INSTALLATIONS_OBJECTS,
+  ...GRAND_EXPERIENCE_OBJECTS,
 ]
 
 export function getSceneObject(id: string) {

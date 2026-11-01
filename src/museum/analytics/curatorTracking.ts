@@ -7,7 +7,7 @@
  * Anonymous (the tracker's random session id only). Never throws.
  */
 import type { AnalyticsEvent, AnalyticsEventType } from '../api/client'
-import { zoneAt } from '../config/layout'
+import { visitorZone } from './zone'
 import { useMuseum } from '../state/store'
 import { visitor } from '../state/visitor'
 
@@ -23,7 +23,7 @@ export function startCuratorTracking(track: Track) {
       try {
         if (useMuseum.getState().phase !== 'entered' || document.visibilityState !== 'visible') return
         if (!Number.isFinite(visitor.x) || !Number.isFinite(visitor.z)) return
-        track('pos', { x: r1(visitor.x), z: r1(visitor.z), zone: zoneAt(visitor.x, visitor.z)?.id })
+        track('pos', { x: r1(visitor.x), z: r1(visitor.z), zone: visitorZone() })
       } catch {
         /* ignore */
       }
@@ -37,7 +37,7 @@ export function startCuratorTracking(track: Track) {
             if (!s.active || s.phase !== 'viewing') return
             if (prev.active && prev.phase === 'viewing' && prev.index === s.index) return
             const stop = TOUR_STOPS[s.index]
-            if (stop) track('tour_step', { itemId: stop.id, zone: zoneAt(visitor.x, visitor.z)?.id, meta: { index: s.index, total: TOUR_STOPS.length } })
+            if (stop) track('tour_step', { itemId: stop.id, zone: visitorZone(), meta: { index: s.index, total: TOUR_STOPS.length } })
           } catch {
             /* ignore */
           }

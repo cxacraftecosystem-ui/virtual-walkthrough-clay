@@ -1,0 +1,943 @@
+{
+  "generated": "scripts/optimize-sourced.mjs",
+  "models": [
+    {
+      "slug": "wc-kaen-doki-jomon-flame-pot",
+      "title": "Kaen doki — Jomon flame-rimmed earthenware pot (Umataka, Nagaoka)",
+      "author": "九州国立博物館、大塚オーミ陶業株式会社、長岡市",
+      "source": "https://commons.wikimedia.org/wiki/File:Kaen_doki.stl",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "attribution": "Kaen doki — Jomon flame-rimmed earthenware pot (Umataka, Nagaoka) — 九州国立博物館、大塚オーミ陶業株式会社、長岡市, via Wikimedia Commons (CC0)",
+      "files": [
+        "/models/sourced/wc-kaen-doki-jomon-flame-pot/wc-kaen-doki-jomon-flame-pot.glb",
+        "/models/sourced/wc-kaen-doki-jomon-flame-pot/wc-kaen-doki-jomon-flame-pot.lod1.glb"
+      ],
+      "bytes": 497224
+    },
+    {
+      "slug": "wc-dogu-clay-figurine",
+      "title": "Dogu clay figurine (Umataka, Nagaoka)",
+      "author": "大塚木型製作所、長岡市",
+      "source": "https://commons.wikimedia.org/wiki/File:DoguMissUmataka.stl",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "attribution": "Dogu clay figurine (Umataka, Nagaoka) — 大塚木型製作所、長岡市, via Wikimedia Commons (CC0)",
+      "files": [
+        "/models/sourced/wc-dogu-clay-figurine/wc-dogu-clay-figurine.glb",
+        "/models/sourced/wc-dogu-clay-figurine/wc-dogu-clay-figurine.lod1.glb"
+      ],
+      "bytes": 205496
+    },
+    {
+      "slug": "si-colonoware-pot",
+      "title": "Colonoware pot from Cooper River, Charleston County, SC",
+      "author": "Smithsonian Institution — National Museum of African American History and Culture, 2017.108.1.1",
+      "source": "https://3d.si.edu/object/3d/79da3e3f-3ad7-41de-8956-e891d88a3c5f",
+      "license": "CC0",
+      "licenseUrl": "https://www.si.edu/openaccess",
+      "attribution": "Colonoware pot from Cooper River, Charleston County, SC, National Museum of African American History and Culture, 2017.108.1.1. Smithsonian Open Access (CC0).",
+      "files": [
+        "/models/sourced/si-colonoware-pot/si-colonoware-pot.glb",
+        "/models/sourced/si-colonoware-pot/si-colonoware-pot.lod1.glb"
+      ],
+      "bytes": 809544
+    },
+    {
+      "slug": "si-stoneware-jug-commeraw",
+      "title": "Stoneware jug created by Thomas Commeraw",
+      "author": "Smithsonian Institution — National Museum of African American History and Culture, 2011.61",
+      "source": "https://3d.si.edu/object/3d/82adf5d6-5ec4-46cc-9e68-6a4d7c5ea824",
+      "license": "CC0",
+      "licenseUrl": "https://www.si.edu/openaccess",
+      "attribution": "Stoneware jug created by Thomas Commeraw, National Museum of African American History and Culture, 2011.61. Smithsonian Open Access (CC0).",
+      "files": [
+        "/models/sourced/si-stoneware-jug-commeraw/si-stoneware-jug-commeraw.glb",
+        "/models/sourced/si-stoneware-jug-commeraw/si-stoneware-jug-commeraw.lod1.glb"
+      ],
+      "bytes": 750944
+    },
+    {
+      "slug": "si-delft-ewer",
+      "title": "Ewer (Delft tin-glazed earthenware)",
+      "author": "Smithsonian Institution — Cooper Hewitt, Smithsonian Design Museum, 1986-61-53",
+      "source": "https://3d.si.edu/object/3d/349e8fa2-9461-4e33-bae9-5e9cdd3e72bb",
+      "license": "CC0",
+      "licenseUrl": "https://www.si.edu/openaccess",
+      "attribution": "Ewer (Delft tin-glazed earthenware), Cooper Hewitt, Smithsonian Design Museum, 1986-61-53. Smithsonian Open Access (CC0).",
+      "files": [
+        "/models/sourced/si-delft-ewer/si-delft-ewer.glb",
+        "/models/sourced/si-delft-ewer/si-delft-ewer.lod1.glb"
+      ],
+      "bytes": 750236
+    },
+    {
+      "slug": "si-kylix",
+      "title": "Kylix (Greek drinking cup)",
+      "author": "Smithsonian Institution — Cooper Hewitt, Smithsonian Design Museum",
+      "source": "https://3d.si.edu/object/3d/547c78d1-620b-40c4-982e-01928870fef4",
+      "license": "CC0",
+      "licenseUrl": "https://www.si.edu/openaccess",
+      "attribution": "Kylix (Greek drinking cup), Cooper Hewitt, Smithsonian Design Museum. Smithsonian Open Access (CC0).",
+      "files": [
+        "/models/sourced/si-kylix/si-kylix.glb",
+        "/models/sourced/si-kylix/si-kylix.lod1.glb"
+      ],
+      "bytes": 605456
+    },
+    {
+      "slug": "wc-msr-vase-aryballisque",
+      "title": "Aryballos-shaped vase (Musee Saint-Raymond, Toulouse)",
+      "author": "Musée Saint-Raymond/IMA Solutions",
+      "source": "https://commons.wikimedia.org/wiki/File:MSR-Vase_aryballisque-26332.stl",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "attribution": "Aryballos-shaped vase (Musee Saint-Raymond, Toulouse) — Musée Saint-Raymond/IMA Solutions, via Wikimedia Commons (CC0)",
+      "files": [
+        "/models/sourced/wc-msr-vase-aryballisque/wc-msr-vase-aryballisque.glb",
+        "/models/sourced/wc-msr-vase-aryballisque/wc-msr-vase-aryballisque.lod1.glb"
+      ],
+      "bytes": 205860
+    },
+    {
+      "slug": "wc-roman-pottery-r3950",
+      "title": "Roman pottery R3950, Apulum (Muzeul National al Unirii Alba Iulia)",
+      "author": "Muzeul Național al Unirii Alba Iulia",
+      "source": "https://commons.wikimedia.org/wiki/File:Roman_pottery_R3950,_Apulum_-_633b0b2dd6bd43679b4bcd1da26a87ef.stl",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "attribution": "Roman pottery R3950, Apulum (Muzeul National al Unirii Alba Iulia) — Muzeul Național al Unirii Alba Iulia, via Wikimedia Commons (CC BY 4.0)",
+      "files": [
+        "/models/sourced/wc-roman-pottery-r3950/wc-roman-pottery-r3950.glb",
+        "/models/sourced/wc-roman-pottery-r3950/wc-roman-pottery-r3950.lod1.glb"
+      ],
+      "bytes": 214452
+    },
+    {
+      "slug": "wc-roman-pottery-r3997",
+      "title": "Roman pottery R3997, Apulum (Muzeul National al Unirii Alba Iulia)",
+      "author": "Muzeul Național al Unirii Alba Iulia",
+      "source": "https://commons.wikimedia.org/wiki/File:Roman_pottery_R3997,_Apulum_-_f525c51b3d9e4a268954d57bfd310b89.stl",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "attribution": "Roman pottery R3997, Apulum (Muzeul National al Unirii Alba Iulia) — Muzeul Național al Unirii Alba Iulia, via Wikimedia Commons (CC BY 4.0)",
+      "files": [
+        "/models/sourced/wc-roman-pottery-r3997/wc-roman-pottery-r3997.glb",
+        "/models/sourced/wc-roman-pottery-r3997/wc-roman-pottery-r3997.lod1.glb"
+      ],
+      "bytes": 203436
+    },
+    {
+      "slug": "wc-iron-age-cup-lamp",
+      "title": "Iron Age stone cup or lamp (Hunt Museum, Limerick)",
+      "author": "Unknown authorUnknown author",
+      "source": "https://commons.wikimedia.org/wiki/File:Iron_Age_stone_cup_or_lamp_3d_model.stl",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "attribution": "Iron Age stone cup or lamp (Hunt Museum, Limerick) — Unknown authorUnknown author, via Wikimedia Commons (CC0)",
+      "files": [
+        "/models/sourced/wc-iron-age-cup-lamp/wc-iron-age-cup-lamp.glb",
+        "/models/sourced/wc-iron-age-cup-lamp/wc-iron-age-cup-lamp.lod1.glb"
+      ],
+      "bytes": 204668
+    },
+    {
+      "slug": "wc-geto-dacian-biconical-vessel",
+      "title": "Geto-Dacian biconical vessel, Chirnogi (Institutul National al Patrimoniului)",
+      "author": "Institutul Național al Patrimoniului",
+      "source": "https://commons.wikimedia.org/wiki/File:Ulcior_krater_get-dacic_-_7ec7b567aa824d1da331bf466c3f1783.stl",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "attribution": "Geto-Dacian biconical vessel, Chirnogi (Institutul National al Patrimoniului) — Institutul Național al Patrimoniului, via Wikimedia Commons (CC BY 4.0)",
+      "files": [
+        "/models/sourced/wc-geto-dacian-biconical-vessel/wc-geto-dacian-biconical-vessel.glb",
+        "/models/sourced/wc-geto-dacian-biconical-vessel/wc-geto-dacian-biconical-vessel.lod1.glb"
+      ],
+      "bytes": 203740
+    },
+    {
+      "slug": "wc-neolithic-pottery",
+      "title": "Neolithic pottery vessel (scan by Calin Suteu)",
+      "author": "Calin Suteu",
+      "source": "https://commons.wikimedia.org/wiki/File:Neolithic_pottery_test_AR_-_9da85158685146f18850569c7a6cd433.stl",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "attribution": "Neolithic pottery vessel (scan by Calin Suteu) — Calin Suteu, via Wikimedia Commons (CC BY 4.0)",
+      "files": [
+        "/models/sourced/wc-neolithic-pottery/wc-neolithic-pottery.glb",
+        "/models/sourced/wc-neolithic-pottery/wc-neolithic-pottery.lod1.glb"
+      ],
+      "bytes": 206940
+    },
+    {
+      "slug": "wc-neolithic-clay-idol",
+      "title": "Neolithic clay idol (scan by Calin Suteu)",
+      "author": "Calin Suteu",
+      "source": "https://commons.wikimedia.org/wiki/File:Neolithic_clay_idol_-_28eb511681854c45b6f83aefad40d1a1.stl",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "attribution": "Neolithic clay idol (scan by Calin Suteu) — Calin Suteu, via Wikimedia Commons (CC BY 4.0)",
+      "files": [
+        "/models/sourced/wc-neolithic-clay-idol/wc-neolithic-clay-idol.glb",
+        "/models/sourced/wc-neolithic-clay-idol/wc-neolithic-clay-idol.lod1.glb"
+      ],
+      "bytes": 207444
+    },
+    {
+      "slug": "wc-mahg-terracotta-man-holding-child",
+      "title": "Man holding a child, terracotta figurine (MAHG P 0296, Geneva)",
+      "author": "Rama",
+      "source": "https://commons.wikimedia.org/wiki/File:Man_holding_a_child-MAHG_P_0296-High_poly-001.stl",
+      "license": "PD",
+      "licenseUrl": "https://commons.wikimedia.org/wiki/Commons:Licensing",
+      "attribution": "Man holding a child, terracotta figurine (MAHG P 0296, Geneva) — Rama, via Wikimedia Commons (Public domain)",
+      "files": [
+        "/models/sourced/wc-mahg-terracotta-man-holding-child/wc-mahg-terracotta-man-holding-child.glb",
+        "/models/sourced/wc-mahg-terracotta-man-holding-child/wc-mahg-terracotta-man-holding-child.lod1.glb"
+      ],
+      "bytes": 207416
+    },
+    {
+      "slug": "wc-mahg-terracotta-tambourine-player",
+      "title": "Tambourine player, terracotta figurine (MAHG P 0407, Geneva)",
+      "author": "Rama",
+      "source": "https://commons.wikimedia.org/wiki/File:Tambourine_player-MAHG_P_0407-High_poly-001.stl",
+      "license": "PD",
+      "licenseUrl": "https://commons.wikimedia.org/wiki/Commons:Licensing",
+      "attribution": "Tambourine player, terracotta figurine (MAHG P 0407, Geneva) — Rama, via Wikimedia Commons (Public domain)",
+      "files": [
+        "/models/sourced/wc-mahg-terracotta-tambourine-player/wc-mahg-terracotta-tambourine-player.glb",
+        "/models/sourced/wc-mahg-terracotta-tambourine-player/wc-mahg-terracotta-tambourine-player.lod1.glb"
+      ],
+      "bytes": 204716
+    },
+    {
+      "slug": "wc-mahg-standing-man-figurine",
+      "title": "Standing man figurine (MAHG 23458, Geneva)",
+      "author": "Rama",
+      "source": "https://commons.wikimedia.org/wiki/File:Standing_man_figurine-MAHG_23458-High_poly-001.stl",
+      "license": "PD",
+      "licenseUrl": "https://commons.wikimedia.org/wiki/Commons:Licensing",
+      "attribution": "Standing man figurine (MAHG 23458, Geneva) — Rama, via Wikimedia Commons (Public domain)",
+      "files": [
+        "/models/sourced/wc-mahg-standing-man-figurine/wc-mahg-standing-man-figurine.glb",
+        "/models/sourced/wc-mahg-standing-man-figurine/wc-mahg-standing-man-figurine.lod1.glb"
+      ],
+      "bytes": 206576
+    },
+    {
+      "slug": "wc-bust-singing-woman",
+      "title": "Bust of a Singing Woman (Hunt Museum, Limerick)",
+      "author": "Limerick3D",
+      "source": "https://commons.wikimedia.org/wiki/File:Bust_Of_A_Singing_Woman_-_3D_model_by_Limerick3D_-_Sketchfab.stl",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "attribution": "Bust of a Singing Woman (Hunt Museum, Limerick) — Limerick3D, via Wikimedia Commons (CC0)",
+      "files": [
+        "/models/sourced/wc-bust-singing-woman/wc-bust-singing-woman.glb",
+        "/models/sourced/wc-bust-singing-woman/wc-bust-singing-woman.lod1.glb"
+      ],
+      "bytes": 206920
+    },
+    {
+      "slug": "si-fugitives-story-figurine",
+      "title": "The Fugitive's Story (John Rogers group figurine)",
+      "author": "Smithsonian Institution — National Museum of African American History and Culture",
+      "source": "https://3d.si.edu/object/3d/28663e98-595d-4994-bede-bd623252c82f",
+      "license": "CC0",
+      "licenseUrl": "https://www.si.edu/openaccess",
+      "attribution": "The Fugitive's Story (John Rogers group figurine), National Museum of African American History and Culture. Smithsonian Open Access (CC0).",
+      "files": [
+        "/models/sourced/si-fugitives-story-figurine/si-fugitives-story-figurine.glb",
+        "/models/sourced/si-fugitives-story-figurine/si-fugitives-story-figurine.lod1.glb"
+      ],
+      "bytes": 1011612
+    },
+    {
+      "slug": "wc-sevres-pedestal-bowl",
+      "title": "Pedestal fruit bowl, Sevres porcelain 1844 (Institutul National al Patrimoniului)",
+      "author": "Institutul Național al Patrimoniului",
+      "source": "https://commons.wikimedia.org/wiki/File:Porcelain_Fruit_Bowl_-_d4e87b065d4242cc822f13f1cbdcc1b6.stl",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "attribution": "Pedestal fruit bowl, Sevres porcelain 1844 (Institutul National al Patrimoniului) — Institutul Național al Patrimoniului, via Wikimedia Commons (CC BY 4.0)",
+      "files": [
+        "/models/sourced/wc-sevres-pedestal-bowl/wc-sevres-pedestal-bowl.glb",
+        "/models/sourced/wc-sevres-pedestal-bowl/wc-sevres-pedestal-bowl.lod1.glb"
+      ],
+      "bytes": 197328
+    },
+    {
+      "slug": "wc-mia-ganesha",
+      "title": "Ganesha, 10th-11th c. CE (Minneapolis Institute of Art)",
+      "author": "Minneapolis Institute of Art",
+      "source": "https://commons.wikimedia.org/wiki/File:Ganesha,_10th_-_11th_C_CE_-_3D_model_by_Minneapolis_Institute_of_Art_-_Sketchfab.stl",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "attribution": "Ganesha, 10th-11th c. CE (Minneapolis Institute of Art) — Minneapolis Institute of Art, via Wikimedia Commons (CC0)",
+      "files": [
+        "/models/sourced/wc-mia-ganesha/wc-mia-ganesha.glb",
+        "/models/sourced/wc-mia-ganesha/wc-mia-ganesha.lod1.glb"
+      ],
+      "bytes": 208248
+    },
+    {
+      "slug": "wc-mia-uma-maheshvara",
+      "title": "Uma-Maheshvara, 10th-11th c. CE (Minneapolis Institute of Art)",
+      "author": "Minneapolis Institute of Art",
+      "source": "https://commons.wikimedia.org/wiki/File:Uma-Maheshvara,_10th_-_11th_C_CE_-_3D_model_by_Minneapolis_Institute_of_Art_-_Sketchfab.stl",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "attribution": "Uma-Maheshvara, 10th-11th c. CE (Minneapolis Institute of Art) — Minneapolis Institute of Art, via Wikimedia Commons (CC0)",
+      "files": [
+        "/models/sourced/wc-mia-uma-maheshvara/wc-mia-uma-maheshvara.glb",
+        "/models/sourced/wc-mia-uma-maheshvara/wc-mia-uma-maheshvara.lod1.glb"
+      ],
+      "bytes": 209032
+    },
+    {
+      "slug": "si-gathering-of-buddhas",
+      "title": "Gathering of Buddhas and Bodhisattvas (relief)",
+      "author": "Smithsonian Institution — National Museum of Asian Art (Freer), F1921.1",
+      "source": "https://3d.si.edu/object/3d/476ad7f6-6add-448d-af7f-9f2ca9ba9cb6",
+      "license": "CC0",
+      "licenseUrl": "https://www.si.edu/openaccess",
+      "attribution": "Gathering of Buddhas and Bodhisattvas (relief), National Museum of Asian Art (Freer), F1921.1. Smithsonian Open Access (CC0).",
+      "files": [
+        "/models/sourced/si-gathering-of-buddhas/si-gathering-of-buddhas.glb",
+        "/models/sourced/si-gathering-of-buddhas/si-gathering-of-buddhas.lod1.glb"
+      ],
+      "bytes": 1176604
+    },
+    {
+      "slug": "wc-forme-sortant-de-la-matiere",
+      "title": "La forme sortant de la matiere (Paul Le Goff)",
+      "author": "Paul Le Goff",
+      "source": "https://commons.wikimedia.org/wiki/File:489_-_La_forme_sortant_de_la_mati%C3%A8re.stl",
+      "license": "PD",
+      "licenseUrl": "https://commons.wikimedia.org/wiki/Commons:Licensing",
+      "attribution": "La forme sortant de la matiere (Paul Le Goff) — Paul Le Goff, via Wikimedia Commons (Public domain)",
+      "files": [
+        "/models/sourced/wc-forme-sortant-de-la-matiere/wc-forme-sortant-de-la-matiere.glb",
+        "/models/sourced/wc-forme-sortant-de-la-matiere/wc-forme-sortant-de-la-matiere.lod1.glb"
+      ],
+      "bytes": 417692
+    },
+    {
+      "slug": "wc-revolved-vase-001",
+      "title": "Revolved vase 001 (PantheraLeo1359531)",
+      "author": "PantheraLeo1359531",
+      "source": "https://commons.wikimedia.org/wiki/File:3D-Modell_Vase_20220520_001.stl",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "attribution": "Revolved vase 001 (PantheraLeo1359531) — PantheraLeo1359531, via Wikimedia Commons (CC0)",
+      "files": [
+        "/models/sourced/wc-revolved-vase-001/wc-revolved-vase-001.glb",
+        "/models/sourced/wc-revolved-vase-001/wc-revolved-vase-001.lod1.glb"
+      ],
+      "bytes": 170604
+    },
+    {
+      "slug": "ph-planter-pot-clay",
+      "title": "Planter Pot Clay",
+      "author": "Amal Kumar",
+      "source": "https://polyhaven.com/a/planter_pot_clay",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Planter Pot Clay by Amal Kumar — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-planter-pot-clay/ph-planter-pot-clay.glb",
+        "/models/sourced/ph-planter-pot-clay/ph-planter-pot-clay.lod1.glb"
+      ],
+      "bytes": 499188
+    },
+    {
+      "slug": "ph-ceramic-pot",
+      "title": "Ceramic Pot",
+      "author": "Aron Łyczek",
+      "source": "https://polyhaven.com/a/ceramic_pot",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Ceramic Pot by Aron Łyczek — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-ceramic-pot/ph-ceramic-pot.glb",
+        "/models/sourced/ph-ceramic-pot/ph-ceramic-pot.lod1.glb"
+      ],
+      "bytes": 515764
+    },
+    {
+      "slug": "ph-namaqualand-cliff-01",
+      "title": "Namaqualand Cliff 01",
+      "author": "Jenelle van Heerden, Rico Cilliers",
+      "source": "https://polyhaven.com/a/namaqualand_cliff_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Namaqualand Cliff 01 by Jenelle van Heerden, Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-namaqualand-cliff-01/ph-namaqualand-cliff-01.glb",
+        "/models/sourced/ph-namaqualand-cliff-01/ph-namaqualand-cliff-01.lod1.glb"
+      ],
+      "bytes": 1075412
+    },
+    {
+      "slug": "ph-rock-face-01",
+      "title": "Rock Face 01",
+      "author": "Dario Barresi",
+      "source": "https://polyhaven.com/a/rock_face_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Rock Face 01 by Dario Barresi — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-rock-face-01/ph-rock-face-01.glb",
+        "/models/sourced/ph-rock-face-01/ph-rock-face-01.lod1.glb"
+      ],
+      "bytes": 1196900
+    },
+    {
+      "slug": "ph-namaqualand-boulder-03",
+      "title": "Namaqualand Boulder 03",
+      "author": "Jenelle van Heerden, Dario Barresi",
+      "source": "https://polyhaven.com/a/namaqualand_boulder_03",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Namaqualand Boulder 03 by Jenelle van Heerden, Dario Barresi — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-namaqualand-boulder-03/ph-namaqualand-boulder-03.glb",
+        "/models/sourced/ph-namaqualand-boulder-03/ph-namaqualand-boulder-03.lod1.glb"
+      ],
+      "bytes": 1069080
+    },
+    {
+      "slug": "ph-namaqualand-boulder-04",
+      "title": "Namaqualand Boulder 04",
+      "author": "Jenelle van Heerden",
+      "source": "https://polyhaven.com/a/namaqualand_boulder_04",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Namaqualand Boulder 04 by Jenelle van Heerden — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-namaqualand-boulder-04/ph-namaqualand-boulder-04.glb",
+        "/models/sourced/ph-namaqualand-boulder-04/ph-namaqualand-boulder-04.lod1.glb"
+      ],
+      "bytes": 1122184
+    },
+    {
+      "slug": "ph-namaqualand-boulder-05",
+      "title": "Namaqualand Boulder 05",
+      "author": "Jenelle van Heerden, Dario Barresi",
+      "source": "https://polyhaven.com/a/namaqualand_boulder_05",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Namaqualand Boulder 05 by Jenelle van Heerden, Dario Barresi — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-namaqualand-boulder-05/ph-namaqualand-boulder-05.glb",
+        "/models/sourced/ph-namaqualand-boulder-05/ph-namaqualand-boulder-05.lod1.glb"
+      ],
+      "bytes": 1302736
+    },
+    {
+      "slug": "ph-namaqualand-rocks-01",
+      "title": "Namaqualand Rocks 01",
+      "author": "Greg Zaal, Jenelle van Heerden",
+      "source": "https://polyhaven.com/a/namaqualand_rocks_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Namaqualand Rocks 01 by Greg Zaal, Jenelle van Heerden — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-namaqualand-rocks-01/ph-namaqualand-rocks-01.glb",
+        "/models/sourced/ph-namaqualand-rocks-01/ph-namaqualand-rocks-01.lod1.glb"
+      ],
+      "bytes": 1192968
+    },
+    {
+      "slug": "ph-rock-07",
+      "title": "Rock 07",
+      "author": "Jenelle van Heerden",
+      "source": "https://polyhaven.com/a/rock_07",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Rock 07 by Jenelle van Heerden — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-rock-07/ph-rock-07.glb",
+        "/models/sourced/ph-rock-07/ph-rock-07.lod1.glb"
+      ],
+      "bytes": 684380
+    },
+    {
+      "slug": "ph-rock-09",
+      "title": "Rock 09",
+      "author": "Jenelle van Heerden",
+      "source": "https://polyhaven.com/a/rock_09",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Rock 09 by Jenelle van Heerden — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-rock-09/ph-rock-09.glb",
+        "/models/sourced/ph-rock-09/ph-rock-09.lod1.glb"
+      ],
+      "bytes": 630240
+    },
+    {
+      "slug": "ph-searsia-lucida",
+      "title": "Searsia Lucida",
+      "author": "James Ray Cock, Jenelle van Heerden",
+      "source": "https://polyhaven.com/a/searsia_lucida",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Searsia Lucida by James Ray Cock, Jenelle van Heerden — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-searsia-lucida/ph-searsia-lucida.glb",
+        "/models/sourced/ph-searsia-lucida/ph-searsia-lucida.lod1.glb"
+      ],
+      "bytes": 1459524
+    },
+    {
+      "slug": "ph-searsia-lucida-b",
+      "title": "Searsia Lucida",
+      "author": "James Ray Cock, Jenelle van Heerden",
+      "source": "https://polyhaven.com/a/searsia_lucida",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Searsia Lucida by James Ray Cock, Jenelle van Heerden — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-searsia-lucida-b/ph-searsia-lucida-b.glb",
+        "/models/sourced/ph-searsia-lucida-b/ph-searsia-lucida-b.lod1.glb"
+      ],
+      "bytes": 1432976
+    },
+    {
+      "slug": "ph-searsia-lucida-c",
+      "title": "Searsia Lucida",
+      "author": "James Ray Cock, Jenelle van Heerden",
+      "source": "https://polyhaven.com/a/searsia_lucida",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Searsia Lucida by James Ray Cock, Jenelle van Heerden — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-searsia-lucida-c/ph-searsia-lucida-c.glb",
+        "/models/sourced/ph-searsia-lucida-c/ph-searsia-lucida-c.lod1.glb"
+      ],
+      "bytes": 1445964
+    },
+    {
+      "slug": "ph-quiver-tree-01",
+      "title": "Quiver Tree 01",
+      "author": "James Ray Cock, Dario Barresi, Rico Cilliers",
+      "source": "https://polyhaven.com/a/quiver_tree_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Quiver Tree 01 by James Ray Cock, Dario Barresi, Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-quiver-tree-01/ph-quiver-tree-01.glb",
+        "/models/sourced/ph-quiver-tree-01/ph-quiver-tree-01.lod1.glb"
+      ],
+      "bytes": 1991864
+    },
+    {
+      "slug": "ph-shrub-02",
+      "title": "Shrub 02",
+      "author": "Rico Cilliers",
+      "source": "https://polyhaven.com/a/shrub_02",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Shrub 02 by Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-shrub-02/ph-shrub-02.glb",
+        "/models/sourced/ph-shrub-02/ph-shrub-02.lod1.glb"
+      ],
+      "bytes": 440540
+    },
+    {
+      "slug": "ph-shrub-03",
+      "title": "Shrub 03",
+      "author": "Rico Cilliers",
+      "source": "https://polyhaven.com/a/shrub_03",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Shrub 03 by Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-shrub-03/ph-shrub-03.glb",
+        "/models/sourced/ph-shrub-03/ph-shrub-03.lod1.glb"
+      ],
+      "bytes": 449000
+    },
+    {
+      "slug": "ph-shrub-04",
+      "title": "Shrub 04",
+      "author": "Rico Cilliers",
+      "source": "https://polyhaven.com/a/shrub_04",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Shrub 04 by Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-shrub-04/ph-shrub-04.glb",
+        "/models/sourced/ph-shrub-04/ph-shrub-04.lod1.glb"
+      ],
+      "bytes": 469384
+    },
+    {
+      "slug": "ph-wild-rooibos-bush",
+      "title": "Wild Rooibos Bush",
+      "author": "James Ray Cock, Jenelle van Heerden",
+      "source": "https://polyhaven.com/a/wild_rooibos_bush",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Wild Rooibos Bush by James Ray Cock, Jenelle van Heerden — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-wild-rooibos-bush/ph-wild-rooibos-bush.glb",
+        "/models/sourced/ph-wild-rooibos-bush/ph-wild-rooibos-bush.lod1.glb"
+      ],
+      "bytes": 635868
+    },
+    {
+      "slug": "ph-periwinkle-plant",
+      "title": "Periwinkle Plant",
+      "author": "Amal Kumar",
+      "source": "https://polyhaven.com/a/periwinkle_plant",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Periwinkle Plant by Amal Kumar — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-periwinkle-plant/ph-periwinkle-plant.glb",
+        "/models/sourced/ph-periwinkle-plant/ph-periwinkle-plant.lod1.glb"
+      ],
+      "bytes": 468964
+    },
+    {
+      "slug": "ph-fern-02",
+      "title": "Fern 02",
+      "author": "Rob Tuytel, Rico Cilliers",
+      "source": "https://polyhaven.com/a/fern_02",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Fern 02 by Rob Tuytel, Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-fern-02/ph-fern-02.glb",
+        "/models/sourced/ph-fern-02/ph-fern-02.lod1.glb"
+      ],
+      "bytes": 324564
+    },
+    {
+      "slug": "ph-calathea-orbifolia-01",
+      "title": "Calathea Orbifolia 01",
+      "author": "Rob Tuytel, Rico Cilliers",
+      "source": "https://polyhaven.com/a/calathea_orbifolia_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Calathea Orbifolia 01 by Rob Tuytel, Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-calathea-orbifolia-01/ph-calathea-orbifolia-01.glb",
+        "/models/sourced/ph-calathea-orbifolia-01/ph-calathea-orbifolia-01.lod1.glb"
+      ],
+      "bytes": 448952
+    },
+    {
+      "slug": "ph-anthurium-botany-01",
+      "title": "Anthurium Botany 01",
+      "author": "Rob Tuytel, Rico Cilliers",
+      "source": "https://polyhaven.com/a/anthurium_botany_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Anthurium Botany 01 by Rob Tuytel, Rico Cilliers — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-anthurium-botany-01/ph-anthurium-botany-01.glb",
+        "/models/sourced/ph-anthurium-botany-01/ph-anthurium-botany-01.lod1.glb"
+      ],
+      "bytes": 490420
+    },
+    {
+      "slug": "wc-hotei-water-basin",
+      "title": "Water basin of Hotei, Ana-Hachimangu (Tokyo)",
+      "author": "Asanagi",
+      "source": "https://commons.wikimedia.org/wiki/File:Ana-Hachimangu_water_basin_of_Hotei_2024-04-25.stl",
+      "license": "CC0",
+      "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "attribution": "Water basin of Hotei, Ana-Hachimangu (Tokyo) — Asanagi, via Wikimedia Commons (CC0)",
+      "files": [
+        "/models/sourced/wc-hotei-water-basin/wc-hotei-water-basin.glb",
+        "/models/sourced/wc-hotei-water-basin/wc-hotei-water-basin.lod1.glb"
+      ],
+      "bytes": 211240
+    },
+    {
+      "slug": "ph-stone-fire-pit",
+      "title": "Stone Fire Pit",
+      "author": "Sebastian Platen",
+      "source": "https://polyhaven.com/a/stone_fire_pit",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Stone Fire Pit by Sebastian Platen — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-stone-fire-pit/ph-stone-fire-pit.glb",
+        "/models/sourced/ph-stone-fire-pit/ph-stone-fire-pit.lod1.glb"
+      ],
+      "bytes": 963052
+    },
+    {
+      "slug": "ph-wooden-bucket-01",
+      "title": "Wooden Bucket 01",
+      "author": "James Ray Cock",
+      "source": "https://polyhaven.com/a/wooden_bucket_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Wooden Bucket 01 by James Ray Cock — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-wooden-bucket-01/ph-wooden-bucket-01.glb",
+        "/models/sourced/ph-wooden-bucket-01/ph-wooden-bucket-01.lod1.glb"
+      ],
+      "bytes": 752024
+    },
+    {
+      "slug": "ph-wicker-basket-01",
+      "title": "Wicker Basket 01",
+      "author": "Kuutti Siitonen",
+      "source": "https://polyhaven.com/a/wicker_basket_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Wicker Basket 01 by Kuutti Siitonen — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-wicker-basket-01/ph-wicker-basket-01.glb",
+        "/models/sourced/ph-wicker-basket-01/ph-wicker-basket-01.lod1.glb"
+      ],
+      "bytes": 792772
+    },
+    {
+      "slug": "ph-trowel-01",
+      "title": "Trowel 01",
+      "author": "Satyaki Mandal",
+      "source": "https://polyhaven.com/a/trowel_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Trowel 01 by Satyaki Mandal — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-trowel-01/ph-trowel-01.glb",
+        "/models/sourced/ph-trowel-01/ph-trowel-01.lod1.glb"
+      ],
+      "bytes": 636912
+    },
+    {
+      "slug": "ph-wooden-spoon",
+      "title": "Wooden Spoon",
+      "author": "Ronnie Barter",
+      "source": "https://polyhaven.com/a/wooden_spoon",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Wooden Spoon by Ronnie Barter — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-wooden-spoon/ph-wooden-spoon.glb",
+        "/models/sourced/ph-wooden-spoon/ph-wooden-spoon.lod1.glb"
+      ],
+      "bytes": 659708
+    },
+    {
+      "slug": "ph-folding-wooden-stool",
+      "title": "Folding Wooden Stool",
+      "author": "Ulan Cabanilla",
+      "source": "https://polyhaven.com/a/folding_wooden_stool",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Folding Wooden Stool by Ulan Cabanilla — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-folding-wooden-stool/ph-folding-wooden-stool.glb",
+        "/models/sourced/ph-folding-wooden-stool/ph-folding-wooden-stool.lod1.glb"
+      ],
+      "bytes": 779740
+    },
+    {
+      "slug": "ph-wooden-stool-01",
+      "title": "Wooden Stool 01",
+      "author": "Kuutti Siitonen",
+      "source": "https://polyhaven.com/a/wooden_stool_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Wooden Stool 01 by Kuutti Siitonen — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-wooden-stool-01/ph-wooden-stool-01.glb",
+        "/models/sourced/ph-wooden-stool-01/ph-wooden-stool-01.lod1.glb"
+      ],
+      "bytes": 931376
+    },
+    {
+      "slug": "ph-round-wooden-table-01",
+      "title": "Round Wooden Table 01",
+      "author": "Ulan Cabanilla",
+      "source": "https://polyhaven.com/a/round_wooden_table_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Round Wooden Table 01 by Ulan Cabanilla — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-round-wooden-table-01/ph-round-wooden-table-01.glb",
+        "/models/sourced/ph-round-wooden-table-01/ph-round-wooden-table-01.lod1.glb"
+      ],
+      "bytes": 365324
+    },
+    {
+      "slug": "ph-wooden-bookshelf-worn",
+      "title": "Wooden Bookshelf Worn",
+      "author": "Ulan Cabanilla",
+      "source": "https://polyhaven.com/a/wooden_bookshelf_worn",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Wooden Bookshelf Worn by Ulan Cabanilla — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-wooden-bookshelf-worn/ph-wooden-bookshelf-worn.glb",
+        "/models/sourced/ph-wooden-bookshelf-worn/ph-wooden-bookshelf-worn.lod1.glb"
+      ],
+      "bytes": 1052556
+    },
+    {
+      "slug": "ph-book-encyclopedia-set-01",
+      "title": "Book Encyclopedia Set 01",
+      "author": "John Malcolm",
+      "source": "https://polyhaven.com/a/book_encyclopedia_set_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Book Encyclopedia Set 01 by John Malcolm — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-book-encyclopedia-set-01/ph-book-encyclopedia-set-01.glb",
+        "/models/sourced/ph-book-encyclopedia-set-01/ph-book-encyclopedia-set-01.lod1.glb"
+      ],
+      "bytes": 843960
+    },
+    {
+      "slug": "ph-wooden-display-shelves-01",
+      "title": "Wooden Display Shelves 01",
+      "author": "James Ray Cock",
+      "source": "https://polyhaven.com/a/wooden_display_shelves_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Wooden Display Shelves 01 by James Ray Cock — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-wooden-display-shelves-01/ph-wooden-display-shelves-01.glb",
+        "/models/sourced/ph-wooden-display-shelves-01/ph-wooden-display-shelves-01.lod1.glb"
+      ],
+      "bytes": 375308
+    },
+    {
+      "slug": "ph-brass-diya-lantern",
+      "title": "Brass Diya Lantern",
+      "author": "Bhargav Kubal",
+      "source": "https://polyhaven.com/a/brass_diya_lantern",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Brass Diya Lantern by Bhargav Kubal — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-brass-diya-lantern/ph-brass-diya-lantern.glb",
+        "/models/sourced/ph-brass-diya-lantern/ph-brass-diya-lantern.lod1.glb"
+      ],
+      "bytes": 555488
+    },
+    {
+      "slug": "ph-lantern-01",
+      "title": "Lantern 01",
+      "author": "Rajil Jose Macatangay",
+      "source": "https://polyhaven.com/a/Lantern_01",
+      "license": "CC0",
+      "licenseUrl": "https://polyhaven.com/license",
+      "attribution": "Lantern 01 by Rajil Jose Macatangay — Poly Haven (CC0)",
+      "files": [
+        "/models/sourced/ph-lantern-01/ph-lantern-01.glb",
+        "/models/sourced/ph-lantern-01/ph-lantern-01.lod1.glb"
+      ],
+      "bytes": 697092
+    }
+  ],
+  "materials": [
+    {
+      "title": "Bricks 051",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=Bricks051",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Bricks 051 — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Clay 005",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=Clay005",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Clay 005 — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Clay 007",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=Clay007",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Clay 007 — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Clay 009",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=Clay009",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Clay 009 — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Glazed Terracotta 001",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=GlazedTerracotta001",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Glazed Terracotta 001 — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Glazed Terracotta 002",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=GlazedTerracotta002",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Glazed Terracotta 002 — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Ground 054",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=Ground054",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Ground 054 — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Painted Plaster 017",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=PaintedPlaster017",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Painted Plaster 017 — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Plaster 001",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=Plaster001",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Plaster 001 — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Roofing Tiles 013 A",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=RoofingTiles013A",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Roofing Tiles 013 A — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Terrazzo 004",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=Terrazzo004",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Terrazzo 004 — ambientCG.com (CC0)"
+    },
+    {
+      "title": "Wood 092",
+      "author": "Lennart Demes (ambientCG)",
+      "source": "https://ambientcg.com/view?id=Wood092",
+      "license": "CC0",
+      "licenseUrl": "https://docs.ambientcg.com/license/",
+      "attribution": "Wood 092 — ambientCG.com (CC0)"
+    }
+  ]
+}

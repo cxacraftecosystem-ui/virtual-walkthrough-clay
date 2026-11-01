@@ -1,10 +1,13 @@
 /**
- * WALL PANELS — the pavilion's interpretation.
+ * WALL PANELS — the pavilion's interpretation (GRAND §6.4: 1.2 × 1.8 m panels).
  *
- *   annex G (east wall)   the three traditions and the way round
- *   A / B / C             one panel where each tradition begins
- *   hallway D             the making of a clay object, in order: prepare, form, dry, fire, finish
- *   F (court face)        the exhibition statement, under the oculus
+ *   H (east face)         the galleries, the north wing and the way round, beside the title
+ *   A / B / C             one panel where each tradition begins (between its first podiums)
+ *   hallway D             the making of a clay object, in order: prepare, form, dry, fire, finish,
+ *                         along the ring wall's hallway face (the plinths face them across the hall)
+ *   F (court face)        the exhibition statement, beside the niche
+ * The surfaces the grand plan reserves (the Earth Room's walls, the Wine Hall's plinth wall, F's
+ * niche) carry no panels.
  *
  * The copy is deliberately modest: general facts about working clay and the few widely
  * documented facts about each tradition. Every panel stays `placeholder: true` until the
@@ -15,6 +18,7 @@
 
 import type { SurfaceId } from './layout'
 import { atAngle, midAt } from './artworks'
+import { MUSEUM } from './museum'
 import type { AltLang, ContentI18n } from '../i18n/core'
 
 export type InfographicIcon = 'map' | 'dye' | 'block' | 'process'
@@ -35,11 +39,18 @@ export interface InfographicConfig {
   i18n?: Partial<Record<AltLang, Partial<Record<'kicker' | 'title' | 'body', string>> & { steps?: string[] }>>
 }
 
-/** Width / height of a standard panel (the design size the texture is laid out for is 1.45 × 1.95). */
-const PANEL = { width: 1.0, height: 1.35 }
+/** Width / height of a standard panel (GRAND §6.4: 1.2 × 1.8, body legible at 3 m). */
+const PANEL = { width: 1.2, height: 1.8 }
 
 /** Placement centred where plan angle `aDeg` meets a drum surface. */
 const onDrum = (surface: SurfaceId, aDeg: number, centerHeight = 1.55) => ({ surface, at: atAngle(surface, aDeg), centerHeight })
+
+/**
+ * Plan angles (deg) of the five making panels on the ring wall's hallway face, in walking order
+ * from the D arch towards the entry ways: two to a facet, each clear of the facets' joints.
+ */
+const D_FROM = MUSEUM.arches.d.fromDeg
+const D_PANEL = [D_FROM - 5, D_FROM - 14.5, D_FROM - 24.5, D_FROM - 34, D_FROM - 43.5] as const
 
 export const INFOGRAPHICS: InfographicConfig[] = [
   // ── Annex G: the three traditions, read on the way in (east wall, the visitor's right) ──
@@ -47,20 +58,19 @@ export const INFOGRAPHICS: InfographicConfig[] = [
     id: 'traditions',
     kicker: 'G',
     title: 'Three traditions of clay',
-    body: 'Gallery A — Bankura terracotta, West Bengal. Gallery B — the votive plaques of Molela, Rajasthan. Gallery C — the black pottery of Longpi, Manipur. The galleries run round the drum to the right of the inner wall, and the hallway brings you back here.',
+    body: 'Gallery A — Bankura terracotta, West Bengal. Gallery B — the votive plaques of Molela, Rajasthan. Gallery C — the black pottery of Longpi, Manipur. The galleries run round the court to the right of the inner wall, under the dome, and the hallway brings you back here. Beyond it, the Parikrama leads to the rooms of the north wing, where the Red Room gathers clay from many more regions of India.',
     icon: 'map',
-    placement: { surface: 'g-east', at: midAt('g-east') + 1.2, centerHeight: 1.65 },
-    width: 1.3,
-    height: 1.75,
+    placement: { surface: 'h-east', at: midAt('h-east'), centerHeight: 1.75 },
+    ...PANEL,
     placeholder: true,
     i18n: {
       hi: {
         title: 'मिट्टी की तीन परंपराएँ',
-        body: 'गैलरी A — बाँकुड़ा टेराकोटा, पश्चिम बंगाल। गैलरी B — मोलेला की मन्नत पट्टिकाएँ, राजस्थान। गैलरी C — लोंगपी के काले मृद्भांड, मणिपुर। गैलरियाँ भीतरी दीवार के दाईं ओर से गोलाकार कक्ष में घूमती हैं, और गलियारा आपको वापस यहीं ले आता है।',
+        body: 'गैलरी A — बाँकुड़ा टेराकोटा, पश्चिम बंगाल। गैलरी B — मोलेला की मन्नत पट्टिकाएँ, राजस्थान। गैलरी C — लोंगपी के काले मृद्भांड, मणिपुर। गैलरियाँ भीतरी दीवार के दाईं ओर से, गुंबद के नीचे, आँगन के चारों ओर घूमती हैं, और गलियारा आपको वापस यहीं ले आता है। उसके आगे परिक्रमा उत्तर के कक्षों तक ले जाती है, जहाँ लाल कक्ष में भारत के और भी कई क्षेत्रों की मिट्टी है।',
       },
       bn: {
         title: 'মাটির তিন ধারা',
-        body: 'গ্যালারি A — বাঁকুড়ার টেরাকোটা, পশ্চিমবঙ্গ। গ্যালারি B — মোলেলার মানতের ফলক, রাজস্থান। গ্যালারি C — লংপির কালো মৃৎপাত্র, মণিপুর। গ্যালারিগুলি ভেতরের দেয়ালের ডান দিক দিয়ে গোল কক্ষ ঘিরে এগিয়েছে, আর করিডর আপনাকে আবার এখানেই ফিরিয়ে আনে।',
+        body: 'গ্যালারি A — বাঁকুড়ার টেরাকোটা, পশ্চিমবঙ্গ। গ্যালারি B — মোলেলার মানতের ফলক, রাজস্থান। গ্যালারি C — লংপির কালো মৃৎপাত্র, মণিপুর। গ্যালারিগুলি ভেতরের দেয়ালের ডান দিক দিয়ে, গম্বুজের নিচে, উঠোন ঘিরে এগিয়েছে, আর করিডর আপনাকে আবার এখানেই ফিরিয়ে আনে। তার পরে পরিক্রমা নিয়ে যায় উত্তরের ঘরগুলিতে, যেখানে লাল ঘরে আছে ভারতের আরও বহু অঞ্চলের মাটি।',
       },
     },
   },
@@ -72,7 +82,7 @@ export const INFOGRAPHICS: InfographicConfig[] = [
     title: 'Bankura terracotta',
     body: 'Potters in the Bankura district of West Bengal make terracotta horses with long, upright necks and alert ears, thrown on the wheel in parts and then joined. The district is also known for its brick temples faced with panels of terracotta relief.',
     icon: 'map',
-    placement: { surface: 'e-north-3', at: midAt('e-north-3'), centerHeight: 1.55 },
+    placement: { surface: 'e-north-3', at: midAt('e-north-3'), centerHeight: 1.75 },
     ...PANEL,
     placeholder: true,
     i18n: {
@@ -92,7 +102,8 @@ export const INFOGRAPHICS: InfographicConfig[] = [
     title: 'The votive plaques of Molela',
     body: 'In the village of Molela, near Nathdwara in Rajasthan, potters model flat relief plaques of local deities in clay, then fire and often paint them. Families come from across the region to take plaques home for their shrines.',
     icon: 'map',
-    placement: onDrum('b-outer-1', -27.5),
+    // between the formation gate and the first podium
+    placement: onDrum('b-outer-1', (MUSEUM.fins.atDeg[0] + MUSEUM.podium.anglesDeg.b[0]) / 2, 1.75),
     ...PANEL,
     placeholder: true,
     i18n: {
@@ -112,9 +123,9 @@ export const INFOGRAPHICS: InfographicConfig[] = [
     title: 'Longpi black pottery',
     body: 'Longpi pottery comes from the Tangkhul Naga villages of Longpi in the Ukhrul district of Manipur. It is made without a wheel, from ground black stone mixed with clay, shaped by hand and with moulds, fired, and polished with leaves to a dark sheen.',
     icon: 'map',
-    placement: onDrum('c-outer-1', -102.5),
-    width: 0.72,
-    height: 0.97,
+    // between the first two podiums (the formation gate stands before the first)
+    placement: onDrum('c-outer-1', (MUSEUM.podium.anglesDeg.c[0] + MUSEUM.podium.anglesDeg.c[1]) / 2, 1.75),
+    ...PANEL,
     placeholder: true,
     i18n: {
       hi: {
@@ -136,7 +147,7 @@ export const INFOGRAPHICS: InfographicConfig[] = [
     body: 'Clay is dug, dried and broken up, then soaked and sieved to take out stones and roots. Sand, ash or crushed stone may be worked in so the clay holds its shape and survives the fire. It is kneaded, often underfoot, until it is even and free of air.',
     steps: ['Dig', 'Soak', 'Sieve', 'Temper', 'Knead'],
     icon: 'process',
-    placement: { surface: 'd-hallway-1', at: midAt('d-hallway-1'), centerHeight: 1.6 },
+    placement: onDrum('d-inner-1', D_PANEL[0], 1.75),
     ...PANEL,
     placeholder: true,
     i18n: {
@@ -159,7 +170,7 @@ export const INFOGRAPHICS: InfographicConfig[] = [
     body: 'A pot can be thrown on a turning wheel, built up from coils or slabs, beaten into shape with a paddle against a stone held inside, or pressed into a mould. Many pieces combine methods: a body thrown on the wheel, with handles, spouts or figures added by hand.',
     steps: ['Wheel', 'Coil', 'Slab', 'Paddle', 'Mould'],
     icon: 'process',
-    placement: { surface: 'd-hallway-2', at: midAt('d-hallway-2'), centerHeight: 1.6 },
+    placement: onDrum('d-inner-1', D_PANEL[1], 1.75),
     ...PANEL,
     placeholder: true,
     i18n: {
@@ -182,7 +193,7 @@ export const INFOGRAPHICS: InfographicConfig[] = [
     body: 'Shaped clay is left to dry slowly in the shade. If it dries too fast or unevenly, it cracks. As the water leaves, the clay shrinks and turns pale and hard enough to handle — but until it is fired, it would still return to mud in water.',
     steps: ['Shade', 'Turn', 'Leather-hard', 'Bone-dry'],
     icon: 'process',
-    placement: { surface: 'd-hallway-3', at: midAt('d-hallway-3'), centerHeight: 1.6 },
+    placement: onDrum('d-inner-2', D_PANEL[2], 1.75),
     ...PANEL,
     placeholder: true,
     i18n: {
@@ -205,7 +216,7 @@ export const INFOGRAPHICS: InfographicConfig[] = [
     body: 'Heat changes clay for good. Pots may be fired in the open, stacked with wood, straw or dung, or in a kiln that holds the heat. Air moving freely through the fire turns iron-rich clay red; a fire starved of air, or smoked at the end, turns it grey or black.',
     steps: ['Stack', 'Heat', 'Hold', 'Cool'],
     icon: 'process',
-    placement: { surface: 'd-hallway-4', at: midAt('d-hallway-4'), centerHeight: 1.6 },
+    placement: onDrum('d-inner-2', D_PANEL[3], 1.75),
     ...PANEL,
     placeholder: true,
     i18n: {
@@ -228,7 +239,7 @@ export const INFOGRAPHICS: InfographicConfig[] = [
     body: 'A surface can be coated with slip — fine clay in water — or polished with a smooth stone before firing to give a soft shine. After firing it may be painted, or rubbed with leaves or wax while still warm. Each tradition in this pavilion finishes its work in its own way.',
     steps: ['Slip', 'Burnish', 'Paint', 'Polish'],
     icon: 'process',
-    placement: { surface: 'd-hallway-5', at: midAt('d-hallway-5'), centerHeight: 1.6 },
+    placement: onDrum('d-inner-3', D_PANEL[4], 1.75),
     ...PANEL,
     placeholder: true,
     i18n: {
@@ -245,27 +256,26 @@ export const INFOGRAPHICS: InfographicConfig[] = [
     },
   },
 
-  // ── F: the inner main wall's statement, facing the oculus court ───────────────────
+  // ── the pavilion's statement, in the west ambulatory (F's court face keeps its niche alone) ──
   {
     id: 'statement',
     kicker: 'F',
     title: 'Earth, water, hand and fire',
-    body: 'Every piece in this pavilion began as earth. Water makes it soft enough to shape, hands give it form, and fire makes the form last. Round this court are three traditions from three parts of India, each working the same material in its own way.',
+    body: 'Every piece in this pavilion began as earth. Water makes it soft enough to shape, hands give it form, and fire makes the form last. Round this court, and in the rooms beyond it, are traditions from many parts of India, each working the same material in its own way.',
     steps: ['Earth', 'Water', 'Hand', 'Fire'],
     icon: 'process',
-    placement: { surface: 'f-inner-main', at: midAt('f-inner-main'), centerHeight: 1.75 },
-    width: 1.5,
-    height: 2.0,
+    placement: { surface: 'e-south-2', at: midAt('e-south-2'), centerHeight: 1.75 },
+    ...PANEL,
     placeholder: true,
     i18n: {
       hi: {
         title: 'मिट्टी, पानी, हाथ और आग',
-        body: 'इस मंडप की हर कृति की शुरुआत मिट्टी से हुई। पानी उसे गढ़ने लायक नरम बनाता है, हाथ उसे रूप देते हैं, और आग उस रूप को टिकाऊ बनाती है। इस प्रांगण के चारों ओर भारत के तीन हिस्सों की तीन परंपराएँ हैं — हर एक इसी सामग्री के साथ अपने ढंग से काम करती है।',
+        body: 'इस मंडप की हर कृति की शुरुआत मिट्टी से हुई। पानी उसे गढ़ने लायक नरम बनाता है, हाथ उसे रूप देते हैं, और आग उस रूप को टिकाऊ बनाती है। इस प्रांगण के चारों ओर, और उसके आगे के कक्षों में, भारत के अनेक हिस्सों की परंपराएँ हैं — हर एक इसी सामग्री के साथ अपने ढंग से काम करती है।',
         steps: ['मिट्टी', 'पानी', 'हाथ', 'आग'],
       },
       bn: {
         title: 'মাটি, জল, হাত আর আগুন',
-        body: 'এই প্যাভিলিয়নের প্রতিটি কাজের শুরু মাটি থেকে। জল তাকে গড়ার মতো নরম করে, হাত তাকে রূপ দেয়, আর আগুন সেই রূপকে টেকসই করে। এই চত্বর ঘিরে আছে ভারতের তিন প্রান্তের তিনটি ধারা — প্রত্যেকে একই উপাদান নিয়ে নিজের মতো করে কাজ করে।',
+        body: 'এই প্যাভিলিয়নের প্রতিটি কাজের শুরু মাটি থেকে। জল তাকে গড়ার মতো নরম করে, হাত তাকে রূপ দেয়, আর আগুন সেই রূপকে টেকসই করে। এই চত্বর ঘিরে, আর তার ওপারের ঘরগুলিতে, আছে ভারতের নানা প্রান্তের ধারা — প্রত্যেকে একই উপাদান নিয়ে নিজের মতো করে কাজ করে।',
         steps: ['মাটি', 'জল', 'হাত', 'আগুন'],
       },
     },
@@ -278,21 +288,21 @@ export const EXHIBITION_TITLE: { kicker: string; title: string; subtitle: string
   title: 'Clay Traditions',
   subtitle: 'Earth, water, hand and fire',
   intro:
-    'Three ways of working clay, from West Bengal, Rajasthan and Manipur, in a round pavilion lit from the sky. Pass the inner wall to the right to begin with the terracotta of Bankura, continue to the votive plaques of Molela and the black pottery of Longpi, and return by the hallway.',
+    'Clay traditions of India, in a round pavilion under a dome open to the sky. Pass the inner wall to the right to begin with the terracotta of Bankura, continue to the votive plaques of Molela and the black pottery of Longpi, and return by the hallway. From there the Parikrama leads round the north wing: the Clay Atlas, the Agni Theatre, the Red Room and the Haat.',
   i18n: {
     hi: {
       kicker: 'एक आभासी मंडप',
       title: 'मिट्टी की परंपराएँ',
       subtitle: 'मिट्टी, पानी, हाथ और आग',
       intro:
-        'पश्चिम बंगाल, राजस्थान और मणिपुर से मिट्टी के साथ काम करने के तीन तरीके, आकाश से रोशन एक गोल मंडप में। भीतरी दीवार के दाईं ओर से आगे बढ़कर बाँकुड़ा के टेराकोटा से शुरुआत करें, फिर मोलेला की मन्नत पट्टिकाओं और लोंगपी के काले मृद्भांडों तक जाएँ, और गलियारे से लौटें।',
+        'भारत की मिट्टी की परंपराएँ, आकाश की ओर खुले गुंबद के नीचे एक गोल मंडप में। भीतरी दीवार के दाईं ओर से आगे बढ़कर बाँकुड़ा के टेराकोटा से शुरुआत करें, फिर मोलेला की मन्नत पट्टिकाओं और लोंगपी के काले मृद्भांडों तक जाएँ, और गलियारे से लौटें। वहाँ से परिक्रमा उत्तर के कक्षों तक ले जाती है: मिट्टी का एटलस, अग्नि रंगमंच, लाल कक्ष और हाट।',
     },
     bn: {
       kicker: 'একটি ভার্চুয়াল প্যাভিলিয়ন',
       title: 'মাটির ধারা',
       subtitle: 'মাটি, জল, হাত আর আগুন',
       intro:
-        'পশ্চিমবঙ্গ, রাজস্থান আর মণিপুর থেকে মাটি নিয়ে কাজের তিনটি ধারা, আকাশের আলোয় আলোকিত এক গোল প্যাভিলিয়নে। ভেতরের দেয়ালের ডান দিক দিয়ে এগিয়ে বাঁকুড়ার টেরাকোটা দিয়ে শুরু করুন, তারপর মোলেলার মানতের ফলক আর লংপির কালো মৃৎপাত্র দেখে করিডর দিয়ে ফিরে আসুন।',
+        'ভারতের মাটির ঐতিহ্য, আকাশে খোলা গম্বুজের নিচে এক গোল প্যাভিলিয়নে। ভেতরের দেয়ালের ডান দিক দিয়ে এগিয়ে বাঁকুড়ার টেরাকোটা দিয়ে শুরু করুন, তারপর মোলেলার মানতের ফলক আর লংপির কালো মৃৎপাত্র দেখে করিডর দিয়ে ফিরে আসুন। সেখান থেকে পরিক্রমা নিয়ে যায় উত্তরের ঘরগুলিতে: মাটির অ্যাটলাস, অগ্নি প্রেক্ষাগৃহ, লাল ঘর আর হাট।',
     },
   },
 }
@@ -303,15 +313,15 @@ export const EXHIBITION_TITLE: { kicker: string; title: string; subtitle: string
  */
 export const RECEPTION_WELCOME: { title: string; body: string; i18n?: ContentI18n<'title' | 'body'> } = {
   title: 'Welcome',
-  body: 'The pavilion is a single round, double-height room. From the entrance hall, the description wall introduces the exhibition; the galleries of the three traditions follow the drum wall round an open court under the oculus, and a curved hallway leads back to the entrance.',
+  body: 'The pavilion is a round drum of earth under a coffered dome thirty-two metres across, open to the sky at its centre. From the Earth Room at the entrance, the description wall introduces the exhibition; the galleries of the three traditions follow the drum wall round a pool under the oculus, with a balcony above them, and a curved hallway leads back towards the entrance. Outside, the Parikrama winds between red walls to the four rooms of the north wing, and the Sphere Well opens in the ground to the west.',
   i18n: {
     hi: {
       title: 'स्वागत',
-      body: 'यह मंडप एक ही गोल, दोहरी ऊँचाई वाला कक्ष है। प्रवेश कक्ष से आगे विवरण-दीवार प्रदर्शनी का परिचय देती है; तीनों परंपराओं की गैलरियाँ गोल दीवार के साथ-साथ, ओकुलस (छत के गोल झरोखे) के नीचे के खुले प्रांगण को घेरे हुए हैं, और एक घुमावदार गलियारा वापस प्रवेश तक ले जाता है।',
+      body: 'यह मंडप मिट्टी की एक गोल दीवार है, जिसके ऊपर बत्तीस मीटर चौड़ा ख़ानेदार गुंबद है, बीच में आकाश की ओर खुला। प्रवेश पर मिट्टी के कक्ष से आगे विवरण-दीवार प्रदर्शनी का परिचय देती है; तीनों परंपराओं की गैलरियाँ गोल दीवार के साथ-साथ ओकुलस (गुंबद के गोल झरोखे) के नीचे के कुंड को घेरे हुए हैं, उनके ऊपर एक छज्जा है, और एक घुमावदार गलियारा प्रवेश की ओर लौटता है। बाहर, परिक्रमा लाल दीवारों के बीच उत्तर के चार कक्षों तक जाती है, और पश्चिम में ज़मीन में गोले का कुआँ खुलता है।',
     },
     bn: {
       title: 'স্বাগতম',
-      body: 'প্যাভিলিয়নটি একটিই গোল, দ্বিগুণ উচ্চতার কক্ষ। প্রবেশকক্ষ পেরিয়ে বিবরণ-দেয়াল প্রদর্শনীর পরিচয় দেয়; তিনটি ধারার গ্যালারি গোল দেয়াল ধরে অকুলাসের (ছাদের গোল ফোকর) নিচের খোলা চত্বর ঘিরে আছে, আর একটি বাঁকা করিডর আবার প্রবেশপথে ফিরিয়ে আনে।',
+      body: 'প্যাভিলিয়নটি মাটির একটি গোল দেয়াল, তার ওপরে বত্রিশ মিটার চওড়া খোপকাটা গম্বুজ, মাঝখানে আকাশে খোলা। প্রবেশের মাটির ঘর পেরিয়ে বিবরণ-দেয়াল প্রদর্শনীর পরিচয় দেয়; তিনটি ধারার গ্যালারি গোল দেয়াল ধরে অকুলাসের (গম্বুজের গোল ফোকর) নিচের কুণ্ড ঘিরে আছে, তাদের ওপরে একটি বারান্দা, আর একটি বাঁকা করিডর প্রবেশপথের দিকে ফিরিয়ে আনে। বাইরে, পরিক্রমা লাল দেয়ালের মাঝ দিয়ে উত্তরের চারটি ঘরে যায়, আর পশ্চিমে মাটিতে খুলে আছে গোলকের কূপ।',
     },
   },
 }

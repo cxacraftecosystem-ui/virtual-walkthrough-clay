@@ -5,11 +5,13 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { zoneAt } from '../config/layout'
 import type { Vec3 } from '../config/museum'
+import { batchTag } from '../models/staticBatch'
 import { kelvinToHex, LIGHTING } from '../config/lighting'
 import { useMaterials } from '../materials/materials'
 import type { Rail } from './tracks'
-import { RAIL_Y, railPoints } from './tracks'
+import { isSconceMount, railAbove, railPoints } from './tracks'
 import { registerSpot } from './SpotPool'
 
 const headGeo = new THREE.CylinderGeometry(0.032, 0.036, 0.13, 20, 1, false)
@@ -84,12 +86,15 @@ export function TrackSpot({ position, target, intensity, angle, penumbra = LIGHT
     return registerSpot({ position: [px, py, pz], target: [tx, ty, tz], intensity, angle, penumbra, color })
   }, [lit, px, py, pz, tx, ty, tz, intensity, angle, penumbra, color])
 
-  // Gallery heads hang from the track rail; heads mounted higher (taller wings) get a short monopoint stem.
-  const railTop = py < RAIL_Y - 0.02 ? RAIL_Y : py + 0.14
+  // Heads hang from the rail above them (the balcony soffit, the slab), else on a short monopoint stem.
+  const railTop = railAbove(px, pz, py)
   const stemLen = Math.max(0.02, railTop - 0.011 - py)
+  // a podium's light comes from its brass wall sconce, which lighting/Fixtures.tsx draws
+  if (isSconceMount(position)) return null
 
+  // still once aimed: drawn in its zone's batches (models/staticBatch.tsx)
   return (
-    <group>
+    <group name="track-spot" userData={batchTag(zoneAt(px, pz)?.id, px, pz)}>
       {/* stem from rail adapter to head pivot */}
       <mesh position={[px, railTop - 0.026, pz]} geometry={adapterGeo} material={m.trackBlack} />
       <mesh position={[px, py + stemLen / 2, pz]} scale={[1, stemLen / 0.09, 1]} geometry={stemGeo} material={m.trackBlack} />

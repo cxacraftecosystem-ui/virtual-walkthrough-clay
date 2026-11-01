@@ -8,14 +8,15 @@
  * straight run ('along'), so `at` is metres along the run from its start; `atAngle` below
  * turns a plan angle on the drum into that distance, so works can be set between podiums.
  *
- * Hang, in walking order round the ring (CONTRACT §6, "Clay exhibition layout"):
- *   A  Bankura terracotta   one work at eye level where the ring opens (a-outer-1), two in the
- *                           upper register above the podium row
- *   B  Molela plaques       three works in the upper register above the five podiums
+ * Hang, in walking order round the ring (GRAND §6.3: the flat hang is trimmed to a few large
+ * frames; the walls belong to the objects now):
+ *   A  Bankura terracotta   two wall-scale frames on the red wall, between the podiums and clear
+ *                           of The Herd (a-outer-1, a-outer-3)
+ *   B  Molela plaques       none: B's wall is the white niche wall, its plaques are objects
  *   C  Longpi pottery       three works at eye level on the curved wall facing the podiums
  *                           (c-south — no podiums stand in front of it)
- * Podium objects (the other hero pieces) are scene objects — objects.ts. Each tradition has
- * five hero pieces in all: two hung works here and three podium pieces.
+ * Podium, niche, island and register pieces are scene objects (objects.ts,
+ * grandObjects/crafts.ts).
  *
  * STAND-IN STATUS: every image below is a procedurally generated study (see
  * scripts/generate-placeholders.mjs) flagged `placeholder: true`; its description says it was made
@@ -178,103 +179,22 @@ function work(t: TraditionKey, id: string, title: [string, string, string], plac
   }
 }
 
-/** Upper register: above the podium row (podium tops at 1.22 m, the pieces on them to about 1.7 m). */
-const UPPER = 2.85
-/** Clay-coloured mats instead of the paper white of the textile frames. */
-const CLAY_MAT = '#eadbc8'
-const SHADOW_BOX: FrameConfig = { style: 'float-walnut', matColor: CLAY_MAT }
-const OAK: FrameConfig = { style: 'natural-wood', matColor: CLAY_MAT }
 const DARK: FrameConfig = { style: 'dark-wood', matColor: '#e4dccf' }
 
 export const ARTWORKS: ArtworkConfig[] = [
-  // ══ A — Bankura terracotta (ring-a, the first gallery, on the right) ══════════════
-  // eye level where the ring opens, between the NE notch and the first podium
-  work('a', 'clay-a-01', ['Horse and Rider — Study', 'घोड़ा और सवार — अध्ययन', 'ঘোড়া ও সওয়ার — চর্চা'], { surface: 'a-outer-1', at: atAngle('a-outer-1', 24.5), centerHeight: 1.65 }, {
-    hero: true,
-    maxWidth: 1.0,
-    maxHeight: 1.4,
-    frame: SHADOW_BOX,
-    alt: 'A panel of fired red clay in low relief: a long-necked horse in profile with its rider sitting upright, on a ground of incised lines.',
-    altHi: 'पकी लाल मिट्टी का उभरा हुआ फलक: लंबी गर्दन वाला घोड़ा, बगल से, उस पर सीधा बैठा सवार; पीछे खुदी हुई रेखाएँ।',
-    altBn: 'পোড়া লাল মাটির অল্প-উঁচু রিলিফ ফলক: পাশ থেকে দেখা লম্বা গলার একটি ঘোড়া, তার পিঠে সোজা হয়ে বসা সওয়ার; পিছনে খোদাই করা রেখা।',
-  }),
-  work('a', 'clay-a-02', ['Temple Frieze — Study', 'मंदिर की पट्टी — अध्ययन', 'মন্দিরের ফ্রিজ — চর্চা'], { surface: 'a-outer-3', at: midAt('a-outer-3'), centerHeight: UPPER }, {
-    hero: true,
-    maxWidth: 1.75,
-    maxHeight: 0.9,
-    frame: SHADOW_BOX,
-    label: false,
-    alt: 'A long panel of red clay tiles in low relief: a row of small figures under arches, above a border of lotus petals.',
-    altHi: 'लाल मिट्टी की टाइलों की एक लंबी उभरी पट्टी: मेहराबों के नीचे छोटी आकृतियों की पंक्ति, नीचे कमल-पंखुड़ियों की किनारी।',
-    altBn: 'লাল মাটির টালির একটি লম্বা রিলিফ ফলক: খিলানের নিচে ছোট ছোট মূর্তির সারি, নিচে পদ্মের পাপড়ির পাড়।',
-  }),
-  work('a', 'clay-a-03', ['Lotus Tiles — Study', 'कमल की टाइलें — अध्ययन', 'পদ্মের টালি — চর্চা'], { surface: 'a-outer-2', at: midAt('a-outer-2'), centerHeight: UPPER }, {
-    maxWidth: 1.75,
-    maxHeight: 0.8,
-    frame: OAK,
-    label: false,
-    alt: 'Three square terracotta tiles side by side, each pressed with an open lotus.',
-    altHi: 'टेराकोटा की तीन चौकोर टाइलें अगल-बगल, हर एक पर खिले कमल की छाप।',
-    altBn: 'পাশাপাশি তিনটি চৌকো টেরাকোটা টালি, প্রতিটিতে একটি ফোটা পদ্মের ছাপ।',
-  }),
+  // ══ A — Bankura terracotta: the red wall carries its sconced podiums and the Herd alone (p02) ══
 
-  // ══ B — Molela votive plaques (ring-b, the far side of the ring) ═══════════════════
-  work('b', 'clay-b-01', ['Rider Deity — Study', 'अश्वारोही देवता — अध्ययन', 'অশ্বারোহী দেবতা — চর্চা'], { surface: 'b-outer-2', at: midAt('b-outer-2'), centerHeight: UPPER }, {
-    hero: true,
-    maxWidth: 1.0,
-    maxHeight: 1.25,
-    frame: SHADOW_BOX,
-    label: false,
-    alt: 'An arched clay plaque in relief, painted in earth red, ochre and white: a figure on horseback under a scalloped arch.',
-    altHi: 'मेहराबदार मिट्टी की उभरी पट्टिका, गेरुए लाल, पीले और सफ़ेद रंग में रँगी: झालरदार मेहराब के नीचे घोड़े पर सवार एक आकृति।',
-    altBn: 'খিলান-আকারের মাটির রিলিফ ফলক, মেটে লাল, হলুদ আর সাদায় রং করা: ঢেউখেলানো খিলানের নিচে ঘোড়সওয়ার এক মূর্তি।',
-  }),
-  work('b', 'clay-b-02', ['Serpent Plaque — Study', 'नाग पट्टिका — अध्ययन', 'নাগ ফলক — চর্চা'], { surface: 'b-outer-3', at: midAt('b-outer-3'), centerHeight: UPPER }, {
-    hero: true,
-    maxWidth: 1.0,
-    maxHeight: 1.25,
-    frame: SHADOW_BOX,
-    label: false,
-    alt: 'An arched clay plaque in relief: a coiled, hooded serpent inside a border of dots, in red and cream.',
-    altHi: 'मेहराबदार मिट्टी की उभरी पट्टिका: बिंदुओं की किनारी के भीतर कुंडली मारे फन फैलाए नाग, लाल और क्रीम रंग में।',
-    altBn: 'খিলান-আকারের মাটির রিলিফ ফলক: বিন্দুর পাড়ের ভেতরে কুণ্ডলী পাকানো ফণা তোলা সাপ, লাল আর ঘিয়ে রঙে।',
-  }),
-  work('b', 'clay-b-03', ['Plaque Fragments — Study', 'पट्टिका के अंश — अध्ययन', 'ফলকের টুকরো — চর্চা'], { surface: 'b-outer-4', at: midAt('b-outer-4'), centerHeight: UPPER }, {
-    maxWidth: 1.6,
-    maxHeight: 0.85,
-    frame: OAK,
-    label: false,
-    alt: 'Four small relief fragments of unpainted fired clay in a row: a face, a hand, a hoof and a leaf.',
-    altHi: 'बिना रँगी पकी मिट्टी के चार छोटे उभरे अंश एक पंक्ति में: एक चेहरा, एक हाथ, एक खुर और एक पत्ता।',
-    altBn: 'রং না-করা পোড়া মাটির চারটি ছোট রিলিফ টুকরো এক সারিতে: একটি মুখ, একটি হাত, একটি খুর আর একটি পাতা।',
-  }),
+  // ══ B — Molela votive plaques: the niche wall (grandObjects/crafts.ts), nothing hung ══
 
-  // ══ C — Longpi black pottery (ring-c, eye level on the curved wall facing the podiums) ═
-  work('c', 'clay-c-01', ['Kettle — Study', 'केतली — अध्ययन', 'কেটলি — চর্চা'], { surface: 'c-south-1', at: midAt('c-south-1') - 0.3, centerHeight: 1.6 }, {
+  // ══ C — Longpi black pottery: one large photograph on the charcoal wall, nothing small ═
+  work('c', 'clay-c-01', ['Kettle — Study', 'केतली — अध्ययन', 'কেটলি — চর্চা'], { surface: 'c-south-2', at: midAt('c-south-2'), centerHeight: 1.75 }, {
     hero: true,
-    maxWidth: 1.1,
-    maxHeight: 1.35,
+    maxWidth: 1.7,
+    maxHeight: 2.1,
     frame: DARK,
     alt: 'A black, burnished clay kettle with a cane-wrapped handle, against a pale ground.',
     altHi: 'बेंत से लिपटे हत्थे वाली काली, घिसकर चमकाई मिट्टी की केतली, हल्की पृष्ठभूमि पर।',
     altBn: 'বেত জড়ানো হাতলওয়ালা একটি কালো, ঘষে-মাজা মাটির কেটলি, হালকা পটভূমিতে।',
-  }),
-  work('c', 'clay-c-02', ['Bowls — Study', 'कटोरे — अध्ययन', 'বাটি — চর্চা'], { surface: 'c-south-2', at: midAt('c-south-2') - 0.3, centerHeight: 1.6 }, {
-    hero: true,
-    maxWidth: 1.3,
-    maxHeight: 1.0,
-    frame: DARK,
-    alt: 'Three black clay bowls set one inside another, with a soft polished sheen.',
-    altHi: 'एक के भीतर एक रखे तीन काले मिट्टी के कटोरे, हल्की चमक के साथ।',
-    altBn: 'একটির ভেতরে আরেকটি রাখা তিনটি কালো মাটির বাটি, নরম মসৃণ আভা।',
-  }),
-  work('c', 'clay-c-03', ['Burnished Surface — Study', 'घिसकर चमकाई सतह — अध्ययन', 'ঘষে-মাজা তল — চর্চা'], { surface: 'c-south-3', at: midAt('c-south-3') - 0.3, centerHeight: 1.6 }, {
-    maxWidth: 0.95,
-    maxHeight: 0.95,
-    frame: { style: 'thin-black', matColor: '#ece6dc' },
-    alt: 'A close view of a black clay surface polished to a low shine, with flecks of grey stone in it.',
-    altHi: 'हल्की चमक तक घिसी काली मिट्टी की सतह का पास का दृश्य, जिसमें धूसर पत्थर के कण दिखते हैं।',
-    altBn: 'হালকা চকচকে করে ঘষা কালো মাটির তলের কাছ থেকে দেখা, তাতে ধূসর পাথরের কণা।',
   }),
 ]
 

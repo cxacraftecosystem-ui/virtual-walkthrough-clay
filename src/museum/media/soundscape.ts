@@ -4,11 +4,18 @@
  *
  *   indoor zone channels (bus gains, crossfaded ≈2 s) ─┐
  *   outdoor sites (courtyard / forecourt, time of day) ─┤
- *   footsteps (+ small room-reverb send) ───────────────┼─► out ─► soft limiter ─► ambienceInput()
- *                                                        (duck stage → master gain → destination)
+ *   craft sources + one-shots (soundscape/craft.ts) ────┤
+ *   footsteps ──────────────────────────────────────────┼─► out ─► soft limiter ─► ambienceInput()
+ *   zone reverb (footsteps and craft voices send to it) ┘  (duck stage → master gain → destination)
  *
  * Everything feeds the engine's ambience input, so the global master (HUD sound toggle /
  * soundOn / hidden tab) and the film ducking apply unchanged.
+ *
+ * The room reverb follows the zone (SPECTACLE F29: the oculus court 3.2 s … the Parikrama and
+ * outdoors 0.25 s, `ZONE_REVERB` in config/spectacleObjects/craft.ts), cross-faded between at
+ * most two live convolvers; the craft layer adds the pit firing, the drip into the water ring,
+ * the great wheel, the oculus wind, rain, the clay bells and the ghungroo, each built only
+ * within reach. The adaptive score is spectacle/music.ts.
  *
  * Indoor channels (built on demand, released a few seconds after they fade out):
  *   workshop   – irregular wooden block-thumps at each printing table (own rhythm each),
@@ -39,15 +46,20 @@
  * the first user gesture.
  */
 import { ZONES, zoneAt, type ZoneId } from '../config/layout'
-import { MUSEUM } from '../config/museum'
+import { ZONE_REVERB } from '../config/spectacleObjects/craft'
+import { GRAND_FLAGS, MUSEUM } from '../config/museum'
 import { SCENE_OBJECTS } from '../config/objects'
 import { useMuseum } from '../state/store'
 import { visitor } from '../state/visitor'
 import { ambienceInput, createRoomReverb, getAudioContext, isAudioUnlocked, onAudioUnlock, resumeAudio } from './audioEngine'
 import { debug, type FloorMaterial, type SoundscapeDebug } from './soundscape/debug'
 import { ambienceUrl, isProbed, knownFile, knownFirst, loadFile, loadFirst } from './soundscape/files'
+import { disposeCraft, installBellCue, setOneShotOutput, updateCraft } from './soundscape/craft'
 import { normTimeOfDay, updateOutdoor } from './soundscape/outdoor'
-import { Kit, burst, clamp, hdist, noise, pick, rand, randInt, releaseOnEnd, safe, tone, type Vec3 } from './soundscape/synth'
+import { Kit, burst, clamp, hdist, nodeCount, noise, pick, rand, randInt, releaseOnEnd, safe, tone, type Vec3 } from './soundscape/synth'
+import { perchZone } from '../navigation/perch'
+import { kindProps } from '../spectacle/settings'
+import { sunState } from '../lighting/timeOfDayState'
 
 export type { FloorMaterial, SoundscapeDebug }
 
@@ -74,17 +86,55 @@ export const ZONE_MATERIAL: Record<ZoneId, FloorMaterial> = {
   'ring-a': 'concrete',
   'ring-b': 'concrete',
   'ring-c': 'concrete',
-  'hallway-d': 'concrete',
-  inner: 'concrete',
+  // the Wine Hall's timber floor (p08l) and the court's polished terrazzo (GRAND §2.5)
+  'hallway-d': 'oak',
+  inner: 'stone',
+  // north wing: the Parikrama walk is paved like the forecourt; the rooms have earth floors
+  'parikrama-west': 'stone',
+  'parikrama-east': 'stone',
+  atlas: 'concrete',
+  theatre: 'concrete',
+  library: 'concrete',
+  shop: 'concrete',
+  'sky-rim': 'stone',
+  duplex: 'concrete',
+  'sphere-well': 'concrete',
 }
 /** Floor material for a zone; unknown ids fall back to oak. */
 export function materialFor(z: string | null | undefined): FloorMaterial {
   return (z && (ZONE_MATERIAL as Record<string, FloorMaterial | undefined>)[z]) || 'oak'
 }
 
-/** Footstep room-reverb send per zone (the atrium is the big stone hall). */
-const STEP_REVERB: Partial<Record<string, number>> = { 'entrance-court': 0.04, inner: 0.2, annex: 0.16 }
+const REVERB_DEFAULT = 1.6
+
+/**
+ * The grand plan's rooms (GRAND §6.2 #9), over the spectacle's table: the dome rings for 5.5 s
+ * (the court, the galleries under it and the balcony), the ambulatory 2.0 s, the Wine Hall 1.2 s,
+ * the Red Room 0.8 s and the Sphere Well 4.0 s.
+ */
+const GRAND_REVERB: Partial<Record<ZoneId, number>> = {
+  inner: 5.5,
+  'ring-a': 5.5,
+  'ring-b': 5.5,
+  'ring-c': 5.5,
+  duplex: 5.5,
+  'entry-e': 2.0,
+  annex: 2.0,
+  'hallway-d': 1.2,
+  library: 0.8,
+  'sphere-well': 4.0,
+}
+const reverbFor = (z: ZoneId | null) => (z ? (GRAND_REVERB[z] ?? ZONE_REVERB[z] ?? REVERB_DEFAULT) : REVERB_DEFAULT)
+
+/** Footstep room-reverb send per zone (the dome is the big stone hall). */
+const STEP_REVERB: Partial<Record<string, number>> = { 'entrance-court': 0.04, inner: 0.24, 'ring-a': 0.2, 'ring-b': 0.2, 'ring-c': 0.2, annex: 0.16, 'sphere-well': 0.22 }
 const STEP_REVERB_DEFAULT = 0.1
+
+/** The serpentine's red walls answer each step: a short slap echo between them (2.7 m apart). */
+const SLAP = { delay: 0.019, level: 0.42, zones: new Set<string>(['parikrama-west', 'parikrama-east']) }
+
+/** The lotus's bloom chime: once a session, the first time the court is entered in daylight. */
+const CHIME_KEY = 'clay.lotusChime.v1'
 
 const TICK_ACTIVE_MS = 40
 const TICK_IDLE_MS = 200
@@ -190,8 +240,9 @@ function buildGalleries(ctx: AudioContext, dest: AudioNode): Part {
   // plastered drum (a little more reverb).
   roomTone(k, dest, 0.036, 300, { seconds: 2.2, wet: 0.28 })
   // A potter's wheel turning somewhere across the ring: a soft, low friction hum that swells
-  // once a revolution. Positional, so it is only heard faintly beyond its own gallery.
-  for (const w of objs('potters-wheel').slice(0, 1)) {
+  // once a revolution. Positional, so it is only heard faintly beyond its own gallery. Only while
+  // the clay studio is open (GRAND §0.2).
+  for (const w of GRAND_FLAGS.clayStudio ? objs('potters-wheel').slice(0, 1) : []) {
     const p = k.panner([w.position[0], 0.6, w.position[2]], 1.4, 1.6, 22)
     p.connect(dest)
     const body = k.filter('bandpass', 118, 2.2)
@@ -330,6 +381,13 @@ interface Graph {
   out: GainNode
   stepOut: GainNode
   stepSend: GainNode
+  /** Input of the zone reverb (footsteps and craft voices send here). */
+  revIn: GainNode
+  /** Level of the serpentine's slap echo of the footsteps. */
+  slap: GainNode
+  /** One convolver per decay in use; the current one faded in, the rest fading out. */
+  reverbs: Map<number, { conv: ConvolverNode; gain: GainNode; silentSince: number }>
+  reverbSec: number
 }
 
 let graph: Graph | null = null
@@ -337,6 +395,7 @@ const channels = new Map<ChannelId, Channel>()
 let lastZone: ZoneId | null = null
 let currentChannel: ChannelId | null | undefined
 let outdoorBusy = false
+let craftBusy = false
 let timer = 0
 let installed = false
 
@@ -359,8 +418,18 @@ function ensureGraph(ctx: AudioContext): Graph | null {
     stepOut.connect(out)
     const stepSend = ctx.createGain()
     stepSend.gain.value = STEP_REVERB_DEFAULT
-    stepOut.connect(stepSend).connect(createRoomReverb(ctx, 2.2, 3)).connect(out)
-    graph = { ctx, out, stepOut, stepSend }
+    const revIn = ctx.createGain()
+    stepOut.connect(stepSend).connect(revIn)
+    // the slap: delayed, a little duller, off until the serpentine
+    const slapDelay = ctx.createDelay(0.2)
+    slapDelay.delayTime.value = SLAP.delay
+    const slapTone = ctx.createBiquadFilter()
+    slapTone.type = 'lowpass'
+    slapTone.frequency.value = 3200
+    const slap = ctx.createGain()
+    slap.gain.value = 0
+    stepOut.connect(slapDelay).connect(slapTone).connect(slap).connect(out)
+    graph = { ctx, out, stepOut, stepSend, revIn, slap, reverbs: new Map(), reverbSec: 0 }
     return graph
   }, null)
 }
@@ -427,6 +496,48 @@ function disposeChannel(ch: Channel) {
   channels.delete(ch.id)
   delete debug.levels[ch.id]
   delete debug.sources[ch.id]
+}
+
+/** Cross-fade the room reverb to the decay of zone `z`; release convolvers silent for a while. */
+function updateReverb(g: Graph, z: ZoneId | null, now: number) {
+  const want = reverbFor(z)
+  if (want !== g.reverbSec) {
+    g.reverbSec = want
+    if (!g.reverbs.has(want)) {
+      safe(() => {
+        // long rooms decay more gently, so the dome's 5.5 s tail stays audible
+        const conv = createRoomReverb(g.ctx, Math.max(0.3, want), want < 0.8 ? 4.5 : want > 3.5 ? 2.2 : 3)
+        const gain = g.ctx.createGain()
+        gain.gain.value = 0
+        g.revIn.connect(conv).connect(gain).connect(g.out)
+        g.reverbs.set(want, { conv, gain, silentSince: -1 })
+      }, undefined)
+    }
+    for (const [sec, r] of g.reverbs) safe(() => r.gain.gain.setTargetAtTime(sec === want ? 1 : 0, now, 0.6), undefined)
+    // never more than two convolvers at once: the room left behind keeps only its newest tail
+    const old = [...g.reverbs.entries()].filter(([sec]) => sec !== want).sort((a, b) => a[1].gain.gain.value - b[1].gain.gain.value)
+    while (old.length > 1) dropReverb(g, old.shift()![0])
+  }
+  for (const [sec, r] of g.reverbs) {
+    if (sec === want) {
+      r.silentSince = -1
+      continue
+    }
+    if (r.gain.gain.value > 0.002) continue
+    if (r.silentSince < 0) r.silentSince = now
+    else if (now - r.silentSince > DISPOSE_AFTER) dropReverb(g, sec)
+  }
+}
+
+function dropReverb(g: Graph, sec: number) {
+  const r = g.reverbs.get(sec)
+  if (!r) return
+  safe(() => {
+    g.revIn.disconnect(r.conv)
+    r.conv.disconnect()
+    r.gain.disconnect()
+  }, undefined)
+  g.reverbs.delete(sec)
 }
 
 /** Indoor channel for a zone (null = silent indoors). Unknown zones → gallery room tone. */
@@ -528,6 +639,38 @@ function playStep(g: Graph, t: number, m: FloorMaterial, left: boolean, intensit
 }
 
 /* ------------------------------------------------------------------ */
+/* The lotus's bloom chime                                             */
+/* ------------------------------------------------------------------ */
+
+let chimed = false
+
+/**
+ * Three struck clay bells, a fifth and an octave apart, rising softly into the dome's reverb: the
+ * lotus opening to the sun (the lotus follows the real sun). Once a session, in daylight only.
+ */
+function lotusChime(g: Graph, now: number) {
+  if (chimed) return
+  chimed = true
+  try {
+    if (sessionStorage.getItem(CHIME_KEY)) return
+    sessionStorage.setItem(CHIME_KEY, '1')
+  } catch {
+    /* storage blocked: the chime still plays once this page */
+  }
+  if (sunState.elevationDeg < 6) return
+  const { ctx } = g
+  const base = 392
+  ;[1, 1.5, 2].forEach((m, i) => {
+    const t = now + 1.4 + i * 0.42
+    for (const [dest, k] of [[g.out, 1], [g.revIn, 0.8]] as const) {
+      tone(ctx, dest, t, { type: 'sine', f0: base * m, peak: 0.022 * k, attack: 0.004, decay: 2.6 })
+      // the clay's inharmonic overtone
+      tone(ctx, dest, t, { type: 'sine', f0: base * m * 2.76, peak: 0.006 * k, attack: 0.002, decay: 0.9 })
+    }
+  })
+}
+
+/* ------------------------------------------------------------------ */
 /* Scheduler                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -563,6 +706,7 @@ function tick() {
     currentChannel = want
     debug.channel = want
     if (z) safe(() => g.stepSend.gain.setTargetAtTime(STEP_REVERB[z] ?? STEP_REVERB_DEFAULT, now, 0.4), undefined)
+    safe(() => g.slap.gain.setTargetAtTime(z && SLAP.zones.has(z) ? SLAP.level : 0, now, 0.3), undefined)
   }
   if (want && !channels.has(want)) createChannel(g, want)
 
@@ -584,6 +728,14 @@ function tick() {
     if (active && part?.schedule && (target > 0 || level > 0.01)) safe(() => part.schedule!(now, now + LOOKAHEAD, lx, lz), undefined)
   }
 
+  const perchedZone = perchZone()
+  if (active) updateReverb(g, perchedZone ?? z, now)
+  if (active && z === 'inner' && !perchedZone) lotusChime(g, now)
+  // the curator's ambience level (spectacle singleton; 0.8 = as designed)
+  const amb = kindProps('spectacle').ambience
+  const ambGain = typeof amb === 'number' ? clamp(amb, 0, 1) / 0.8 : 1
+  if (Math.abs(ambGain - g.out.gain.value) > 0.01) safe(() => g.out.gain.setTargetAtTime(ambGain, now, 0.5), undefined)
+
   // Open-air sites (time of day).
   outdoorBusy = safe(
     () =>
@@ -604,6 +756,15 @@ function tick() {
 
   // Footsteps.
   const speed = Math.hypot(visitor.vx, visitor.vz)
+
+  // Craft sources: pit, drip, wheel, wind, rain, bells, ghungroo (soundscape/craft.ts).
+  const perched = perchedZone
+  craftBusy = safe(
+    () => updateCraft({ ctx, out: g.out, send: g.revIn, now, horizon: now + LOOKAHEAD, active, zone: perched ?? z, x: lx, z: lz, speed, perched: !!perched }),
+    false,
+  )
+  debug.nodes = nodeCount.live
+  debug.reverbs = g.reverbs.size
   debug.speed = Math.round(speed * 100) / 100
   if (active && speed >= MIN_STEP_SPEED && !visitor.frozen) {
     probeSteps(ctx, material)
@@ -625,7 +786,7 @@ function tick() {
 
 function loop() {
   safe(tick, undefined)
-  const busy = debug.active || channels.size > 0 || outdoorBusy
+  const busy = debug.active || channels.size > 0 || outdoorBusy || craftBusy
   timer = window.setTimeout(loop, busy ? TICK_ACTIVE_MS : TICK_IDLE_MS)
 }
 
@@ -639,6 +800,17 @@ export function ensureSoundscape() {
   installed = true
   window.__soundscape = debug
   onAudioUnlock(() => safe(tick, undefined))
+  installBellCue()
+  // one-shot voices (ghatam, clay bed, kiln lever, bells) play only while the soundscape could
+  setOneShotOutput(() => {
+    const ctx = getAudioContext(false)
+    if (!ctx || ctx.state !== 'running' || !wanted()) return null
+    const g = ensureGraph(ctx)
+    return g ? { ctx, out: g.out, send: g.revIn } : null
+  })
+  useMuseum.subscribe((s, prev) => {
+    if (s.soundOn !== prev.soundOn && !s.soundOn) window.setTimeout(() => !useMuseum.getState().soundOn && disposeCraft(), 1500)
+  })
   useMuseum.subscribe((s, prev) => {
     if (s.soundOn !== prev.soundOn || s.phase !== prev.phase) safe(tick, undefined)
   })

@@ -34,14 +34,21 @@ const NAV: NavLink[] = [
 ]
 
 const SPACES: { id: string; name: string; line: string; image: string; wide?: boolean }[] = [
-  { id: 'annex', name: 'Entrance Hall', line: 'A straight hall from the door to the curved description wall, where the exhibition begins.', image: 'annex.jpg', wide: true },
-  { id: 'entry-e', name: 'Entry Ways', line: 'Two curved ways round the description wall; a taller wall beyond keeps the centre out of sight.', image: 'entry.jpg' },
-  { id: 'ring-a', name: 'Gallery A — Bankura', line: 'Terracotta horses and reliefs, on podiums along the drum wall.', image: 'gallery-a.jpg' },
-  { id: 'ring-b', name: 'Gallery B — Molela', line: 'Clay plaques modelled in relief, on the podiums and above them.', image: 'gallery-b.jpg' },
-  { id: 'ring-c', name: 'Gallery C — Longpi', line: 'Black pots of stone and clay, polished to a soft shine.', image: 'gallery-c.jpg' },
-  { id: 'inner', name: 'Oculus Court', line: 'A circle open to the sky above a round plinth — daylight moves across it through the day.', image: 'oculus.jpg', wide: true },
-  { id: 'hallway-d', name: 'Hallway', line: 'The making of a clay object in five panels, from raw earth to finished piece.', image: 'hallway.jpg' },
-  { id: 'entrance-court', name: 'Forecourt', line: 'The round pavilion on its landscaped plinth, with the entrance hall reaching out to meet you.', image: 'forecourt.jpg' },
+  { id: 'entrance-court', name: 'Forecourt', line: 'The drum and its terracotta dome on a landscaped plinth, two tall clay horses either side of the way in.', image: 'forecourt.jpg', wide: true },
+  { id: 'annex', name: 'The Earth Room', line: 'Tall formations of layered clay, curved shelves of everyday pots and a round table under a circle of sky.', image: 'annex.jpg' },
+  { id: 'entry-e', name: 'Entry Ways', line: 'The title cut into raw clay, a long relief of mud and mirror, and the layers of the earth.', image: 'entry.jpg' },
+  { id: 'inner', name: 'The Court', line: 'A coffered dome thirty-two metres across, open to the sky, over a still pool and a red clay lotus.', image: 'oculus.jpg', wide: true },
+  { id: 'ring-a', name: 'Gallery A — Bankura', line: 'A herd of terracotta horses against a deep red wall, and a row of lit podiums.', image: 'gallery-a.jpg' },
+  { id: 'ring-b', name: 'Gallery B — Molela', line: 'Clay plaques modelled in relief, in tall niches on a white wall.', image: 'gallery-b.jpg' },
+  { id: 'ring-c', name: 'Gallery C — Longpi', line: 'Black pots of stone and clay, polished to a soft shine, under one cool light.', image: 'gallery-c.jpg' },
+  { id: 'duplex', name: 'The Balcony', line: 'Halfway up the drum, a balcony round the galleries, with niches and reliefs up to the dome.', image: 'balcony.jpg' },
+  { id: 'hallway-d', name: 'Hallway', line: 'A wine-red hall with a timber floor, where clay from other parts of the world stands on stepped plinths.', image: 'hallway.jpg' },
+  { id: 'parikrama-west', name: 'Parikrama', line: 'An open walk winding between red walls, with trees in courtyards and horses in sunken gardens.', image: 'parikrama.jpg', wide: true },
+  { id: 'atlas', name: 'Clay Atlas', line: 'The map of India and the partners who present the exhibition.', image: 'atlas.jpg' },
+  { id: 'theatre', name: 'Agni Theatre', line: 'A dim room under a brick vault that glows like a kiln between films.', image: 'theatre.jpg' },
+  { id: 'library', name: 'The Red Room', line: 'A round red room of curved shelves, holding clay from many regions of India, round a single pot under the sky.', image: 'library.jpg' },
+  { id: 'shop', name: 'The Haat', line: 'Pieces made by potters, on shelves and tables under clay lanterns.', image: 'haat.jpg' },
+  { id: 'sphere-well', name: 'The Sphere Well', line: 'Eight metres below the plinth, a red stair winds round a hanging clay sphere.', image: 'sphere-well.jpg' },
 ]
 
 interface Feature {
@@ -59,30 +66,22 @@ const FEATURES: Feature[] = [
   {
     id: 'tour',
     title: 'A guided tour, space by space',
-    body: 'A narrated walk round the whole pavilion. The caption card tells you what you are looking at — pause, skip or step off the route whenever you like. Curators can also lead live tours for groups.',
+    body: 'A narrated walk from the forecourt to the Sphere Well. The caption card tells you what you are looking at — pause, skip or step off the route whenever you like. Curators can also lead live tours for groups.',
     image: 'f-tour.jpg',
     large: true,
     link: { href: '/gallery?autostart&tour', label: 'Start the guided tour' },
   },
   {
-    id: 'studio',
-    title: 'Shape a pot of your own',
-    body: 'At the potter’s wheel in Gallery B, raise a pot from a lump of clay, finish its surface, and set it out for other visitors to see.',
-    image: 'f-studio.jpg',
-    large: true,
-    link: { href: '/gallery#object=potters-wheel', label: 'Go to the wheel' },
+    id: 'rides',
+    title: 'Up to the dome, down into the well',
+    body: 'Ride up the east stair to the balcony or out onto the rim of the oculus, twenty metres above the lotus — or down the spiral of the Sphere Well.',
+    image: 'f-rides.jpg',
   },
   {
     id: 'info',
     title: 'Every piece, explained',
-    body: 'Select a work, a pot or a panel for the tradition it comes from and how it was made.',
+    body: 'Select a work, a pot or a panel for the tradition it comes from and how it was made. Pieces recorded by other collections carry their credit.',
     image: 'f-info.jpg',
-  },
-  {
-    id: 'examine',
-    title: 'Examine closely',
-    body: 'Zoom into the works on the walls to see the clay itself — its tool marks, its finish and the grain of the fired surface.',
-    image: 'f-examine.jpg',
   },
   {
     id: 'inspect',
@@ -93,20 +92,20 @@ const FEATURES: Feature[] = [
   {
     id: 'light',
     title: 'Light that changes',
-    body: 'Morning, midday, golden hour, dusk and night — the circle of daylight from the oculus moves across the court.',
+    body: 'Morning, midday, golden hour, dusk and night — the circle of daylight from the oculus moves across the court, and the lotus opens with the sun.',
     image: 'f-golden.jpg',
     pair: { image: 'f-night.jpg', labels: ['Golden hour', 'Night'] },
   },
   {
-    id: 'making',
-    title: 'From earth to fire',
-    body: 'In the hallway, five panels follow a piece from raw clay through shaping, drying and firing to its finished surface.',
-    image: 'f-making.jpg',
+    id: 'passport',
+    title: 'A clay passport',
+    body: 'Press a stamp into your clay tablet in every space, and ride to the balcony, the rim and the well for the rest.',
+    image: 'f-passport.jpg',
   },
   {
     id: 'photo',
-    title: 'Photo mode',
-    body: 'Hide the interface, frame a view and save a still to keep or share.',
+    title: 'Frames of clay',
+    body: 'Hide the interface, choose a framed view — the dome’s eye, the herd, the Red Room — and save a still to keep or share.',
     image: 'f-photo.jpg',
   },
 ]
@@ -114,7 +113,7 @@ const FEATURES: Feature[] = [
 const STEPS: { title: string; body: string }[] = [
   { title: 'Open the gallery', body: 'It runs in any modern browser — Chrome, Edge, Safari or Firefox. Nothing to install.' },
   { title: 'Walk at eye level', body: 'Drag to look and use W A S D or the arrow keys to walk — or click the floor to stroll there. On a phone, use the on-screen joystick.' },
-  { title: 'Find your way', body: 'The floor plan (M) takes you to any space in one step, and H shows every control.' },
+  { title: 'Find your way', body: 'The floor plan (M) takes you to any space in one step, and H shows every control. A brisk walk (Shift) helps in a pavilion this size.' },
   { title: 'Bring a headset', body: 'On a VR headset the whole pavilion opens in immersive mode, at true scale.' },
 ]
 
@@ -183,7 +182,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
               <h1 id="lp-title" className="lp-hero__title">
                 {t.title}
               </h1>
-              <p className="lp-hero__sub">Earth, water, hand and fire — walk through three traditions of working clay, in your browser.</p>
+              <p className="lp-hero__sub">Earth, water, hand and fire — walk through clay traditions of India under a thirty-two-metre dome, in your browser.</p>
               <div className="lp-cta">
                 <a className="lp-btn lp-btn--primary lp-btn--lg" href="/gallery">
                   Enter the virtual pavilion
@@ -203,7 +202,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
             <dl className="lp-hero__facts">
               <div>
                 <dt>Spaces</dt>
-                <dd>Eight to explore</dd>
+                <dd>Fifteen to explore</dd>
               </div>
               <div>
                 <dt>Languages</dt>
@@ -237,12 +236,13 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
             <div className="lp-intro__body" data-reveal>
               <p className="lp-intro__lead">{t.intro}</p>
               <p>
-                Clay is dug, cleaned and kneaded, shaped on the wheel, by hand or in a mould, dried in the shade and fired. This virtual pavilion brings together three traditions that work it in different ways — the terracotta of Bankura in
-                West Bengal, the votive plaques of Molela in Rajasthan and the black pottery of Longpi in Manipur — in one round room you can walk through.
+                Clay is dug, cleaned and kneaded, shaped on the wheel, by hand or in a mould, dried in the shade and fired. This virtual pavilion gathers traditions that work it in different ways. Its three galleries hold the terracotta of
+                Bankura in West Bengal, the votive plaques of Molela in Rajasthan and the black pottery of Longpi in Manipur, round a court under a dome thirty-two metres across; the Red Room in the north wing holds clay from many more
+                regions of India.
               </p>
               <ul className="lp-intro__facts">
                 <li>
-                  <strong>8</strong>
+                  <strong>{SPACES.length}</strong>
                   <span>spaces to walk through</span>
                 </li>
                 <li>
@@ -263,7 +263,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
         {/* ─────────────────────────────── 02 Spaces */}
         <section className="lp-section lp-spaces" aria-labelledby="spaces">
           <div className="lp-wrap">
-            <SectionHead id="spaces" num="02" eyebrow="Explore the spaces" title="A pavilion you can walk through" lede="From the entrance hall to the open court under the oculus, each space holds a part of the story. Choose one to begin there." />
+            <SectionHead id="spaces" num="02" eyebrow="Explore the spaces" title="A pavilion you can walk through" lede="From the Earth Room to the court under the dome, round the Parikrama and down into the Sphere Well, each space holds a part of the story. Choose one to begin there." />
             <ul className="lp-spaces__grid">
               {SPACES.map((s, i) => (
                 <li key={s.id} className={s.wide ? 'is-wide' : undefined} data-reveal>
@@ -435,6 +435,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
             <a href="/gallery">Virtual pavilion</a>
             <a href="/gallery?autostart&tour">Guided tour</a>
             <a href="/guide">Accessible text guide</a>
+            <a href="/credits">Credits</a>
           </nav>
           <nav className="lp-foot__col" aria-label="About">
             <p className="lp-foot__label">Exhibition</p>

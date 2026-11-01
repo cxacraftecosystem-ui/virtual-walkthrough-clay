@@ -7,11 +7,17 @@
  *  - interactive → invisible hit box (cheap raycasts, no per-leaf picking), pointer
  *    cursor + a soft floor halo on hover, click → select + walk-to (focusOn).
  *  - inspectable → the information panel offers the 3D viewer: inspect('object:<id>').
+ *  - GLBs stream by zone (GRAND §5.2): the entrance's load during the entry screen, a room's
+ *    when the visitor can see it, the rest once the visit has settled (models/sourcedModel.tsx);
+ *    until then the procedural `kind` stands in.
+ *  - 'sourced-model' objects take their credit and height from the registry when the content
+ *    names only a slug, so the information panel credits every sourced model.
+ *  - the still kinds' meshes are drawn in batches per zone and material (models/staticBatch.tsx).
  */
 import type { ThreeEvent } from '@react-three/fiber'
 import { ZoneGroup } from '../navigation/zoneCulling'
 import { ZONES, type ZoneId } from '../config/layout'
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Vec3 } from '../config/museum'
@@ -24,13 +30,55 @@ import { GLTFModel, preloadModel } from './GLTFModel'
 import { PROCEDURAL_MODELS } from './index'
 import { ModelClock } from './modelMaterials'
 import { InMuseumScene } from './sceneContext'
-import { num } from './types'
+import { sourcedHeight, sourcedOf, sourcedFootprint, useStreamed } from './sourcedModel'
+import { StaticObjectBatches } from './staticBatch'
+import { GRAND_CRAFTS_OBJECTS } from '../config/grandObjects/crafts'
+import { traditionsVisible } from '../content/review'
+import { num, str } from './types'
 
 /** Prefix used with `inspect()` to open a scene object (rather than an exhibit) in the 3D viewer. */
 export const OBJECT_INSPECT_PREFIX = 'object:'
 
-// start fetching GLBs as soon as the scene module loads (browser only — safe under SSR)
-if (typeof window !== 'undefined') for (const url of new Set(SCENE_OBJECTS.map((o) => (o.kind === 'splat' ? undefined : o.model)).filter((u): u is string => !!u))) preloadModel(url)
+/** Zones whose GLBs are fetched while the entry screen is up. */
+const ENTRANCE_ZONES: readonly string[] = ['entrance-court', 'annex']
+
+// start fetching the entrance's GLBs as soon as the scene module loads (browser only — safe under SSR)
+if (typeof window !== 'undefined')
+  for (const url of new Set(SCENE_OBJECTS.filter((o) => ENTRANCE_ZONES.includes(o.zone)).map((o) => (o.kind === 'splat' ? undefined : o.model)).filter((u): u is string => !!u))) preloadModel(url)
+
+/**
+ * A 'sourced-model' named by slug only (curator content) gets its registry credit, height and
+ * footprint, in place, so the information panel and the colliders see them.
+ */
+function resolveSourced(objects: SceneObjectConfig[]) {
+  for (const o of objects) {
+    if (o.kind !== 'sourced-model') continue
+    const e = sourcedOf(str(o, 'slug', ''))
+    if (!e) continue
+    o.height ??= sourcedHeight(e)
+    if (!o.credit) {
+      const { author, source, license, title, licenseUrl } = e.credit
+      o.credit = { author, source, license, title, licenseUrl }
+    }
+    if (!o.footprint && o.interactive) o.footprint = sourcedFootprint(e, o.height)
+  }
+}
+
+/**
+ * Curator review (`?review`, content/review.ts): the traditions' pieces in server content carry
+ * the silent descriptions they were seeded with; the bundled list was built with the names and
+ * captions, so its texts are laid over them (by id).
+ */
+function applyReview(objects: SceneObjectConfig[]) {
+  if (!traditionsVisible()) return
+  const bundled = new Map(GRAND_CRAFTS_OBJECTS.map((o) => [o.id, o]))
+  for (const o of objects) {
+    const b = bundled.get(o.id)
+    if (!b || b === o || !o.id.startsWith('craft-')) continue
+    o.description = b.description
+    o.i18n = { hi: { ...o.i18n?.hi, description: b.i18n?.hi?.description }, bn: { ...o.i18n?.bn, description: b.i18n?.bn?.description } }
+  }
+}
 
 /** Default heights (m) for kinds whose config usually omits `height`. */
 const DEFAULT_HEIGHT: Partial<Record<SceneObjectConfig['kind'], number>> = {
@@ -54,8 +102,10 @@ export function objectBounds(o: SceneObjectConfig): { center: Vec3; size: Vec3 }
 export function ObjectModel({ config }: { config: SceneObjectConfig }) {
   const Procedural = PROCEDURAL_MODELS[config.kind]
   const fallback = Procedural ? <Procedural config={config} /> : null
+  const inScene = useContext(InMuseumScene)
+  const streamed = useStreamed(config.zone as ZoneId, inScene)
   // 'splat' reads its own `model` (a Gaussian splat, not a GLB)
-  if (!config.model || config.kind === 'splat') return fallback
+  if (!config.model || config.kind === 'splat' || !streamed) return fallback
   return (
     <ErrorBoundary key={config.model} fallback={fallback}>
       <Suspense fallback={fallback}>
@@ -234,6 +284,10 @@ export function SceneObject({ config }: { config: SceneObjectConfig }) {
 
 export function SceneObjects() {
   const root = useRef<THREE.Group>(null)
+  useMemo(() => {
+    resolveSourced(SCENE_OBJECTS)
+    applyReview(SCENE_OBJECTS)
+  }, [])
   // debug/automation handle (like window.__museum): toggle visibility, count meshes
   useEffect(() => {
     const g = globalThis as { __sceneObjects?: THREE.Group | null }
@@ -252,6 +306,8 @@ export function SceneObjects() {
           </ZoneGroup>
         ))}
       </group>
+      {/* the still objects' meshes, batched per zone and material (GRAND §10) */}
+      <StaticObjectBatches objects={SCENE_OBJECTS} />
     </InMuseumScene.Provider>
   )
 }

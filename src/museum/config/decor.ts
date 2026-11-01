@@ -203,5 +203,31 @@ export function contentReserves(id: SurfaceId, margin = 0.2): DecorRect[] {
 /** Face of a display surface (for renderers). */
 export const surfaceFace = (id: SurfaceId): DecorFace => surf(id).face
 
-/** Applied finishes; none in the pavilion (its clay finishes are built with the walls, see above). */
-export const DECOR: DecorGroup[] = []
+/**
+ * The terracotta medallion on F (SPECTACLE F16): the decor mandala re-fired as terracotta on an
+ * oxblood disc — low relief, a burnished-black inner layer turning very slowly, smoke-black rings,
+ * a breathing ember halo — on the court face's last facet (reserved for it), at the height of the
+ * Mandala of Clay Tools on the first facet, so the two roundels answer each other across F.
+ */
+const F_MEDALLION: MedallionTreatment = {
+  type: 'medallion',
+  svg: '/decor/mandala.svg',
+  surface: 'f-inner-4',
+  at: (SURFACES['f-inner-4'].range[0] + SURFACES['f-inner-4'].range[1]) / 2,
+  centerHeight: 2.3,
+  size: 1.55,
+  color: '#b65a3c',
+  metalness: 0,
+  roughness: 0.74,
+  relief: 0.35,
+  glow: { color: '#ff9a5a', intensity: 0.55, period: 9 },
+  ornate: {
+    disc: { color: '#5a1d16', scale: 1.08, roughness: 0.9 },
+    inner: { color: '#2e2420', scale: 0.52, rotationDeg: 7.5, roughness: 0.55, spinPeriod: 360 },
+    rings: { color: '#2b2320', radii: [0.515, 0.55], tube: 0.011 },
+    boss: { color: '#c08a4e', scale: 0.075 },
+  },
+}
+
+/** Applied finishes: the pavilion's own clay finishes are built with the walls (see above); only the F medallion is decor. */
+export const DECOR: DecorGroup[] = [{ id: 'f-medallion', zones: [SURFACES['f-inner-4'].zone], treatments: [F_MEDALLION] }]

@@ -89,6 +89,8 @@ export function zoneShapePath(s: ZoneShape): string {
   return s.parts.map(zoneShapePath).join(' ')
 }
 
+const GROUND = ZONES.filter((z) => z.level !== 2)
+
 function buildPlan() {
   const walls: PlanWall[] = WALLS.filter((w) => w.kind !== 'boundary' && w.collide !== false).map((w) => ({
     id: w.id,
@@ -102,7 +104,8 @@ function buildPlan() {
           [w.min[0], w.max[2]],
         ]),
   }))
-  const zones: PlanZone[] = ZONES.map((z) => ({
+  // ground-level zones only: the roof's Sky Rim lies over the court
+  const zones: PlanZone[] = GROUND.map((z) => ({
     id: z.id,
     name: z.name,
     d: z.shape
@@ -120,10 +123,10 @@ function buildPlan() {
   const pad = 0.6
   const L = MUSEUM.landscape.r
   const bounds: PlanBounds = {
-    minX: Math.min(-L, ...ZONES.map((z) => z.rect.minX)) - pad,
-    maxX: Math.max(L, ...ZONES.map((z) => z.rect.maxX)) + pad,
-    minZ: Math.min(-L, ...ZONES.map((z) => z.rect.minZ)) - pad,
-    maxZ: Math.max(L, ...ZONES.map((z) => z.rect.maxZ)) + pad,
+    minX: Math.min(-L, ...GROUND.map((z) => z.rect.minX)) - pad,
+    maxX: Math.max(L, ...GROUND.map((z) => z.rect.maxX)) + pad,
+    minZ: Math.min(-L, ...GROUND.map((z) => z.rect.minZ)) - pad,
+    maxZ: Math.max(L, ...GROUND.map((z) => z.rect.maxZ)) + pad,
   }
   return { bounds, walls, zones }
 }

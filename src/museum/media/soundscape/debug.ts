@@ -24,6 +24,10 @@ export const debug = {
   sources: {} as Record<string, 'synth' | 'file' | 'silent'>,
   events: { birds: 0, bubbles: 0, thumps: 0, rustles: 0, murmur: 0, crickets: 0, frogs: 0, owls: 0, cuckoos: 0, calls: 0, leaves: 0 },
   files: {} as Record<string, 'pending' | 'ok' | 'missing'>,
+  /** Live WebAudio nodes made by the synth toolkit (leak check: stable across zone changes). */
+  nodes: 0,
+  /** Room-reverb convolvers alive (the current zone's, plus any still fading out). */
+  reverbs: 0,
 }
 export type SoundscapeDebug = typeof debug
 

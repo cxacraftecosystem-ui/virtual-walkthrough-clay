@@ -1,7 +1,9 @@
 /**
- * THE CLAY PAVILION — everything built: the drum, the annex and its door, the free-standing
- * curved walls, the roof with its oculus, the podium row, the cove glow at the duplex band,
- * the forecourt lettering and the landscape plinth.
+ * THE CLAY PAVILION — everything built: the drum, the annex and its door, the curved walls,
+ * the ambulatory's and annex's roof, the podium row, the cove glow at the duplex band, the
+ * forecourt lettering and the landscape plinth. The grand plan's dome, arches, balcony, stair,
+ * serpentine and the Red Room's and Sphere Well's shells are mounted by
+ * spectacle/mounts/architecture.tsx (GRAND §2.5–§2.7).
  *
  * Static pieces sit in one <StaticMerge> (one mesh per material for the whole shell); only
  * the transparent cove wash, the lettering and the lights stay separate. The podiums are
@@ -19,6 +21,7 @@ import { SCENE_OBJECTS } from '../config/objects'
 import { QUALITY_PRESETS, withDevOverrides } from '../config/quality'
 import { StaticMerge } from '../effects/StaticMerge'
 import { Benches } from '../furniture/Bench'
+import { injectAtmosphere } from '../lighting/atmosphere/inject'
 import { ambience } from '../lighting/timeOfDayState'
 import { coverAngle, TrackRail, TrackSpot } from '../lighting/TrackLight'
 import { mountForPodium, RAILS } from '../lighting/tracks'
@@ -31,6 +34,7 @@ import { useMuseum } from '../state/store'
 import { useAsyncTexture } from '../utils/useAsyncTexture'
 import { CeilingAndRoof } from './CeilingAndSkylight'
 import { ExteriorGround, Floor } from './Floor'
+import { NotchDoorFrames, NotchDoorLight } from './NotchDoors'
 import { Landscape } from './Landscape'
 import { RawClayPatches } from './RawClayPatches'
 import { cylinderFace, mergeAll } from './shellGeometry'
@@ -42,24 +46,75 @@ const H = MUSEUM.pavilion.ceilingHeight
 /* Podiums                                                             */
 /* ------------------------------------------------------------------ */
 
-/** Every podium of the row: an oxblood clay column on a recessed shadow plinth. */
+/** The podiums that carry a glass hood (GRAND §3 #14: four of the fourteen), by slot id. */
+export const HOODED_PODIUMS: ReadonlySet<string> = new Set(['pod-a-2', 'pod-b-3', 'pod-b-5', 'pod-c-2'])
+/** The hood: its height over the podium's top (clear of a 0.5 m horse) and its glass wall's margin. */
+export const PODIUM_HOOD = { height: 0.62, margin: 0.012 }
+/** The brass label rail on each podium's court face: its top height and size. */
+export const LABEL_RAIL = { top: 0.95, width: 0.26, depth: 0.075, thick: 0.022 }
+
+/** Every podium of the row: a red lacquered column on a recessed shadow plinth, a brass label rail on its court face. */
 function PodiumRow() {
   const m = useMaterials()
   const geo = useMemo(() => {
     const s = PODIUM.size
     const gap = 0.03
+    // the rail: a thin brass ledge tilted 15° towards the reader, standing off the court face
+    const rail = createMeterBoxGeometry(LABEL_RAIL.width, LABEL_RAIL.thick, LABEL_RAIL.depth)
+    rail.rotateX(15 * (Math.PI / 180))
     return {
       body: createMeterBoxGeometry(s, PODIUM.height - gap, s),
       base: createMeterBoxGeometry(s - 0.03, gap, s - 0.03),
+      rail,
     }
   }, [])
   useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo])
   return (
     <group name="podiums">
-      {PODIUM_SLOTS.map((p) => (
-        <group key={p.id} position={[p.x, 0, p.z]} rotation={[0, p.rotationY, 0]}>
-          <mesh geometry={geo.base} material={m.shadowGap} position={[0, 0.015, 0]} receiveShadow />
-          <mesh geometry={geo.body} material={m.oxblood} position={[0, 0.03 + (PODIUM.height - 0.03) / 2, 0]} castShadow receiveShadow />
+      {PODIUM_SLOTS.map((p) => {
+        // the court face looks at the drum's centre; place the rail on it, whatever the slot's own rotation
+        const a = Math.atan2(p.z, p.x)
+        const off = PODIUM.size / 2 + LABEL_RAIL.depth / 2 - 0.01
+        return (
+          <group key={p.id}>
+            <group position={[p.x, 0, p.z]} rotation={[0, p.rotationY, 0]}>
+              <mesh geometry={geo.base} material={m.shadowGap} position={[0, 0.015, 0]} receiveShadow />
+              <mesh geometry={geo.body} material={m.redLacquer} position={[0, 0.03 + (PODIUM.height - 0.03) / 2, 0]} castShadow receiveShadow />
+            </group>
+            <mesh geometry={geo.rail} material={m.brass} position={[p.x - Math.cos(a) * off, LABEL_RAIL.top - LABEL_RAIL.thick, p.z - Math.sin(a) * off]} rotation={[0, -a - Math.PI / 2, 0]} castShadow />
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+/** The glass hoods on four podiums: clear glass, a thin brass base band. */
+function PodiumHoods() {
+  const m = useMaterials()
+  const geo = useMemo(() => {
+    const s = PODIUM.size - 2 * PODIUM_HOOD.margin
+    const g = new THREE.BoxGeometry(s, PODIUM_HOOD.height, s)
+    return { glass: g, band: createMeterBoxGeometry(PODIUM.size - 0.004, 0.025, PODIUM.size - 0.004) }
+  }, [])
+  useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo])
+  // the hoods' own glass: out of the accent field (a sconce's cone through the hood lit both faces
+  // into a bright quad at night), with a quieter reflection, so it stays clear glass at every hour
+  const glass = useMemo(() => {
+    const g = (m.glass as THREE.MeshPhysicalMaterial).clone()
+    g.name = 'hoodGlass'
+    g.envMapIntensity = 0.55
+    g.opacity = 0.1
+    injectAtmosphere(g, { skip: true })
+    return g
+  }, [m.glass])
+  useEffect(() => () => glass.dispose(), [glass])
+  return (
+    <group name="podium-hoods">
+      {PODIUM_SLOTS.filter((p) => HOODED_PODIUMS.has(p.id)).map((p) => (
+        <group key={p.id} position={[p.x, PODIUM.height, p.z]} rotation={[0, p.rotationY, 0]}>
+          <mesh geometry={geo.glass} material={glass} position={[0, PODIUM_HOOD.height / 2 + 0.025, 0]} raycast={() => null} renderOrder={2} />
+          <mesh geometry={geo.band} material={m.brass} position={[0, 0.0125, 0]} />
         </group>
       ))}
     </group>
@@ -153,6 +208,8 @@ function CoveWash() {
     for (const w of WALLS) {
       const s = w.shape
       if (!s) continue
+      // the gallery ring's band is the balcony now (Balcony.tsx); the wash stays on the lobe
+      if (w.id === 'drum-ring') continue
       if (w.kind === 'drum' && s.kind === 'arc') {
         const [a0, a1] = drumFaceSpans(w).in
         parts.push(unitV(cylinderFace(0, 0, s.r - s.thickness / 2 - WASH.off, a0, a1, WASH.y0, WASH.y1, 'in'), WASH.y0, WASH.y1))
@@ -169,20 +226,21 @@ function CoveWash() {
           // notch: towards the lobe (larger angle at the NE notch, smaller at the D notch)
           const a = Math.atan2(mz, mx)
           const t = nx * -Math.sin(a) + nz * Math.cos(a)
-          if ((w.id === 'notch-ne') !== t > 0) [nx, nz] = [-nx, -nz]
+          if (w.id.startsWith('notch-ne') !== t > 0) [nx, nz] = [-nx, -nz]
         }
         const h = s.thickness / 2
-        // interior span: the annex from its mouth to the door wall; the notch from ring to lobe
+        // interior span: the annex from its mouth to the door wall; each notch piece (either side
+        // of its door, and the lintel) up to the lobe's interior face
         const [ax, az, bx, bz] =
           w.kind === 'annex'
             ? [s.ax, KEY.annexMouthZ, s.bx, MUSEUM.annex.endZ]
             : (() => {
                 const ux = (s.bx - s.ax) / len
                 const uz = (s.bz - s.az) / len
-                const run = MUSEUM.drum.r - MUSEUM.drum.ringR
+                const run = Math.min(len, MUSEUM.drum.r - Math.hypot(s.ax, s.az))
                 return [s.ax, s.az, s.ax + ux * run, s.az + uz * run]
               })()
-        parts.push(washQuad(ax + nx * h, az + nz * h, bx + nx * h, bz + nz * h, nx, nz))
+        if (Math.hypot(bx - ax, bz - az) > 1e-3) parts.push(washQuad(ax + nx * h, az + nz * h, bx + nx * h, bz + nz * h, nx, nz))
       }
     }
     const merged = mergeAll(parts)
@@ -225,19 +283,67 @@ function Threshold() {
   return <mesh geometry={geo} material={m.brass} position={[0, 0.004, KEY.annexEndZ + MUSEUM.annex.thickness / 2]} receiveShadow />
 }
 
-/** The exhibition's name in tall spaced capitals above the door (follows the content's title). */
-function FacadeLettering() {
-  const w = KEY.annexOuterHalf * 2 - 0.5
-  const h = 0.5
-  const title = EXHIBITION_TITLE.title
-  const tex = useAsyncTexture(() => createFacadeLetteringTexture(title, w, h), [title])
-  if (!tex) return null
-  const y = MUSEUM.annex.door.height + (MUSEUM.pavilion.mezzanineBand > MUSEUM.annex.door.height ? 0.4 : (H - MUSEUM.annex.door.height) / 2)
+/** The portal's lacquered surround: jambs and a head standing proud of the facade, a deep reveal. */
+export const PORTAL = { proud: 0.6, jamb: 0.5, head: 0.7 }
+
+function PortalSurround() {
+  const m = useMaterials()
+  const P = PORTAL
+  const dh = MUSEUM.annex.door.height
+  const geo = useMemo(
+    () => ({
+      jamb: createMeterBoxGeometry(P.jamb, dh + P.head, P.proud),
+      head: createMeterBoxGeometry(MUSEUM.annex.door.width, P.head, P.proud),
+    }),
+    [P.jamb, P.head, P.proud, dh],
+  )
+  useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo])
+  const z = KEY.annexOuterZ + P.proud / 2
+  const x = KEY.doorHalf + P.jamb / 2
   return (
-    <mesh position={[0, y, KEY.annexOuterZ + 0.004]} raycast={() => null}>
-      <planeGeometry args={[w, h]} />
-      <meshStandardMaterial map={tex} transparent roughness={0.55} metalness={0.2} depthWrite={false} polygonOffset polygonOffsetFactor={-2} />
-    </mesh>
+    <group name="portal-surround">
+      <mesh geometry={geo.jamb} material={m.oxbloodLacquer} position={[x, (dh + P.head) / 2, z]} castShadow receiveShadow />
+      <mesh geometry={geo.jamb} material={m.oxbloodLacquer} position={[-x, (dh + P.head) / 2, z]} castShadow receiveShadow />
+      <mesh geometry={geo.head} material={m.oxbloodLacquer} position={[0, dh + P.head / 2, z]} castShadow receiveShadow />
+    </group>
+  )
+}
+
+/** The exhibition's name in raised brass capitals (0.45 m cap height) above the portal (follows the content's title). */
+function FacadeLettering() {
+  const w = KEY.annexOuterHalf * 2 - 0.4
+  const h = 1.1
+  const title = EXHIBITION_TITLE.title
+  const tex = useAsyncTexture(() => createFacadeLetteringTexture(title, w, h, { capM: 0.45, inlay: true }), [title])
+  const mat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({ name: 'facadeLetters', color: '#f0cf86', transparent: true, roughness: 0.26, metalness: 0.55, envMapIntensity: 1.5, emissive: new THREE.Color('#ffd28a'), depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
+    [],
+  )
+  useEffect(() => () => mat.dispose(), [mat])
+  useEffect(() => {
+    mat.map = tex ?? null
+    mat.emissiveMap = tex ?? null
+    mat.needsUpdate = true
+  }, [mat, tex])
+  // the letters catch a grazing light: a faint glow of their own by day, lit like a sign at night
+  useFrame(() => {
+    mat.emissiveIntensity = 0.18 + 0.7 * ambience.night + 0.3 * ambience.twilight
+  })
+  if (!tex) return null
+  // centred in the clay between the portal's head and the parapet's fascia
+  const y = (MUSEUM.annex.door.height + PORTAL.head + H) / 2
+  return (
+    <group position={[0, y, KEY.annexOuterZ]}>
+      {/* a dark lacquered band behind the brass inlay, so the name reads against the terracotta */}
+      <mesh position={[0, 0, 0.003]} raycast={() => null} receiveShadow>
+        <planeGeometry args={[w - 0.3, h * 0.78]} />
+        <meshStandardMaterial color="#3a1512" roughness={0.5} polygonOffset polygonOffsetFactor={-1} />
+      </mesh>
+      <mesh position={[0, 0, 0.006]} material={mat} raycast={() => null}>
+        <planeGeometry args={[w, h]} />
+      </mesh>
+    </group>
   )
 }
 
@@ -248,8 +354,9 @@ function FacadeLettering() {
 /** The oculus plinth is a scene object (clickable, described); built here only if content drops it. */
 const hasPlinthObject = () => SCENE_OBJECTS.some((o) => o.kind === 'oculus-plinth')
 
+/** Walls drawn here; the serpentine and the Sphere Well's rim have their own shells (mounts/architecture). */
 function renderable(w: WallBox) {
-  return w.render !== false && w.kind !== 'boundary'
+  return w.render !== false && w.kind !== 'boundary' && w.kind !== 'serpentine' && w.kind !== 'tower'
 }
 
 export function Pavilion() {
@@ -263,18 +370,25 @@ export function Pavilion() {
         ))}
         <CeilingAndRoof />
         <Threshold />
+        <PortalSurround />
         {RAILS.map((r) => (
           <TrackRail key={r.id} rail={r} />
         ))}
         <Benches />
         <PodiumRow />
+        <NotchDoorFrames />
         {!plinth && <OculusPlinth />}
       </StaticMerge>
       <CoveWash />
+      <NotchDoorLight />
       <RawClayPatches />
       <PodiumLights />
+      <PodiumHoods />
       <ZoneGroup zones={['entrance-court', 'annex']}>
         <FacadeLettering />
+      </ZoneGroup>
+      {/* the landscape: from outside, the open-air walk, the roof and the well */}
+      <ZoneGroup zones={['entrance-court', 'annex', 'parikrama-west', 'parikrama-east', 'sky-rim', 'sphere-well']}>
         <Landscape />
       </ZoneGroup>
       <Floor />

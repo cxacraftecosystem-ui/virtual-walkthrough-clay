@@ -6,6 +6,28 @@
 import { debug } from './debug'
 
 const cache = new Map<string, Promise<AudioBuffer | null>>()
+
+/**
+ * /audio/manifest.json lists the recordings that exist ({ "files": ["ambience/annex.mp3", …] },
+ * paths under /audio/). With it, unlisted files are never requested, so a pavilion with no
+ * recordings makes no failing requests at all. Without it (an older deployment) every file is
+ * probed as before.
+ */
+let manifest: Promise<Set<string> | null> | null = null
+function listed(url: string): Promise<boolean> {
+  manifest ??= (async () => {
+    try {
+      if (typeof fetch !== 'function') return null
+      const res = await fetch('/audio/manifest.json', { cache: 'no-cache' })
+      if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) return null
+      const j = (await res.json()) as { files?: unknown }
+      return Array.isArray(j.files) ? new Set(j.files.filter((f): f is string => typeof f === 'string').map((f) => '/audio/' + f.replace(/^\/+/, ''))) : null
+    } catch {
+      return null
+    }
+  })()
+  return manifest.then((m) => !m || m.has(url))
+}
 const resolved = new Map<string, AudioBuffer | null>()
 
 /** Result if already known: a buffer, null (missing), or undefined (not probed / pending). */
@@ -24,6 +46,7 @@ export function loadFile(ctx: AudioContext, url: string): Promise<AudioBuffer | 
   const p = (async (): Promise<AudioBuffer | null> => {
     try {
       if (typeof fetch !== 'function') return null
+      if (!(await listed(url))) return null
       const res = await fetch(url, { cache: 'force-cache' })
       if (!res.ok) return null
       if ((res.headers.get('content-type') ?? '').includes('text/html')) return null

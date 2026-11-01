@@ -1,10 +1,11 @@
 /**
  * VISITOR AMENITIES & WAYFINDING — content only (rendering: amenities/Amenities.tsx).
  *
- * The pavilion is one round room with no shop, library or reception, so its amenities are few:
+ * The pavilion's amenities are few:
  *
- *   Signage           a totem in the entrance hall pointing round the ring, and one in Gallery C
- *                     at the opening into the hallway
+ *   Signage           a totem in the entrance hall pointing round the ring, one in Gallery C at
+ *                     the opening into the hallway, and one beside each notch door pointing out
+ *                     along the Parikrama walk to the north wing's rooms
  *   Discovery trail   eight small stamped medallions round the pavilion ("Find the motifs"),
  *                     each on a wall face whose normal is close to a compass point
  *
@@ -14,14 +15,35 @@
  */
 import type { MotifId } from './exhibits'
 import { surfacePoint, ZONES, type SurfaceId, type ZoneId } from './layout'
-import { KEY, MUSEUM, polar, type Vec3 } from './museum'
+import { ARCH, KEY, MUSEUM, polar, type Vec3 } from './museum'
+import { NOTCH_DOOR } from './satellites'
 import type { SceneObjectConfig } from './objects'
 
 const RH = MUSEUM.pavilion.ceilingHeight
 
 export const PRODUCT_TEXT = ''
 
-export const AMENITY_OBJECTS: SceneObjectConfig[] = []
+export const AMENITY_OBJECTS: SceneObjectConfig[] = [
+  // ══ Partners by the entrance (CONTRACT §8): the same band as the Clay Atlas's, both logos as they
+  // stand on their neutral ground, on the entrance hall's east wall just inside the door — on the
+  // right coming in, and facing the visitor on the way out ══
+  {
+    id: 'entrance-partners',
+    title: 'Partners',
+    kind: 'credits-panel',
+    position: [KEY.annexHalf - 0.16, 0, MUSEUM.annex.endZ - 1.6],
+    rotationDeg: -90,
+    footprint: [1.8, 0.3],
+    height: 3.0,
+    props: { layout: 'partners' },
+    zone: 'annex',
+    alt: 'A pale panel by the entrance with the two partner logos: DC Handicrafts, presenting the exhibition, and IIT Kharagpur, in collaboration.',
+    i18n: {
+      hi: { title: 'सहयोगी', alt: 'प्रवेश द्वार के पास एक हल्के रंग का पटल, जिस पर दोनों सहयोगियों के लोगो हैं: प्रदर्शनी प्रस्तुत करने वाला डीसी हस्तशिल्प, और सहयोग में आईआईटी खड़गपुर।' },
+      bn: { title: 'সহযোগী', alt: 'প্রবেশপথের পাশে একটি হালকা প্যানেল, তাতে দুই সহযোগীর লোগো: প্রদর্শনীর উপস্থাপক ডিসি হস্তশিল্প, আর সহযোগিতায় আইআইটি খড়্গপুর।' },
+    },
+  },
+]
 
 /* ------------------------------------------------------------------ */
 /* Wayfinding signage                                                  */
@@ -75,8 +97,18 @@ function totem(id: string, x: number, z: number, faceTo: [number, number], dests
 
 /** Entrance hall totem: by the east wall just before the mouth, read by visitors walking in. */
 const HALL: [number, number] = [KEY.annexHalf - 0.45, KEY.annexMouthZ + 1.6]
-/** Gallery C totem: by the end of the hallway wall, where the hallway opens off the ring. */
-const C_TOTEM = polar(7.25, 206)
+/** Gallery C totem: inside the D arch, by the end of the hallway wall, where the hallway opens off the ring. */
+const C_TOTEM = polar(MUSEUM.drum.ringR - 1.0, ARCH.d.fromDeg - 2)
+/** The arches the signs point through. */
+const E_ARCH = polar(KEY.ringC, ARCH.eEast.midDeg)
+const D_ARCH = polar(KEY.ringC, ARCH.d.midDeg)
+/** North-wing totems: beside each notch door, against the lobe wall and clear of the way through. */
+const D_DOOR = polar(NOTCH_DOOR.rC, MUSEUM.drum.dNotchDeg - 360 + 5)
+const NE_DOOR = polar(NOTCH_DOOR.rC, MUSEUM.drum.neNotchDeg - 4)
+const D_TOTEM = polar(MUSEUM.drum.r - 0.45, MUSEUM.drum.dNotchDeg - 8)
+const NE_TOTEM = polar(MUSEUM.drum.r - 0.45, MUSEUM.drum.neNotchDeg + 3)
+/** The walk and its rooms, in the order the D door reaches them (the NE door lists them reversed). */
+const NORTH_WING: ZoneId[] = ['parikrama-west', 'atlas', 'theatre', 'library', 'shop']
 
 export const SIGNS: SignConfig[] = [
   totem(
@@ -86,10 +118,10 @@ export const SIGNS: SignConfig[] = [
     [HALL[0], HALL[1] + 5],
     [
       // the galleries begin round the east end of the inner wall
-      { zone: 'ring-a', via: polar(7.0, 40) },
-      { zone: 'ring-b', via: polar(7.0, 40) },
-      { zone: 'ring-c', via: polar(7.0, 40) },
-      { zone: 'inner', via: polar(7.0, 40) },
+      { zone: 'ring-a', via: E_ARCH },
+      { zone: 'ring-b', via: E_ARCH },
+      { zone: 'ring-c', via: E_ARCH },
+      { zone: 'inner', via: E_ARCH },
     ],
     ['annex', 'entry-e'],
   ),
@@ -97,9 +129,27 @@ export const SIGNS: SignConfig[] = [
     'sign-c',
     C_TOTEM[0],
     C_TOTEM[1],
-    polar(5.0, 245),
-    [{ zone: 'hallway-d', via: polar(9.2, 214) }, { zone: 'inner' }, { zone: 'annex', via: polar(9.2, 214) }],
+    polar(MUSEUM.podium.ringR - 3, ARCH.d.fromDeg + 30),
+    [{ zone: 'hallway-d', via: D_ARCH }, { zone: 'inner' }, { zone: 'annex', via: D_ARCH }],
     ['ring-c', 'ring-b', 'hallway-d', 'inner'],
+  ),
+  // the head of the hallway, by the D notch door: Parikrama · Atlas · Theatre · Library · Haat
+  totem(
+    'sign-parikrama',
+    D_TOTEM[0],
+    D_TOTEM[1],
+    D_ARCH,
+    NORTH_WING.map((zone) => ({ zone, via: D_DOOR })),
+    ['hallway-d', 'ring-c', 'parikrama-west'],
+  ),
+  // the entry ways, by the NE notch door: the walk, then the same rooms nearest first from this side
+  totem(
+    'sign-entry',
+    NE_TOTEM[0],
+    NE_TOTEM[1],
+    polar(KEY.ambMidR, 70),
+    (['parikrama-east', ...NORTH_WING.slice(1).reverse()] as ZoneId[]).map((zone) => ({ zone, via: NE_DOOR })),
+    ['entry-e', 'annex', 'parikrama-east'],
   ),
 ]
 

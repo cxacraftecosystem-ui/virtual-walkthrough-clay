@@ -279,3 +279,16 @@ export function ArtisanCapture({ config }: ModelProps) {
     </ErrorBoundary>
   )
 }
+
+/**
+ * The glowing seated figure on its own — no stool, card or halo — for other installations
+ * (the oculus court's potter at the wheel). Abstract like the placeholder above: no face, no
+ * costume. Faces +z; `material` replaces the default glow (e.g. one whose hands track a rim).
+ */
+export function SeatedFigure({ seat = 0.6, tableHeight = 0.86, reach = 0.42, color = '#e6eef5', material }: { seat?: number; tableHeight?: number; reach?: number; color?: string; material?: THREE.Material }) {
+  const figure = useMemo(() => seatedFigure(seat, tableHeight, reach), [seat, tableHeight, reach])
+  useEffect(() => () => figure.dispose(), [figure])
+  const glow = useMemo(() => (material ? null : glowMaterial(color)), [material, color])
+  useEffect(() => () => glow?.dispose(), [glow])
+  return <mesh geometry={figure} material={material ?? glow!} renderOrder={3} raycast={() => null} />
+}

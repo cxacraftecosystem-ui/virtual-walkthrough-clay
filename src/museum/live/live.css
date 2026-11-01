@@ -60,6 +60,17 @@
   animation: live-in 0.4s var(--ease);
 }
 
+/* folded to a dot after a few seconds or the first scroll (LivePanel JoinLive); a click opens it again */
+.live-invite--folded {
+  left: auto;
+  right: calc(var(--edge) + var(--safe-r, 0px));
+  transform: none;
+  padding: 10px;
+  border: 0;
+  cursor: pointer;
+  animation: none;
+}
+
 .live-invite__text {
   white-space: nowrap;
   overflow: hidden;
@@ -271,8 +282,15 @@
     bottom: calc(var(--edge) + var(--safe-b) + 150px);
     max-height: 44vh;
   }
+  /* docked at the bottom, clear of the controls at the top (LivePanel waits for a first move) */
   .live-invite {
+    top: auto;
+    bottom: calc(var(--edge) + var(--safe-b) + 72px);
+    width: calc(100vw - 2 * var(--edge));
     font-size: 12px;
+  }
+  .live-invite--folded {
+    width: auto;
   }
 }
 

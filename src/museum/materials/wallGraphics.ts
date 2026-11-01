@@ -207,19 +207,29 @@ export async function createTitleWallTexture(widthM: number, heightM: number, op
  * The exhibition's name above the pavilion door: widely spaced serif capitals in oxblood,
  * sized to fit `widthM` on one line, centred. Transparent background.
  */
-export async function createFacadeLetteringTexture(text: string, widthM: number, heightM: number): Promise<THREE.CanvasTexture> {
+export async function createFacadeLetteringTexture(text: string, widthM: number, heightM: number, opts: { capM?: number; inlay?: boolean } = {}): Promise<THREE.CanvasTexture> {
   await ensureWallFonts()
   const { ctx, m, W, H } = surface(widthM, heightM, 420)
   const label = text.trim().toUpperCase()
-  const spacing = 0.32
+  const spacing = opts.inlay ? 0.16 : 0.32
   setFont(ctx, 500, 100, SERIF, spacing)
   const w100 = ctx.measureText(label).width
-  const size = Math.min(m(heightM * 0.62), (W * 0.96 * 100) / Math.max(1, w100))
-  setFont(ctx, 500, size, SERIF, spacing)
+  // a requested cap height (Cormorant's capitals are ~0.63 em), never wider than the strip
+  const want = opts.capM ? m(opts.capM / 0.63) : m(heightM * 0.62)
+  const size = Math.min(want, (W * 0.96 * 100) / Math.max(1, w100))
+  setFont(ctx, opts.inlay ? 600 : 500, size, SERIF, spacing)
   ctx.textAlign = 'center'
-  ctx.fillStyle = '#6a2a22'
+  const x = W / 2 + (size * spacing) / 2
+  const y = H / 2 + size * 0.32
+  if (opts.inlay) {
+    // raised brass letters: their shadow on the clay below-right, then the letter face in white
+    // (the material's brass colour and metalness tint it)
+    ctx.fillStyle = 'rgba(28, 10, 6, 0.6)'
+    ctx.fillText(label, x + size * 0.035, y + size * 0.05)
+    ctx.fillStyle = '#ffffff'
+  } else ctx.fillStyle = '#6a2a22'
   // letter-spacing adds space after the last glyph too: shift back by half of it
-  ctx.fillText(label, W / 2 + (size * spacing) / 2, H / 2 + size * 0.34)
+  ctx.fillText(label, x, y)
   return toTexture(ctx.canvas, 'facade-lettering')
 }
 

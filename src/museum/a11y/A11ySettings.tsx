@@ -1,4 +1,5 @@
-/** Display & accessibility settings (help overlay): reduce motion, high contrast, larger text, language. */
+/** Display & accessibility settings (help overlay): reduce motion, high contrast, larger text, sound captions, language. */
+import { setCaptionsOn, useCaptions } from '../spectacle/captions'
 import { useMuseum } from '../state/store'
 import { useLang, useT } from '../i18n'
 import type { DictKey } from '../i18n/en'
@@ -36,6 +37,22 @@ function Toggle({ flag, label, note }: { flag: Flag; label: string; note: string
   )
 }
 
+/** Sound captions (SPECTACLE §6): every sound and music change named in a strip at the foot of the view. */
+function CaptionsToggle({ label }: { label: string }) {
+  const on = useCaptions((s) => s.on)
+  const id = 'ui-a11y-captions'
+  return (
+    <li className="ui-a11y__row">
+      <span className="ui-a11y__text">
+        <span id={id}>{label}</span>
+      </span>
+      <button type="button" role="switch" aria-checked={on} aria-labelledby={id} className={`ui-switch${on ? ' is-on' : ''}`} onClick={() => setCaptionsOn(!on)}>
+        <span className="ui-switch__knob" aria-hidden="true" />
+      </button>
+    </li>
+  )
+}
+
 export function A11ySettings() {
   const t = useT()
   const lang = useLang()
@@ -48,6 +65,7 @@ export function A11ySettings() {
         {ROWS.map((r) => (
           <Toggle key={r.flag} flag={r.flag} label={t(r.label)} note={t(r.note)} />
         ))}
+        <CaptionsToggle label={t('spectacle.captions')} />
         <li className="ui-a11y__row">
           <span className="ui-a11y__text">
             <span>{t('lang.label')}</span>

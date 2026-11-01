@@ -354,14 +354,16 @@ button {
   pointer-events: none !important;
 }
 
+/* Light type on a soft dark scrim: legible over a sunlit sky and an oxblood wall alike. */
 .ui-hud__title {
   position: absolute;
   top: calc(var(--edge) + var(--safe-t));
   left: calc(var(--edge) + var(--safe-l));
   padding: 10px 16px 11px;
   max-width: calc(100vw - 2 * var(--edge) - 260px);
-  /* a soft halo plus a tight one, so the zone line reads on the deep clay walls too */
-  text-shadow: 0 0 18px rgba(245, 241, 232, 0.9), 0 0 4px rgba(245, 241, 232, 0.85);
+  border-radius: 14px;
+  background: radial-gradient(ellipse 120% 100% at 30% 50%, rgba(26, 14, 10, 0.34), rgba(26, 14, 10, 0.12) 62%, rgba(26, 14, 10, 0) 100%);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 
 .ui-hud__name {
@@ -369,7 +371,7 @@ button {
   font-weight: 500;
   font-size: 20px;
   line-height: 1.1;
-  color: var(--ink);
+  color: #fbf4ea;
   white-space: nowrap;
 }
 
@@ -382,7 +384,7 @@ button {
   font-weight: 500;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: rgba(251, 244, 234, 0.86);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -417,6 +419,15 @@ button {
   height: 20px;
   margin: 0 3px;
   background: var(--hairline);
+}
+
+/* The phone fold (HUD.tsx useFold): invisible as a box on wider screens. */
+.ui-hud__fold {
+  display: contents;
+}
+
+.ui-hud__phone-only {
+  display: none;
 }
 
 .ui-quality {
@@ -531,20 +542,44 @@ button {
   }
 }
 
-/* Phones: stack the icon bar vertically so the title keeps its room */
-@media (max-width: 520px) {
+/*
+ * Phones: one short row — tour, map, sound, more — so the view stays clear; everything else
+ * folds into a small grid panel under it that "more" opens.
+ */
+@media (max-width: 600px) {
+  .ui-hud__title {
+    max-width: calc(100vw - 2 * var(--edge) - 186px);
+  }
   .ui-hud__actions {
-    flex-direction: column;
     gap: 0;
   }
-  .ui-hud__sep {
-    width: 20px;
-    height: 1px;
-    margin: 3px 0;
+  .ui-hud__phone-only {
+    display: inline-flex;
+  }
+  .ui-hud__wide-only {
+    display: none;
+  }
+  .ui-hud__fold {
+    display: none;
+  }
+  .ui-hud__fold.is-open {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 40px);
+    gap: 2px;
+    padding: 4px;
+    border-radius: 14px;
+    background: var(--panel-solid);
+    box-shadow: var(--shadow);
+  }
+  .ui-hud__fold .ui-hud__sep {
+    display: none;
   }
   .ui-quality__menu {
-    top: 0;
-    right: calc(100% + 8px);
+    top: calc(100% + 6px);
+    right: 0;
   }
   .ui-icon-btn {
     width: 40px;
@@ -894,7 +929,60 @@ button {
 .ui-map__wall--plinth {
   fill: none;
   stroke: #9b8f82;
-  stroke-width: 0.08;
+  stroke-width: 0.176;
+}
+
+/* north wing: the serpentine Parikrama walk and the crescent rooms off it */
+.ui-map__floor--parikrama-west,
+.ui-map__floor--parikrama-east {
+  fill: rgba(224, 160, 106, 0.16);
+}
+
+.ui-map__floor--atlas,
+.ui-map__floor--theatre,
+.ui-map__floor--library,
+.ui-map__floor--shop {
+  fill: rgba(201, 106, 88, 0.12);
+}
+
+.ui-map__wall--satellite,
+.ui-map__wall--tower {
+  fill: #5e5249;
+}
+
+/* the grand plan: the red serpentine walls and the Red Room, the east stair's foot */
+.ui-map__wall--serpentine,
+.ui-map__wall--red-room {
+  fill: #8a3a2c;
+}
+
+.ui-map__wall--stair {
+  fill: #9b8f82;
+}
+
+.ui-map__wall--colonnade,
+.ui-map__wall--baffle {
+  fill: #9b8f82;
+}
+
+/* pierced screens: the walk can see through them, not walk through */
+.ui-map__wall--jali {
+  fill: none;
+  stroke: #7d7166;
+  stroke-width: 0.154;
+  stroke-dasharray: 0.264 0.22;
+}
+
+/* "Roof" badge while the visitor is perched on the Sky Rim (the plan shows the ground only) */
+.ui-map__roof {
+  font-family: var(--font-ui);
+  font-size: 2.09px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--accent);
+  text-anchor: middle;
+  pointer-events: none;
 }
 
 .ui-map__podium {
@@ -904,14 +992,14 @@ button {
 
 .ui-map__object {
   stroke: #b3a797;
-  stroke-width: 0.07;
+  stroke-width: 0.154;
   fill: rgba(155, 143, 130, 0.08);
 }
 
 .ui-map__bench {
   fill: none;
   stroke: #9b8f82;
-  stroke-width: 0.06;
+  stroke-width: 0.132;
 }
 
 .ui-map__zone {
@@ -933,7 +1021,7 @@ button {
 
 .ui-map__label {
   font-family: var(--font-ui);
-  font-size: 0.6px;
+  font-size: 1.32px;
   font-weight: 500;
   letter-spacing: 0.02em;
   fill: var(--muted);
@@ -950,7 +1038,7 @@ button {
 
 .ui-map__label--big {
   font-family: var(--font-display);
-  font-size: 2.3px;
+  font-size: 5.06px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -969,12 +1057,12 @@ button {
 .ui-map__dot {
   fill: var(--accent);
   stroke: #fbf7f0;
-  stroke-width: 0.16;
+  stroke-width: 0.352;
 }
 
 .ui-map__north {
   font-family: var(--font-ui);
-  font-size: 0.55px;
+  font-size: 1.21px;
   font-weight: 600;
   fill: var(--muted);
   text-anchor: middle;
@@ -1200,7 +1288,8 @@ button {
   height: 13px;
 }
 
-@media (max-width: 1100px) {
+/* below this the centred hint would run under the HUD's toolbar (≈ 540 px wide): it sits above the prompts */
+@media (max-width: 1600px) {
   .ui-hint {
     top: auto;
     bottom: calc(var(--edge) + var(--safe-b) + 64px);

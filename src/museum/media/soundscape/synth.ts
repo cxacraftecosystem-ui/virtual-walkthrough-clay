@@ -68,24 +68,35 @@ export function noise(ctx: AudioContext): Record<NoiseKind, AudioBuffer> {
 
 /* ------------------------------ node bookkeeping ------------------------ */
 
+/**
+ * Live WebAudio nodes made through this toolkit: `live` = the persistent parts (Kits), `voices`
+ * = one-shot voices still sounding. The leak check reads it: walking through ten zones must leave
+ * `live` where it started (voices come and go with whatever is playing at that instant).
+ */
+export const nodeCount = { live: 0, voices: 0 }
+
 /** Tracks the persistent nodes of one synth part so it can be torn down. */
 export class Kit {
   readonly nodes: AudioNode[] = []
   readonly sources: AudioScheduledSourceNode[] = []
   constructor(readonly ctx: AudioContext) {}
+  /** Adopt a node made elsewhere, so dispose() releases it too. */
+  own<N extends AudioNode>(n: N): N {
+    this.nodes.push(n)
+    nodeCount.live++
+    return n
+  }
   gain(v: number) {
     const g = this.ctx.createGain()
     g.gain.value = v
-    this.nodes.push(g)
-    return g
+    return this.own(g)
   }
   filter(type: BiquadFilterType, f: number, q = 0.7) {
     const b = this.ctx.createBiquadFilter()
     b.type = type
     b.frequency.value = f
     b.Q.value = q
-    this.nodes.push(b)
-    return b
+    return this.own(b)
   }
   loop(buf: AudioBuffer) {
     const s = this.ctx.createBufferSource()
@@ -93,8 +104,7 @@ export class Kit {
     s.loop = true
     s.start(this.ctx.currentTime, Math.random() * buf.duration)
     this.sources.push(s)
-    this.nodes.push(s)
-    return s
+    return this.own(s)
   }
   osc(type: OscillatorType, f: number) {
     const o = this.ctx.createOscillator()
@@ -102,8 +112,7 @@ export class Kit {
     o.frequency.value = f
     o.start()
     this.sources.push(o)
-    this.nodes.push(o)
-    return o
+    return this.own(o)
   }
   lfo(freq: number, depth: number, target: AudioParam) {
     const o = this.osc('sine', freq)
@@ -111,18 +120,15 @@ export class Kit {
     return o
   }
   panner(pos: Vec3, refDistance: number, rolloff: number, maxDistance: number) {
-    const p = createPanner(this.ctx, pos, { refDistance, rolloff, maxDistance })
-    this.nodes.push(p)
-    return p
+    return this.own(createPanner(this.ctx, pos, { refDistance, rolloff, maxDistance }))
   }
   reverb(seconds: number, decay: number) {
-    const r = createRoomReverb(this.ctx, seconds, decay)
-    this.nodes.push(r)
-    return r
+    return this.own(createRoomReverb(this.ctx, seconds, decay))
   }
   dispose() {
     for (const s of this.sources) safe(() => s.stop(), undefined)
     for (const n of this.nodes) safe(() => n.disconnect(), undefined)
+    nodeCount.live = Math.max(0, nodeCount.live - this.nodes.length)
     this.sources.length = 0
     this.nodes.length = 0
   }
@@ -130,9 +136,12 @@ export class Kit {
 
 /* ------------------------------ one-shot voices ------------------------- */
 
+/** Disconnect a one-shot voice's nodes once its source has ended. */
 export function releaseOnEnd(src: AudioScheduledSourceNode, nodes: AudioNode[]) {
+  nodeCount.voices += nodes.length
   src.onended = () => {
     for (const n of nodes) safe(() => n.disconnect(), undefined)
+    nodeCount.voices = Math.max(0, nodeCount.voices - nodes.length)
   }
 }
 
@@ -241,5 +250,141 @@ export function birdPhrase(ctx: AudioContext, dest: AudioNode, t: number, specie
         at += d + rand(0.15, 0.3)
       }
     }
+  }
+}
+
+/* ------------------------------ modal voices ---------------------------- */
+
+/** One resonance of a struck body: frequency (Hz), 60 dB-ish decay (s) and level. */
+export interface Mode {
+  f: number
+  decay: number
+  gain: number
+}
+
+/**
+ * Modal synthesis: a struck clay body as a few damped sine partials plus a filtered-noise
+ * transient. `bend` glides every partial by that ratio over the first `bendSec` (the ghatam's
+ * "gumki", when the player's belly opens the mouth). Returns the time the voice ends.
+ */
+export function modal(
+  ctx: AudioContext,
+  dest: AudioNode,
+  t: number,
+  modes: readonly Mode[],
+  o: { level?: number; transient?: { f: number; q?: number; peak: number; decay: number }; bend?: number; bendSec?: number } = {},
+): number {
+  const level = o.level ?? 1
+  let end = t
+  for (const m of modes) {
+    if (m.gain <= 0 || m.f <= 0 || m.f > ctx.sampleRate * 0.45) continue
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(m.f, t)
+    if (o.bend && o.bend !== 1) osc.frequency.exponentialRampToValueAtTime(m.f * o.bend, t + (o.bendSec ?? 0.25))
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, m.gain * level), t + 0.003)
+    // exp decay to −60 dB in `decay` seconds
+    g.gain.setTargetAtTime(0.0001, t + 0.003, Math.max(0.01, m.decay / 6.9))
+    osc.connect(g).connect(dest)
+    const stop = t + m.decay + 0.08
+    osc.start(t)
+    osc.stop(stop)
+    releaseOnEnd(osc, [osc, g])
+    end = Math.max(end, stop)
+  }
+  if (o.transient) burst(ctx, dest, t, { type: 'bandpass', f: o.transient.f, q: o.transient.q ?? 1.2, peak: o.transient.peak * level, attack: 0.001, decay: o.transient.decay })
+  return end
+}
+
+/** The partials of a fired-clay bell (terracotta, a clay clapper): dull, inharmonic, short. */
+export function clayBellModes(f: number): Mode[] {
+  return [
+    { f, decay: 0.9, gain: 0.05 },
+    { f: f * 2.32, decay: 0.5, gain: 0.032 },
+    { f: f * 4.25, decay: 0.28, gain: 0.018 },
+    { f: f * 6.63, decay: 0.16, gain: 0.008 },
+  ]
+}
+
+/** Ring a clay bell (with its clack). */
+export function clayBell(ctx: AudioContext, dest: AudioNode, t: number, f: number, level = 1) {
+  return modal(ctx, dest, t, clayBellModes(f), { level, transient: { f: f * 5.5, q: 2, peak: 0.02, decay: 0.03 } })
+}
+
+/**
+ * A ghatam stroke. 'gum' is the open bass of the mouth (Helmholtz) with the body under it; 'tak'
+ * is a fingertip on the shoulder: the upper modes and a bright click. `f0` is the pot's bass.
+ */
+export function ghatamStroke(ctx: AudioContext, dest: AudioNode, t: number, f0: number, stroke: 'gum' | 'tak' | 'gumki', level = 1) {
+  if (stroke === 'tak') {
+    return modal(
+      ctx,
+      dest,
+      t,
+      [
+        { f: f0 * 3.05, decay: 0.16, gain: 0.05 },
+        { f: f0 * 4.9, decay: 0.11, gain: 0.04 },
+        { f: f0 * 7.3, decay: 0.07, gain: 0.025 },
+        { f: f0, decay: 0.12, gain: 0.02 },
+      ],
+      { level, transient: { f: 2800, q: 1.4, peak: 0.07, decay: 0.022 } },
+    )
+  }
+  const gumki = stroke === 'gumki'
+  return modal(
+    ctx,
+    dest,
+    t,
+    [
+      { f: f0, decay: gumki ? 1.1 : 0.45, gain: 0.11 },
+      { f: f0 * 2.32, decay: 0.22, gain: 0.035 },
+      { f: f0 * 3.9, decay: 0.12, gain: 0.018 },
+    ],
+    { level, transient: { f: 900, q: 0.9, peak: 0.04, decay: 0.03 }, bend: gumki ? 0.82 : 0.97, bendSec: gumki ? 0.5 : 0.12 },
+  )
+}
+
+/* ------------------------------ plucked strings ------------------------- */
+
+/**
+ * Karplus–Strong pluck rendered offline into `out` (mixed in at `at` samples, wrapping round the
+ * end so a loop rings across its seam). `jawari` adds the tanpura's buzzing bridge: a soft
+ * nonlinearity that keeps the upper partials alive as the note decays.
+ */
+export function ksPluck(out: Float32Array, sampleRate: number, at: number, f: number, o: { seconds: number; level: number; decay?: number; jawari?: number; seed?: number }) {
+  const period = Math.max(2, Math.round(sampleRate / f))
+  const buf = new Float32Array(period)
+  let s = (o.seed ?? 1) >>> 0 || 1
+  const rnd = () => {
+    s ^= s << 13
+    s ^= s >>> 17
+    s ^= s << 5
+    return ((s >>> 0) / 4294967296) * 2 - 1
+  }
+  // a soft pluck: low-passed noise burst
+  let lp = 0
+  for (let i = 0; i < period; i++) {
+    lp = lp * 0.5 + rnd() * 0.5
+    buf[i] = lp
+  }
+  const n = Math.floor(o.seconds * sampleRate)
+  const decay = o.decay ?? 0.9985
+  const jaw = o.jawari ?? 0
+  let idx = 0
+  let prev = 0
+  for (let i = 0; i < n; i++) {
+    const cur = buf[idx]
+    let next = decay * 0.5 * (cur + prev)
+    // the bridge: a cubic soft-clip that only ever takes energy away (so the loop stays stable)
+    // while turning it into upper partials, then a hard ceiling for safety
+    if (jaw > 0) next = Math.max(-1, Math.min(1, next - jaw * 0.3 * next * next * next))
+    prev = cur
+    buf[idx] = next
+    idx = (idx + 1) % period
+    // gentle fade-in of the first ms avoids a click
+    const env = i < 48 ? i / 48 : 1
+    out[(at + i) % out.length] += cur * o.level * env
   }
 }

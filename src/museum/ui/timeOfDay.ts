@@ -1,5 +1,13 @@
-/** Time-of-day presets for the HUD control (the lighting reads `store.timeOfDay`). */
+/**
+ * Time of day for the HUD (SPECTACLE F9): live sun or a held clock time, and the named moments.
+ *
+ * The lighting reads the store's `timeMode` / `dayHours` (lighting/atmosphere/dayCurve.ts turns
+ * them into the sun). A visit starts as the curator chose (`atmosphere.defaultTime`, normally
+ * Live); the visitor's change is remembered for the rest of the browser session only, so the
+ * next visit starts with the real sun again.
+ */
 import { useEffect } from 'react'
+import { kindProps } from '../spectacle/settings'
 import { useMuseum, type TimeOfDay } from '../state/store'
 
 export const TIME_OPTIONS: { value: TimeOfDay; label: string; note: string }[] = [
@@ -12,29 +20,51 @@ export const TIME_OPTIONS: { value: TimeOfDay; label: string; note: string }[] =
 
 export const timeLabel = (t: TimeOfDay) => TIME_OPTIONS.find((o) => o.value === t)?.label ?? t
 
-const KEY = 'museum.timeOfDay'
+const KEY = 'clay.time.v1'
 const isTime = (v: unknown): v is TimeOfDay => TIME_OPTIONS.some((o) => o.value === v)
 
-/** T shortcut: morning → midday → golden hour → dusk → night → morning. */
-export function cycleTimeOfDay() {
-  const s = useMuseum.getState()
-  const i = TIME_OPTIONS.findIndex((o) => o.value === s.timeOfDay)
-  s.setTimeOfDay(TIME_OPTIONS[(i + 1) % TIME_OPTIONS.length].value)
+/** The curator's starting time ('live' or a named moment; the schema's 'noon' is the midday preset). */
+export function defaultTime(): 'live' | TimeOfDay {
+  const v = kindProps('atmosphere').defaultTime
+  if (v === 'noon') return 'midday'
+  return v === 'live' || isTime(v) ? v : 'live'
 }
 
-/** Restore the visitor's last choice on load and remember changes. */
+/** May the visitor change the time (the curator's `allowScrub`)? */
+export const timeScrubAllowed = () => kindProps('atmosphere').allowScrub !== false
+
+/** T shortcut: live → morning → midday → golden hour → dusk → night → live. */
+export function cycleTimeOfDay() {
+  if (!timeScrubAllowed()) return
+  const s = useMuseum.getState()
+  if (s.timeMode === 'live') return s.setTimeOfDay(TIME_OPTIONS[0].value)
+  const i = TIME_OPTIONS.findIndex((o) => o.value === s.timeOfDay)
+  if (i === TIME_OPTIONS.length - 1) s.setTimeMode('live')
+  else s.setTimeOfDay(TIME_OPTIONS[(i + 1) % TIME_OPTIONS.length].value)
+}
+
+function applyStart() {
+  const s = useMuseum.getState()
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(KEY) ?? 'null') as { mode?: unknown; hours?: unknown } | null
+    if (stored?.mode === 'live') return s.setTimeMode('live')
+    if (stored?.mode === 'manual' && typeof stored.hours === 'number' && isFinite(stored.hours)) return s.setDayHours(stored.hours)
+  } catch {
+    /* storage unavailable: start as the curator chose */
+  }
+  const d = defaultTime()
+  if (d === 'live') s.setTimeMode('live')
+  else s.setTimeOfDay(d)
+}
+
+/** Start the visit at the curator's time (or this session's last choice) and remember changes. */
 export function useTimeOfDayPersistence() {
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(KEY)
-      if (isTime(stored) && stored !== useMuseum.getState().timeOfDay) useMuseum.getState().setTimeOfDay(stored)
-    } catch {
-      /* storage unavailable */
-    }
+    applyStart()
     return useMuseum.subscribe((s, prev) => {
-      if (s.timeOfDay === prev.timeOfDay) return
+      if (s.timeMode === prev.timeMode && s.dayHours === prev.dayHours) return
       try {
-        localStorage.setItem(KEY, s.timeOfDay)
+        sessionStorage.setItem(KEY, JSON.stringify(s.timeMode === 'live' ? { mode: 'live' } : { mode: 'manual', hours: s.dayHours }))
       } catch {
         /* ignore */
       }

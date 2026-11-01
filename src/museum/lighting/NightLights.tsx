@@ -1,8 +1,9 @@
 /**
  * Time-of-day controller + night lighting.
  *
- *  • <TimeOfDayController> eases `ambience` (timeOfDayState.ts) toward the selected preset and
- *    applies it: renderer exposure (the eye adapts at night), sky dusk/night uniforms, cloud cover.
+ *  • <TimeOfDayController> glides the rendered clock (timeOfDayState `sunState`) toward the live
+ *    sun or the held time, sets `ambience` from the day curve and applies it: renderer exposure
+ *    (the eye adapts at night, the zone's grade), sky dusk/night uniforms, cloud cover.
  *  • <CourtyardLanterns> — bronze wall lanterns beside the entrance door. Their glass glows
  *    and their downlights come on at dusk/night. The downlights are SpotPool REQUESTS (the pool
  *    has a fixed number of real lights), switched off by day (intensity 0 → never ranked), so
@@ -19,11 +20,26 @@ import { zoneAt } from '../config/layout'
 import { KEY, MUSEUM } from '../config/museum'
 import { ZoneGroup } from '../navigation/zoneCulling'
 import { useMuseum } from '../state/store'
-import { ambience, ambienceTarget, snapAmbience, type AmbienceKey } from './timeOfDayState'
+import { ambience, setSunHours, snapAmbience, sunState } from './timeOfDayState'
+import { bucketOf, istDay, istHoursNow } from './atmosphere/dayCurve'
+import { grade } from './atmosphere/choreography'
+import { weatherNow } from './weather/weatherState'
+import { spectacleSettings } from '../spectacle/settings'
 import { nightSkyUniforms } from './nightSky'
 import { registerSpot, type SpotRequest } from './SpotPool'
 
-const EASE_PER_S = 1.6
+const GLIDE_S = 1.6
+const glide = { from: 12, to: 12, at: -Infinity, init: false }
+/** Signed hour difference wrapped to (−12, 12]. */
+const wrap = (d: number) => d - 24 * Math.round(d / 24)
+
+/** The clock the lighting should show: the real IST time in live mode, else the held time. */
+function clockTarget() {
+  const s = useMuseum.getState()
+  return s.timeMode === 'live' ? istHoursNow() : s.dayHours
+}
+const bucketTimer = { t: 0 }
+
 const FACADE_GLOW = new THREE.Color('#ffc27a')
 const glassScan = { t: 0, k: 0, mats: [] as THREE.MeshPhysicalMaterial[] }
 
@@ -32,28 +48,59 @@ export function TimeOfDayController() {
   const scene = useThree((s) => s.scene)
   const camera = useThree((s) => s.camera)
 
-  // First frame already correct (no fade from midday on load).
+  // First frame already correct (no glide from midday on load).
   useEffect(() => {
-    snapAmbience(useMuseum.getState().timeOfDay)
+    snapAmbience(clockTarget())
   }, [])
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1)
-    const target = ambienceTarget(useMuseum.getState().timeOfDay)
-    const k = 1 - Math.exp(-EASE_PER_S * dt)
-    for (const key of Object.keys(ambience) as AmbienceKey[]) {
-      const d = target[key] - ambience[key]
-      ambience[key] = Math.abs(d) < 1e-4 ? target[key] : ambience[key] + d * k
+    // Glide the rendered clock toward the store's (the short way round the dial, eased over
+    // GLIDE_S of wall time), so the sun patch sweeps across the floor; Still form: jump. Small
+    // moves (the live clock, a dial drag) follow at once.
+    const day = istDay()
+    const target = clockTarget()
+    const g = glide
+    const still = spectacleSettings().mode === 'still'
+    const now = performance.now() / 1000
+    if (!g.init || Math.abs(wrap(target - g.to)) > 0.02) {
+      g.from = sunState.hours
+      g.to = target
+      g.at = still || !g.init || Math.abs(wrap(target - sunState.hours)) < 0.35 ? -Infinity : now
+      g.init = true
+    } else g.to = target
+    const p = Math.min(1, (now - g.at) / GLIDE_S)
+    const e = p * p * (3 - 2 * p)
+    const h = p >= 1 ? g.to : g.from + wrap(g.to - g.from) * e
+    sunState.moving = p < 1
+    if (Math.abs(wrap(h - sunState.hours)) > 1e-5 || day.getTime() !== sunState.day.getTime()) setSunHours(((h % 24) + 24) % 24, day)
+    // the live clock's named moment follows the real time (HUD label, soundscape)
+    bucketTimer.t -= dt
+    if (bucketTimer.t <= 0) {
+      bucketTimer.t = 20
+      const st = useMuseum.getState()
+      if (st.timeMode === 'live') {
+        const b = bucketOf(day, target)
+        if (b !== st.timeOfDay) useMuseum.setState({ timeOfDay: b, dayHours: target })
+      }
     }
-    gl.toneMappingExposure = LIGHTING.exposure * ambience.exposure
+    const curve = sunState.curve
+    ambience.night = curve.night
+    ambience.twilight = curve.twilight
+    ambience.exposure = curve.exposure
+    ambience.daylight = curve.daylight * (1 - 0.45 * weatherNow.overcast)
+    gl.toneMappingExposure = LIGHTING.exposure * ambience.exposure * grade.exposure
     for (const u of nightSkyUniforms) {
       u.nightMix.value = ambience.night * ambience.night
       u.twilightMix.value = ambience.twilight
+      u.sunsetMix.value = curve.sunset * (1 - weatherNow.overcast)
     }
     // Thinner cloud at night so the stars read (clouds are unlit and would just be black).
     const sky = scene.children.find((o) => (o as THREE.Mesh & { isSky?: boolean }).isSky) as THREE.Mesh | undefined
     const cu = (sky?.material as THREE.ShaderMaterial | undefined)?.uniforms?.cloudCoverage
-    if (cu && LIGHTING.sky.clouds.enabled) cu.value = LIGHTING.sky.clouds.coverage * (1 - 0.55 * ambience.night)
+    // Under the monsoon the grey deck (nightSky.ts museumStorm) is the cloud: the bright fair-weather
+    // clouds are drawn over it otherwise, and the oculus holds a blown-out white disc.
+    if (cu && LIGHTING.sky.clouds.enabled) cu.value = LIGHTING.sky.clouds.coverage * (1 - 0.55 * ambience.night) * (1 - weatherNow.overcast)
 
     // Glowing facade: seen from OUTSIDE at night (arrival flight, forecourt) the glazing — atrium
     // facade and roof lights — carries the warm interior glow. From inside it stays clear glass.
