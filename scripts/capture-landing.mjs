@@ -1,27 +1,34 @@
 /**
- * LANDING-PAGE IMAGERY — captures every picture the landing page (/) uses, straight from
- * the running museum, so the page always shows the real thing.
+ * LANDING-PAGE IMAGERY — captures every picture the landing page (/, app/page.tsx) uses,
+ * straight from the running clay pavilion, so the page always shows the real thing.
  *
  *   node scripts/capture-landing.mjs [baseUrl] [quality]          (all shots + hero film)
- *        baseUrl default https://hand-block-museum.vercel.app  ·  quality default high
- *   ONLY=hero,f-tour node scripts/capture-landing.mjs              (just these names)
+ *        baseUrl default https://clay-traditions.vercel.app  ·  quality default high
+ *   ONLY=hero,f-tour node scripts/capture-landing.mjs              (just these names; the film is "hero-video")
  *   SKIP_VIDEO=1 node scripts/capture-landing.mjs                  (stills only)
  *   CHROME=<path to chrome.exe>                                     (default: Chrome stable)
  *
- * Writes public/brand/landing/:
- *   hero.jpg · hero.webm           full-bleed hero poster + a short muted glide (≤ 6 MB)
- *   <space>.jpg                    "Explore the spaces" cards (canvas only, UI hidden)
- *   f-<feature>.jpg                "The experience" tiles (feature staged, its UI visible)
+ * Writes public/brand/landing/ — exactly the names app/page.tsx asks for:
+ *   hero.jpg                       full-bleed hero still: the court under the oculus at golden hour
+ *   hero.webm · hero-film.jpg      a 9 s muted glide towards the lotus under the oculus (VP9 WebM,
+ *                                  ≤ 6 MB, ping-pong so it loops) and its first frame (the poster)
+ *   <space>.jpg                    the fifteen "Explore the spaces" cards (canvas only, UI hidden)
+ *   f-<feature>.jpg                "The experience" tiles, f-walk and f-hindi (staged, UI visible)
+ * and rewrites app/landing/captured.json with the files that exist (any name it does not list
+ * renders as the page's quiet placeholder).
  *
- * Each shot is independent: a feature that isn't built yet (or fails to stage) is logged
- * and skipped, and the landing page shows a neutral placeholder for any missing image.
- * Re-run any time to refresh everything.
+ * Poses come from the pavilion's own config wherever it has one: the guided-tour stops
+ * (config/tour.ts, via __tour.stops), the Frames of Clay presets (photo-spot objects,
+ * config/spectacleObjects/experience.ts, via __photo.applyFrame) and the perches
+ * (__museum.perch); the rest are the acceptance poses of scripts/grand-poses.json.
+ * The gallery is opened with `?shots` (no banners, prompts or toasts) and `noarrival`.
+ * Each shot is independent: one that fails to stage is logged and skipped. Re-run any time.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import puppeteer from 'puppeteer-core'
 
-const base = (process.argv[2] ?? 'https://hand-block-museum.vercel.app').replace(/\/+$/, '')
+const base = (process.argv[2] ?? 'https://clay-traditions.vercel.app').replace(/\/+$/, '')
 const quality = process.argv[3] ?? 'high'
 const only = (process.env.ONLY ?? '').split(',').filter(Boolean)
 const want = (name) => only.length === 0 || only.includes(name)
@@ -34,23 +41,31 @@ const browser = await puppeteer.launch({
   executablePath: process.env.CHROME ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   headless: 'new',
   args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', '--mute-audio'],
-  protocolTimeout: 600_000,
+  protocolTimeout: 900_000,
 })
 const page = await browser.newPage()
 page.on('pageerror', (e) => console.warn('  [page error]', String(e).slice(0, 160)))
 await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 })
-// English UI, full motion, no analytics.
+// English UI, full motion, an empty passport.
 await page.evaluateOnNewDocument(() => {
   try {
     localStorage.setItem('museum.lang', 'en')
     localStorage.removeItem('museum.a11y')
+    // the passport tile hands its staged stamps over a reload through sessionStorage
+    const staged = sessionStorage.getItem('capture.passport')
+    if (staged) localStorage.setItem('clay.passport.v1', staged)
+    else localStorage.removeItem('clay.passport.v1')
   } catch {}
 })
-console.log('loading museum…')
-await page.goto(`${base}/gallery?autostart&quality=${quality}&noanalytics&nolive&lang=en`, { waitUntil: 'domcontentloaded', timeout: 300_000 })
-await page.waitForFunction(() => window.__museum?.store.getState().phase === 'entered', { timeout: 300_000, polling: 500 })
-await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
-await sleep(5000)
+const enter = async () => {
+  await page.waitForFunction(() => window.__museum?.store.getState().phase === 'entered', { timeout: 300_000, polling: 500 })
+  await page.waitForFunction(() => window.__museum?.store.getState().sceneCompiled !== false, { timeout: 300_000, polling: 500 })
+  await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
+  await sleep(6000)
+}
+console.log('loading pavilion…')
+await page.goto(`${base}/gallery?autostart&noarrival&shots&quality=${quality}&noanalytics&nolive&lang=en`, { waitUntil: 'domcontentloaded', timeout: 300_000 })
+await enter()
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -77,51 +92,91 @@ async function ui(visible) {
   await applyUi()
 }
 
-/** If the page reloaded (e.g. a redeploy / dev HMR), wait until the museum is back. */
+/** If the page reloaded (e.g. dev HMR), wait until the pavilion is back. */
 async function ensureMuseum() {
   const ok = await page.evaluate(() => window.__museum?.store.getState().phase === 'entered').catch(() => false)
   if (ok) return
-  console.log('  (museum reloaded — waiting for it to re-enter)')
-  await page.waitForFunction(() => window.__museum?.store.getState().phase === 'entered', { timeout: 300_000, polling: 500 })
-  await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
-  await sleep(5000)
+  console.log('  (pavilion reloaded — waiting for it to re-enter)')
+  await enter()
 }
 
-/** Put the museum back to a neutral state between shots. */
+/** Put the pavilion back to a neutral state between shots. */
 async function reset() {
   await ensureMuseum()
   await page.evaluate(() => {
-    const m = window.__museum.store.getState()
+    const m = window.__museum
+    const s = m.store.getState()
     window.__tour?.tour.exit()
     window.__photo?.exitPhotoMode?.()
-    m.select(null)
-    m.inspect(null)
-    m.setHelpOpen(false)
-    m.setDrawer?.(null)
-    m.setHovered?.(null)
-    m.setNearby?.(null)
-    if (window.innerWidth <= 900) m.setMapOpen(false)
+    m.unview?.()
+    m.leavePerch?.()
+    s.select(null)
+    s.inspect(null)
+    s.setHelpOpen(false)
+    s.setDrawer?.(null)
+    s.setHovered?.(null)
+    s.setNearby?.(null)
+    s.setMapOpen(false)
+    s.setFestival?.('off')
+    s.setWeather?.('clear')
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   })
   await page.mouse.move(2, 2)
   await sleep(700)
 }
 
+/** Time of day; waits until the day clock has stopped easing. */
 async function tod(t) {
   await page.evaluate((x) => window.__museum.store.getState().setTimeOfDay(x), t)
+  await sleep(400)
+  await page.waitForFunction(() => !window.__atmos || !window.__atmos.sunState.moving, { timeout: 30000, polling: 200 }).catch(() => console.log('  (sun still moving)'))
 }
+/** Standing at eye height: plan x, z, compass yaw, pitch (deg). */
 async function go(x, z, yaw, pitch = 0) {
   await page.evaluate((a) => window.__museum.teleport(a[0], a[1], a[2], a[3]), [x, z, yaw, pitch])
 }
-/** Stand at a guided-tour stop's viewpoint (keeps shots in sync with the tour config). */
-async function goStop(id, fallback) {
+/** A free camera (x, y, z, yaw, pitch, fov?) — every zone is drawn while it is held. */
+async function cam(v) {
+  await page.evaluate((a) => window.__museum.view(...a), v)
+}
+async function tourView(id) {
   const v = await page.evaluate((sid) => window.__tour?.stops.find((s) => s.id === sid)?.view ?? null, id)
-  const p = v ?? fallback
-  if (!p) throw new Error(`no tour stop "${id}"`)
-  await go(p.x, p.z, p.yawDeg, p.pitchDeg ?? 0)
+  if (!v) throw new Error(`no tour stop "${id}"`)
+  return v
+}
+/** A standing point on the drum's polar grid (r, plan angle) facing another: [x, z, compass yaw]. */
+function polarLook(r, aDeg, tr, taDeg) {
+  const P = (rr, a) => [rr * Math.cos((a * Math.PI) / 180), rr * Math.sin((a * Math.PI) / 180)]
+  const [x, z] = P(r, aDeg)
+  const [tx, tz] = P(tr, taDeg)
+  return [x, z, ((Math.atan2(tx - x, -(tz - z)) * 180) / Math.PI + 360) % 360]
+}
+/** Stand at a guided-tour stop's viewpoint (keeps shots in sync with the tour config). */
+async function goStop(id) {
+  const v = await tourView(id)
+  await go(v.x, v.z, v.yawDeg, v.pitchDeg ?? 0)
+}
+/** A Frames of Clay preset (photo mode: its standing point, view, field of view and time). */
+async function goFrame(id) {
+  const ok = await page.evaluate((fid) => {
+    if (!window.__photo?.photoFrames().some((f) => f.id === fid)) return false
+    window.__photo.applyFrame(fid)
+    return true
+  }, `frame-${id}`)
+  if (!ok) throw new Error(`no photo frame "${id}"`)
+}
+async function perch(id, t) {
+  const ok = await page.evaluate((a) => (window.__museum.perch ? (window.__museum.perch(a[0], a[1]), true) : false), [id, t])
+  if (!ok) throw new Error('no __museum.perch')
 }
 async function view(w, h, dpr = 1) {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: dpr })
+}
+/** Two frames drawn and a beat for the streamed textures. */
+async function settle(ms) {
+  await sleep(ms)
+  await page.waitForFunction(() => window.__museum?.store.getState().sceneCompiled !== false, { timeout: 120000, polling: 300 }).catch(() => {})
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 300)))))
 }
 async function snap(name, q = 84) {
   await ensureMuseum()
@@ -159,6 +214,12 @@ async function click(selector, textIncludes) {
 async function waitFor(fn, arg, ms = 20000) {
   await page.waitForFunction(fn, { timeout: ms, polling: 200 }, arg)
 }
+async function setLang(label) {
+  await click('.ui-lang .ui-icon-btn')
+  await sleep(400)
+  await click('.ui-lang .ui-quality__opt', label)
+  await sleep(800)
+}
 
 const failures = []
 async function shot(name, fn) {
@@ -175,56 +236,55 @@ async function shot(name, fn) {
 
 /* ------------------------------------------------------------------ hero */
 
-// The hero frame: the Craft Court — carved-block vitrine against the madder wall, under the
-// glass lantern. (HERO_CANDIDATES=1 also writes alternates to scripts/out/ for art direction.)
-const HERO = { x: -5.4, z: -19.6, yaw: 25, pitch: 4, tod: 'golden' }
-const HERO_ALTS = [
-  ['hero-alt-atrium', 0, 19.4, 0, 6, 'golden'],
-  ['hero-alt-gallery-d', -11.4, -16.2, 270, 2, 'golden'],
-  ['hero-alt-gallery', 3.85, -17.2, 180, 1, 'golden'],
-  ['hero-alt-court-mid', -5.4, -19.6, 25, 4, 'midday'],
-]
+// The court under the oculus at golden hour: the lotus on its still pool, the circle of sky
+// and the coffered dome above, the galleries' red wall round it (the hero alt text says so).
+const HERO = { view: [0, 1.4, 10.4, 0, 8, 56], tod: 'golden' }
 await shot('hero', async () => {
   await ui(false)
   await view(1920, 1080, 1.334)
   await tod(HERO.tod)
-  await go(HERO.x, HERO.z, HERO.yaw, HERO.pitch)
-  await sleep(4500)
+  await cam(HERO.view)
+  await settle(5000)
   await snap('hero', 82)
-  if (process.env.HERO_CANDIDATES) {
-    for (const [name, x, z, yaw, pitch, t] of HERO_ALTS) {
-      await tod(t)
-      await go(x, z, yaw, pitch)
-      await sleep(3500)
-      const file = path.resolve('scripts/out', name + '.jpg')
-      fs.mkdirSync(path.dirname(file), { recursive: true })
-      await page.screenshot({ path: file, type: 'jpeg', quality: 80 })
-      console.log('  candidate', file)
-    }
-  }
 })
 
 /* ------------------------------------------------------------------ spaces (canvas only) */
 
-// name, view (explicit, or a guided-tour stop id — those follow the layout config), time of day
+// name → how to stand there: { tour } a guided-tour stop · { frame } a Frames of Clay preset ·
+// { pose } [x, z, yaw, pitch] at eye height · { view } a free camera · { perch } [id, t].
 const SPACES = [
-  ['atrium', 'atrium', 'midday'],
-  ['passage', { x: 0, z: -1.5, yawDeg: 0, pitchDeg: 4 }, 'midday'],
-  ['gallery', { x: 3.85, z: -17.2, yawDeg: 180, pitchDeg: 1 }, 'midday'],
-  ['court', { x: -5.4, z: -19.6, yawDeg: 25, pitchDeg: 4 }, 'midday'],
-  ['gallery-d', { x: -11.4, z: -16.2, yawDeg: 270, pitchDeg: 2 }, 'midday'],
-  ['theatre', 'theatre', 'midday'],
-  ['workshop', 'workshop', 'midday'],
-  ['courtyard', 'courtyard', 'golden'],
+  ['forecourt', { view: [-12, 2.2, 56, 22, 5, 58] }, 'golden'],
+  ['annex', { tour: 'earth-room' }, 'midday'],
+  ['entry', { pose: [-1.6, 22.8, 34, 4] }, 'midday'],
+  ['oculus', { frame: 'dome-eye' }, 'midday'],
+  ['gallery-a', { frame: 'herd' }, 'midday'],
+  ['gallery-b', { tour: 'gallery-b' }, 'midday'],
+  ['gallery-c', { tour: 'gallery-c' }, 'midday'],
+  ['balcony', { perch: ['duplex', 0.5] }, 'midday'],
+  ['hallway', { frame: 'wine-hall' }, 'midday'],
+  ['parikrama', { frame: 'serpentine' }, 'golden'],
+  ['atlas', { frame: 'atlas' }, 'midday'],
+  ['theatre', { tour: 'theatre' }, 'midday'],
+  ['library', { frame: 'red-room' }, 'midday'],
+  ['haat', { tour: 'haat' }, 'midday'],
+  ['sphere-well', { perch: ['sphere-well', 1] }, 'midday'],
 ]
+async function stand(v) {
+  if (v.tour) await goStop(v.tour)
+  else if (v.frame) await goFrame(v.frame)
+  else if (v.pose) await go(...v.pose)
+  else if (v.view) await cam(v.view)
+  else if (v.perch) await perch(...v.perch)
+}
 for (const [name, v, t] of SPACES) {
   await shot(name, async () => {
     await ui(false)
     await view(1280, 800)
     await tod(t)
-    if (typeof v === 'string') await goStop(v)
-    else await go(v.x, v.z, v.yawDeg, v.pitchDeg)
-    await sleep(name === 'theatre' ? 8000 : 3500)
+    await stand(v)
+    // a frame sets its own time of day; the theatre's film needs a moment to come up
+    if (v.frame) await tod(t)
+    await settle(name === 'theatre' ? 9000 : 4500)
     await snap(name)
   })
 }
@@ -234,156 +294,138 @@ for (const [name, v, t] of SPACES) {
 const FEATURE_W = 1440
 const FEATURE_H = 900
 
+// Walking Gallery A with the floor plan open: past the Herd, towards the entry ways.
 await shot('f-walk', async () => {
   await ui(true)
   await view(FEATURE_W, FEATURE_H)
-  await page.evaluate(() => window.__museum.store.getState().setMapOpen(true))
   await tod('midday')
-  await goStop('salon', { x: -4.5, z: -4.5, yawDeg: 90, pitchDeg: 3 })
-  await sleep(3500)
+  await go(...polarLook(9.6, -14, 15, 22), 3)
+  await page.evaluate(() => window.__museum.store.getState().setMapOpen(true))
+  await settle(4000)
   await snap('f-walk')
 })
 
+// The guided tour at the lotus under the oculus, its caption card up.
 await shot('f-tour', async () => {
   await ui(true)
   await view(FEATURE_W, FEATURE_H)
   await tod('midday')
-  const idx = await page.evaluate(() => Math.max(0, window.__tour.stops.findIndex((s) => s.id === 'hero-02')))
-  await goStop('hero-02')
+  const idx = await page.evaluate(() => window.__tour.stops.findIndex((s) => s.id === 'court'))
+  if (idx < 0) throw new Error('no tour stop "court"')
+  await goStop('court')
   await page.evaluate((i) => window.__tour.tour.start(i), idx)
-  await waitFor(() => window.__tour.useTour.getState().phase === 'viewing', null, 30000)
-  await sleep(2600)
+  await waitFor(() => window.__tour.useTour.getState().phase === 'viewing', null, 60000)
+  await settle(3000)
   await snap('f-tour')
 })
 
+// A ride: out on the Sky Rim, twenty metres above the lotus.
+await shot('f-rides', async () => {
+  await ui(true)
+  await view(FEATURE_W, FEATURE_H)
+  await tod('midday')
+  await perch('sky-rim', 0.5)
+  await settle(5000)
+  await snap('f-rides')
+})
+
+// The information panel on a Bankura horse, standing on its podium (pod-a-1: r 15.1 m, 26°).
 await shot('f-info', async () => {
   await ui(true)
   await view(FEATURE_W, FEATURE_H)
   await tod('midday')
-  await goStop('hero-01')
-  await sleep(1500)
-  await page.evaluate(() => window.__museum.store.getState().select({ kind: 'artwork', id: 'hero-01' }))
-  await sleep(2200)
+  await go(...polarLook(12.9, 31, 15.1, 26), -4)
+  await settle(1500)
+  await page.evaluate(() => window.__museum.store.getState().select({ kind: 'object', id: 'clay-a-horse' }))
+  await waitFor(() => !!document.querySelector('.ui-info.is-open'), null, 15000)
+  await settle(2500)
   await snap('f-info')
 })
 
-await shot('f-examine', async () => {
-  await ui(true)
-  await view(FEATURE_W, FEATURE_H)
-  await goStop('hero-01')
-  await page.evaluate(() => window.__museum.store.getState().select({ kind: 'artwork', id: 'hero-01' }))
-  await sleep(1400)
-  await click('.ui-info__foot .ui-btn', 'Examine')
-  await waitFor(() => !!document.querySelector('.dz-stage canvas, .dz-stage img'), null, 20000)
-  await sleep(2500)
-  // zoom into the weave
-  await page.mouse.move(FEATURE_W * 0.52, FEATURE_H * 0.5)
-  for (let i = 0; i < 6; i++) {
-    await page.mouse.wheel({ deltaY: -240 })
-    await sleep(160)
-  }
-  await sleep(3200)
-  await snap('f-examine')
-})
-
-await shot('f-studio', async () => {
-  await ui(true)
-  await view(FEATURE_W, FEATURE_H)
-  await goStop('workshop')
-  await page.evaluate(() => window.__museum.store.getState().select({ kind: 'object', id: 'print-studio' }))
-  await waitFor(() => !!document.querySelector('.ps-root .ps-cloth-overlay'), null, 15000)
-  await sleep(1400)
-  // stamp a small repeat onto the cloth
-  const box = await page.evaluate(() => {
-    const r = document.querySelector('.ps-cloth-overlay').getBoundingClientRect()
-    return { x: r.left, y: r.top, w: r.width, h: r.height }
-  })
-  const pick = async (sel, i) => page.evaluate((s, n) => document.querySelectorAll(s)[n]?.click(), sel, i)
-  const stamp = async (fx, fy) => {
-    await page.mouse.move(box.x + box.w * fx, box.y + box.h * fy)
-    await page.mouse.down()
-    await sleep(260)
-    await page.mouse.up()
-    await sleep(90)
-  }
-  const rows = [0.22, 0.5, 0.78]
-  const cols = [0.2, 0.4, 0.6, 0.8]
-  for (let r = 0; r < rows.length; r++) {
-    await pick('.ps-swatch', r === 1 ? 2 : 0)
-    for (const c of cols) await stamp(c + (r === 1 ? 0.1 : 0), rows[r])
-  }
-  await page.mouse.move(box.x + box.w * 0.3, box.y + box.h * 0.36)
-  await sleep(1200)
-  await snap('f-studio')
-})
-
-await shot('f-golden', async () => {
-  await ui(false)
-  await view(FEATURE_W, FEATURE_H)
-  await tod('golden')
-  await go(0, 12.5, 0, 12)
-  await sleep(4000)
-  await snap('f-golden')
-})
-
-await shot('f-night', async () => {
-  await ui(false)
-  await view(FEATURE_W, FEATURE_H)
-  await tod('night')
-  await go(20.6, -3.6, 0, 4)
-  await sleep(4500)
-  await snap('f-night')
-})
-
+// The 3D viewer on the Bankura horse.
 await shot('f-inspect', async () => {
   await ui(true)
   await view(FEATURE_W, FEATURE_H)
   await tod('midday')
-  await goStop('centrepiece')
-  await page.evaluate(() => window.__museum.store.getState().inspect('object:centrepiece-court'))
-  await waitFor(() => !!document.querySelector('[role="dialog"] canvas') && window.__museum.store.getState().inspecting, null, 20000)
-  await sleep(5000)
+  await go(...polarLook(12.9, 31, 15.1, 26), -4)
+  await page.evaluate(() => window.__museum.store.getState().inspect('object:clay-a-horse'))
+  await waitFor(() => !!document.querySelector('.inspect-root canvas') && !!window.__museum.store.getState().inspecting, null, 30000)
+  await settle(5000)
   await snap('f-inspect')
 })
 
-await shot('f-theatre', async () => {
+// The time-of-day pair: the same view of the court at golden hour and at night with the diyas
+// lit (the landing page reveals one over the other on a diagonal, so the framing must match).
+const LIGHT_VIEW = { tour: 'court' }
+await shot('f-golden', async () => {
   await ui(false)
   await view(FEATURE_W, FEATURE_H)
-  await tod('midday')
-  await goStop('theatre')
-  // proximity playback: give the film time to start and move past the opening frames
-  await sleep(9000)
-  console.log('  media:', JSON.stringify(await page.evaluate(() => window.__mediaDebug?.() ?? null)))
-  await snap('f-theatre')
+  await tod('golden')
+  await stand(LIGHT_VIEW)
+  await settle(4500)
+  await snap('f-golden')
+})
+await shot('f-night', async () => {
+  await ui(false)
+  await view(FEATURE_W, FEATURE_H)
+  await tod('night')
+  await page.evaluate(() => window.__museum.store.getState().setFestival?.('on'))
+  await stand(LIGHT_VIEW)
+  await settle(6000)
+  await snap('f-night')
 })
 
+// The Clay Passport, part-way round: a visitor's stamps from the rooms already walked.
+await shot('f-passport', async () => {
+  await ui(true)
+  await view(FEATURE_W, FEATURE_H)
+  await tod('midday')
+  await goStop('court')
+  const t = new Date().toISOString()
+  const stamps = Object.fromEntries(['arrival', 'a', 'b', 'c', 'oculus', 'duplex', 'sky-rim'].map((id) => [id, t]))
+  await page.evaluate((s) => sessionStorage.setItem('capture.passport', JSON.stringify({ v: 1, stamps: s })), stamps)
+  // the passport reads its stamps when the page loads
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 300_000 })
+  await enter()
+  await page.evaluate(() => sessionStorage.removeItem('capture.passport'))
+  await reset()
+  await tod('midday')
+  await goStop('court')
+  await settle(2500)
+  await click('.ui-pass-btn')
+  await waitFor(() => !!document.querySelector('.ui-pass__card'), null, 10000)
+  await settle(1500)
+  await snap('f-passport')
+  await click('.ui-pass__close').catch(() => {})
+  await page.evaluate(() => localStorage.removeItem('clay.passport.v1'))
+})
+
+// Photo mode on the Firelight preset (the pit firing at dusk), its frames row and shutter awake.
 await shot('f-photo', async () => {
   await ui(true)
   await view(FEATURE_W, FEATURE_H)
-  await tod('golden')
-  await goStop('atrium-textile')
-  await sleep(1500)
-  await page.evaluate(() => window.__photo.enterPhotoMode())
-  await sleep(2600)
+  await goFrame('pit')
+  await settle(6000)
+  // the controls rest out of sight until the pointer moves
+  await page.mouse.move(FEATURE_W * 0.5, FEATURE_H * 0.4)
+  await page.mouse.move(FEATURE_W * 0.52, FEATURE_H * 0.42, { steps: 4 })
+  await sleep(700)
   await snap('f-photo')
 })
 
-// Last: switches the UI language.
+// Last: switches the UI language — Hindi, with a piece's panel open.
 await shot('f-hindi', async () => {
   await ui(true)
   await view(FEATURE_W, FEATURE_H)
   await tod('midday')
-  await goStop('hero-02')
-  await click('.ui-lang .ui-icon-btn')
-  await sleep(400)
-  await click('.ui-lang .ui-quality__opt', 'हिन्दी')
-  await sleep(800)
-  await page.evaluate(() => window.__museum.store.getState().select({ kind: 'artwork', id: 'hero-02' }))
-  await sleep(2400)
+  await goStop('gallery-c')
+  await setLang('हिन्दी')
+  await page.evaluate(() => window.__museum.store.getState().select({ kind: 'object', id: 'clay-c-kettle' }))
+  await waitFor(() => !!document.querySelector('.ui-info.is-open'), null, 15000)
+  await settle(3000)
   await snap('f-hindi')
-  await click('.ui-lang .ui-icon-btn').catch(() => {})
-  await sleep(300)
-  await click('.ui-lang .ui-quality__opt', 'English').catch(() => {})
+  await page.evaluate(() => window.__museum.store.getState().select(null))
+  await setLang('English').catch(() => {})
 })
 
 /* ------------------------------------------------------------------ hero film */
@@ -391,9 +433,9 @@ await shot('f-hindi', async () => {
 // Frame-by-frame (deterministic, smooth however fast headless Chrome renders): step the
 // camera, grab a JPEG, then encode VP9 with WebCodecs in a second tab (same origin) and mux a
 // video-only WebM. Muted; loops seamlessly (the eased glide plays forward then back).
-const FILM = { w: 1600, h: 900, fps: 30, seconds: 8, bitrate: 2_600_000 }
-// a slow push toward the court vitrine, the gaze drifting across the madder wall
-const GLIDE = { from: { x: -5.9, z: -18.4, yaw: 20, pitch: 3.5 }, to: { x: -5.1, z: -20.4, yaw: 29, pitch: 4.5 } }
+const FILM = { w: 1600, h: 900, fps: 30, seconds: 4.5, bitrate: 2_600_000 }
+// a slow drift in across the court towards the lotus, the gaze lifting a little towards the oculus
+const GLIDE = { from: [0, 1.4, 10.6, 356, 7, 56], to: [0, 1.6, 8.2, 4, 13, 58] }
 
 /** Minimal video-only WebM (EBML) muxer for VP9 chunks. */
 function muxWebM({ width, height, fps, chunks, durationMs }) {
@@ -488,24 +530,25 @@ if (!process.env.SKIP_VIDEO && want('hero-video')) {
     await view(FILM.w, FILM.h, 1)
     await tod(HERO.tod)
     const { from, to } = GLIDE
-    await go(from.x, from.z, from.yaw, from.pitch)
-    await sleep(4000)
-    const n = FILM.fps * FILM.seconds
+    await cam(from)
+    await settle(5000)
+    const n = Math.round(FILM.fps * FILM.seconds)
     const ease = (t) => t * t * (3 - 2 * t)
     const frames = []
     for (let i = 0; i < n; i++) {
       const k = ease(i / (n - 1))
-      const lerp = (a, b) => a + (b - a) * k
+      // yaw (index 3) turns the short way round (356° → 4° is 8°, not 352°)
+      const pose = from.map((a, j) => a + (j === 3 ? ((((to[j] - a) % 360) + 540) % 360) - 180 : to[j] - a) * k)
       await page.evaluate(
         (a) =>
           new Promise((r) => {
-            window.__museum.teleport(a[0], a[1], a[2], a[3])
+            window.__museum.view(...a)
             requestAnimationFrame(() => requestAnimationFrame(() => r()))
           }),
-        [lerp(from.x, to.x), lerp(from.z, to.z), lerp(from.yaw, to.yaw), lerp(from.pitch, to.pitch)],
+        pose,
       )
       frames.push(await page.screenshot({ type: 'jpeg', quality: 92, encoding: 'base64' }))
-      if (i % 60 === 0) console.log(`  frame ${i}/${n}`)
+      if (i % 30 === 0) console.log(`  frame ${i}/${n}`)
     }
     // ping-pong so the loop has no jump
     const seq = [...frames, ...frames.slice(1, -1).reverse()]
@@ -575,19 +618,28 @@ if (!process.env.SKIP_VIDEO && want('hero-video')) {
 
 await browser.close()
 
+// The names app/page.tsx asks for.
+const EXPECTED = [
+  'hero.jpg',
+  'hero.webm',
+  'hero-film.jpg',
+  ...SPACES.map(([n]) => `${n}.jpg`),
+  ...['walk', 'tour', 'rides', 'info', 'inspect', 'golden', 'night', 'passport', 'photo', 'hindi'].map((f) => `f-${f}.jpg`),
+]
+
 // Tell the landing page which images exist (bundled JSON: works on serverless hosts too).
 {
   const files = fs
     .readdirSync(out)
-    .filter((f) => /\.(jpg|webm)$/.test(f) && fs.statSync(path.join(out, f)).size > 0)
+    .filter((f) => EXPECTED.includes(f) && fs.statSync(path.join(out, f)).size > 0)
     .sort()
+  const stray = fs.readdirSync(out).filter((f) => !EXPECTED.includes(f))
+  if (stray.length) console.warn(`not used by the landing page (not listed): ${stray.join(', ')}`)
   const manifest = path.resolve('app/landing/captured.json')
   const note = 'Written by scripts/capture-landing.mjs — the landing-page images that exist in public/brand/landing/.'
   fs.writeFileSync(manifest, JSON.stringify({ note, files }, null, 2) + '\n')
   console.log(`wrote ${path.relative(process.cwd(), manifest)} (${files.length} files)`)
-  const expected = ['hero.jpg', 'hero.webm', 'hero-film.jpg', ...SPACES.map(([n]) => `${n}.jpg`)]
-  for (const f of ['tour', 'studio', 'info', 'examine', 'inspect', 'golden', 'night', 'theatre', 'photo', 'walk', 'hindi']) expected.push(`f-${f}.jpg`)
-  const missing = expected.filter((f) => !files.includes(f))
+  const missing = EXPECTED.filter((f) => !files.includes(f))
   if (missing.length) console.warn(`still missing (placeholders shown): ${missing.join(', ')}`)
 }
 console.log(failures.length ? `done — skipped: ${failures.join(', ')}` : 'done — all shots captured')

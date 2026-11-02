@@ -1,4 +1,33 @@
 {
-  "note": "Written by scripts/capture-landing.mjs — the landing-page images that exist in public/brand/landing/. Empty until the pavilion's frames are captured (the hand block museum's frames are not shown here).",
-  "files": []
+  "note": "Written by scripts/capture-landing.mjs — the landing-page images that exist in public/brand/landing/.",
+  "files": [
+    "annex.jpg",
+    "atlas.jpg",
+    "balcony.jpg",
+    "entry.jpg",
+    "f-golden.jpg",
+    "f-hindi.jpg",
+    "f-info.jpg",
+    "f-inspect.jpg",
+    "f-night.jpg",
+    "f-passport.jpg",
+    "f-photo.jpg",
+    "f-rides.jpg",
+    "f-tour.jpg",
+    "f-walk.jpg",
+    "forecourt.jpg",
+    "gallery-a.jpg",
+    "gallery-b.jpg",
+    "gallery-c.jpg",
+    "haat.jpg",
+    "hallway.jpg",
+    "hero-film.jpg",
+    "hero.jpg",
+    "hero.webm",
+    "library.jpg",
+    "oculus.jpg",
+    "parikrama.jpg",
+    "sphere-well.jpg",
+    "theatre.jpg"
+  ]
 }
