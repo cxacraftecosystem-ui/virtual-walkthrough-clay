@@ -1,4 +1,50 @@
-# Museum Backend API (v1)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readme-kit/assets/divider-dark.svg">
+  <img src="readme-kit/assets/divider-light.svg" width="100%" alt="">
+</picture>
+
+# <img src="readme-kit/assets/icons/code.svg" width="32" align="top" alt="">&nbsp; Pavilion Backend API (v1)
+
+Every endpoint the pavilion, the admin and the live layer call, grouped by area. The code is byte-identical with
+the hand block museum's; this build answers for `site = 'clay'`. The server code map, roles in practice and deploy
+are in [BACKEND.md](BACKEND.md).
+
+| Area | Who | Endpoints |
+|---|---|---|
+| [Roles](#roles-rbac) | everyone | how `visitor`, `curator`, `admin` and `master` are decided |
+| [Content](#content-public) | public | `/api/content`, `/api/exhibitions`, `/api/artisans`, `/api/health` |
+| [Content admin](#content-admin-role--curator) | curator+ | items, stamps, history, restore, trash, texts, tour, reset |
+| [Exhibitions](#exhibitions-multi-exhibition-platform) | curator+, admin for changes | create, duplicate, publish, default, delete |
+| [Makers](#makers-meet-the-maker-role--curator) | curator+ | profiles and their usage |
+| [Media](#media-role--curator) and [deep zoom](#deep-zoom-pyramids-role--curator--srcserverhandlersdeepzoomts) | curator+ | uploads, presign, complete, usage, DZI pyramids |
+| [Dashboard and activity](#dashboard--activity-log-role--curator) | curator+ | overview counts and the activity log |
+| [Auth](#auth) | everyone | register, login, Google, session |
+| [Favourites](#favourites-logged-in), [comments](#guestbook--comments) | signed in | favourites, guestbook, comments, moderation |
+| [Visitor pieces](#visitor-pieces-the-visitors-shelf) | public, curator+ | place a piece, the shelf, moderation |
+| [Analytics](#analytics) | public, admin | events, summary, heatmap, funnel, CSV, retention |
+| [Errors](#errors--monitoring) | public, admin | client error reports and groups |
+| [Users](#users-role--admin), [access list](#access-list-role--master) | admin, master | manual roles, allowlist |
+| [Live tours](#live-guided-tours--presence) | curator+, public | docent tokens and verification |
+
+```mermaid
+%%{init: {"theme":"base","fontFamily":"Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif","themeVariables":{"fontSize":"15px","primaryColor":"#F2E9FE","primaryTextColor":"#1E1B2E","primaryBorderColor":"#9148D2","secondaryColor":"#FAEECD","secondaryTextColor":"#1E1B2E","secondaryBorderColor":"#CD9200","tertiaryColor":"#F3F1FA","tertiaryTextColor":"#1E1B2E","tertiaryBorderColor":"#A7A3BC","mainBkg":"#F2E9FE","nodeBorder":"#9148D2","nodeTextColor":"#1E1B2E","lineColor":"#AA69E9","textColor":"#857F9E","edgeLabelBackground":"#F9F5FF","clusterBkg":"#F9F5FF","clusterBorder":"#D6B6FB","titleColor":"#762CB1","noteBkgColor":"#FAEECD","noteTextColor":"#1E1B2E","noteBorderColor":"#CD9200","actorBkg":"#F2E9FE","actorBorder":"#9148D2","actorTextColor":"#1E1B2E","actorLineColor":"#AA69E9","signalColor":"#AA69E9","signalTextColor":"#857F9E","labelBoxBkgColor":"#F2E9FE","labelBoxBorderColor":"#9148D2","labelTextColor":"#1E1B2E","loopTextColor":"#857F9E","activationBkgColor":"#E7D5FE","activationBorderColor":"#9148D2","sequenceNumberColor":"#FFFFFF","transitionColor":"#AA69E9","transitionLabelColor":"#857F9E","stateLabelColor":"#1E1B2E","stateBkg":"#F2E9FE","compositeBackground":"#F9F5FF","compositeTitleBackground":"#F2E9FE","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#F9F5FF","relationColor":"#AA69E9","relationLabelBackground":"#F9F5FF","relationLabelColor":"#1E1B2E"}}}%%
+sequenceDiagram
+  autonumber
+  participant B as Admin in the browser
+  participant API
+  participant S3
+  B->>API: GET /api/admin/media/config
+  API-->>B: driver s3, directUpload true
+  B->>API: POST /api/admin/media/presign
+  API-->>B: uploadUrl, headers, key
+  B->>S3: PUT the file with exactly those headers
+  S3-->>B: 200
+  B->>API: POST /api/admin/media/complete
+  API->>S3: HEAD, size at most 500 MB
+  API-->>B: 201 MediaRecord, url to store in content
+  Note over B,API: With local disk the browser posts multipart to /api/admin/media instead
+```
+
 
 Base: same origin. Implemented as Next.js Route Handlers (`app/api/**/route.ts`, logic in `src/server/**`); `next dev` serves the API and the app on one port.
 All bodies are JSON unless noted. Errors: `{ "error": string }` with a 4xx/5xx status; a few add fields — a stale content
@@ -7,8 +53,8 @@ Auth: HTTP-only cookie `museum_session` (set by login/register/Google; SameSite=
 Admin routes answer **401** when signed out and **403** `{ error: "<Role> role required" }` when the role is too low.
 CSRF: state-changing requests (POST/PUT/PATCH/DELETE) carrying an `Origin` header that is not the API's own host (or listed in `ALLOWED_ORIGINS`) are rejected with 403 (except `/api/analytics/events`). Unknown `/api/*` paths return a JSON 404.
 
-**Sites.** Two apps share one database: this one (`site = 'hand-block'`) and the clay pavilion (`'clay'`), each a build
-of its own repo (`src/site.ts`). Every endpoint below answers for **its own site only**: exhibitions, content, makers,
+**Sites.** Two apps share one database: this one (`site = 'clay'`) and the hand block printing museum
+(`'hand-block'`), each a build of its own repo (`src/site.ts`). Every endpoint below answers for **its own site only**: exhibitions, content, makers,
 media, prints, comments, favourites, analytics, errors and the activity log of the other site are invisible to it
 (by-id routes answer 404 for the other site's rows). Users, sessions and the access list are shared, so staff keep one
 login and one role across both. Exhibition slugs and maker ids are still unique across both sites: one the other site
@@ -69,11 +115,11 @@ the other (on Postgres each write of an item takes a transaction lock on it), so
 create-only (`new`) save never replaces an item, even one created a moment earlier.
 
 ## Exhibitions (multi-exhibition platform)
-The building is shared; each exhibition has its own content set (artworks, exhibits, infographics, videos, objects), reveal-wall text, welcome, tour stops and theme. The default exhibition is served at `/gallery`, the others at `/gallery/<slug>` (legacy `/e/<slug>` redirects). Existing content was migrated into `hand-block-printing`.
+The building is shared; each exhibition has its own content set (artworks, exhibits, infographics, videos, objects), description-wall text, welcome, tour stops and theme. The default exhibition is served at `/gallery`, the others at `/gallery/<slug>` (legacy `/e/<slug>` redirects). This site's default is `clay-traditions` ("Clay Traditions", *Earth, water, hand and fire*); rows from before sites existed belong to the hand block museum's `hand-block-printing`.
 
 Exhibitions belong to a site: each site lists, edits and deletes only its own, and has its own default (making one the
 default never touches the other site's). On first start each app creates its own default exhibition
-(`SITE.defaultExhibitionId`: `hand-block-printing` here, `clay-traditions` in the clay app) and seeds its bundled content
+(`SITE.defaultExhibitionId`: `clay-traditions` here, `hand-block-printing` in the hand block museum) and seeds its bundled content
 into it — never into the other site's. A slug (or id) the other site already uses → **409** "…already used by the other
 museum that shares this database". Create, duplicate, edit, publish, default and delete are recorded in the activity log.
 
@@ -85,12 +131,12 @@ site has seeded and still has exhibitions of its own: the default exhibition is 
 
 **Deploy order (the sites migration).** `supabase/migrations/20261101000000_sites.sql` is additive for the schema, so
 older code keeps running against it — but not for the data: hand-block code from before sites reads `is_default = 1`
-with no site, lists every exhibition and cleans up every site's analytics, so it would serve the clay app's rows as its
+with no site, lists every exhibition and cleans up every site's analytics, so it would serve this app's rows as its
 own once they exist. (The file's header says the code deployed in either app "keeps working while the other deploys";
 that holds for the schema only. The file is pinned by its sha256 in `_museum_migrations` and stays as applied.) The
-order is enforced in code: each app's bootstrap records `sites_aware:<site>` in the shared `meta` table, and the clay
-app refuses to start (it does not create its default exhibition) while hand-block has served the database (meta `seeded_at`) and
-`sites_aware:hand-block` is missing. Deploy hand-block first; clay starts on its next request after that.
+order is enforced in code: each app's bootstrap records `sites_aware:<site>` in the shared `meta` table, and this app
+refuses to start (it does not create `clay-traditions`) while hand-block has served the database (meta `seeded_at`) and
+`sites_aware:hand-block` is missing. Deploy hand-block first; this app starts on its next request after that.
 
 | Method | Path | Notes |
 |---|---|---|
@@ -147,7 +193,7 @@ Keys: `deepzoom/<set>/image.dzi` + `deepzoom/<set>/image_files/<level>/<col>_<ro
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/api/admin/overview[?exhibition=]` | `{ role, site, counts: { pendingPrints, comments7d, hiddenComments, openErrors, errors24h, users, placeholders, items }, exhibition: { id, title, status }, recent: AuditEntry[] }`. `openErrors`, `errors24h` and `users` are **null below admin**; `placeholders` / `items` count the items of the exhibition (`?exhibition=`, default the site's default) and how many are still `placeholder: true`; `recent` = the latest 12 activity entries the caller may read (below). |
-| GET | `/api/admin/activity?limit=50&before=&target=&exhibition=` | `{ entries: AuditEntry[], nextBefore: number \| null }`, newest first. `limit` 1–200; `before` = the previous page's `nextBefore`; `target` = `<kind>:<id>` (one thing's history, e.g. `artworks:hero-01`, `exhibition:textile-traditions`, `print:<uuid>`) or `<kind>` alone; `exhibition` = id or slug. |
+| GET | `/api/admin/activity?limit=50&before=&target=&exhibition=` | `{ entries: AuditEntry[], nextBefore: number \| null }`, newest first. `limit` 1–200; `before` = the previous page's `nextBefore`; `target` = `<kind>:<id>` (one thing's history, e.g. `artworks:clay-c-01`, `exhibition:clay-traditions`, `print:<uuid>`) or `<kind>` alone; `exhibition` = id or slug. |
 
 `AuditEntry = { id, at, actorEmail: string | null, actorRole: string | null, action, targetKind, targetId, exhibitionId: string | null, summary }`.
 Every admin change writes one, inside the change's own transaction where it has one: `content.create | update | delete |
@@ -155,7 +201,7 @@ restore | reset | exhibitionText | welcome | tour`, `exhibition.create | duplica
 `artisan.create | update | delete`, `media.upload | delete`, `prints.status | delete | bulk`, `comments.hide | unhide |
 delete | bulk`, `errors.resolve | reopen | delete | bulk`, `users.role`, `access.put | update | delete`,
 `analytics.retention | cleanup` (a scheduled cleanup has no actor). Content items use the collection as `targetKind`
-and the item id as `targetId`. `summary` is one plain sentence (“Saved artwork “Ajrakh yardage””). Entries are per site,
+and the item id as `targetId`. `summary` is one plain sentence (“Saved artwork “Kettle — Study””). Entries are per site,
 except changes to what both sites share (`users.role`, `access.*`): those are kept once, under site `'shared'`, and
 listed by both sites.
 
@@ -197,10 +243,14 @@ words are gone from the database once the comment is deleted.
 | DELETE | `/api/admin/comments/:id` | admin |
 | POST | `/api/admin/comments/bulk` | admin; `{ ids: string[] (1–200), action: 'hide' \| 'unhide' \| 'delete' }` → `{ updated }` (ids of the other site are ignored) |
 
-## Visitor prints ("Print it yourself" → Visitors' Wall)
+## Visitor pieces (the Visitors' Shelf)
+The potter's wheel posts here (`src/museum/studio/printsApi.ts`): *Place it on the Visitors' Shelf* sends a turntable
+shot with `motif` and a `meta` summary of the pot. The studio is taken down for the time being
+(`GRAND_FLAGS.clayStudio` is `false`), so nothing in the pavilion calls these routes until it is restored.
+
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/api/prints` | public (anonymous allowed); JSON `{ image: 'data:image/png;base64,…', sessionId, displayName?, motif?, meta?: { blocks[], dyes[], ground, stamps } }`. PNG only (signature + IHDR checked), ≤ **2 MB**, 64–2400 px a side; `sessionId` = the museum's random analytics session id (required). Stored via the storage driver as `prints/<uuid>.png`; signed-in visitors are linked by `userId`. → **201** `{ id, status: 'pending', createdAt }`. Rate-limited 3 / 10 min / session and 10 / 10 min / IP (429); 429 with ≥ 6 of the session's prints pending; 503 while ≥ 400 prints await review. |
+| POST | `/api/prints` | public (anonymous allowed); JSON `{ image: 'data:image/png;base64,…', sessionId, displayName?, motif?, meta?: object }`. PNG only (signature + IHDR checked), ≤ **2 MB**, 64–2400 px a side; `sessionId` = the museum's random analytics session id (required). Stored via the storage driver as `prints/<uuid>.png`; signed-in visitors are linked by `userId`. → **201** `{ id, status: 'pending', createdAt }`. Rate-limited 3 / 10 min / session and 10 / 10 min / IP (429); 429 with ≥ 6 of the session's prints pending; 503 while ≥ 400 prints await review. |
 | GET | `/api/prints?status=approved&limit=24` | public; the latest approved prints (max 24) → `PublicPrint[]` (`{ id, url, displayName, motif, meta, width, height, createdAt }`). Any other `status` → 403. Cached 30 s. |
 | GET | `/api/admin/prints?status=pending|approved|rejected|all` | curator+; moderation queue (max 1000, newest first): `PublicPrint` + `{ status, size, sessionId, userId, reviewedAt, reviewedBy }` |
 | PATCH | `/api/admin/prints/:id` | curator+; `{ status: 'approved' | 'rejected' | 'pending' }` → the admin print |
@@ -215,9 +265,25 @@ Every moderation change (single or bulk) is recorded in the activity log.
 | POST | `/api/analytics/events` | public, batched: `{ sessionId, batchId, events: AnalyticsEvent[] }` (max 200/batch). `navigator.sendBeacon` compatible (text/plain JSON accepted). → **202** `{ ok: true, accepted, duplicate: false }` (unknown event types are skipped). `batchId` (8–64 of `A–Z a–z 0–9 _ -`, made by the client) stays the same on every attempt to send a batch: each `(sessionId, batchId)` is stored once, so a batch sent again after a lost reply stores nothing and answers **202** `{ ok: true, accepted: 0, duplicate: true }`. A batch without `batchId` (older clients) is stored without that check; a malformed one is a 400. |
 | GET | `/api/admin/analytics/summary?days=7` | admin → `{ days, sessions, avgSessionSec, zoneDwell: {zone, seconds}[], topItems: {itemKind, itemId, views, dwellSec}[], quality: {tier, count}[], daily: {date, sessions}[] }` (`days` 1–365; `daily` has one entry per UTC day, zero-filled) |
 
-`AnalyticsEvent = { t: number (epoch ms), type: 'session_start' | 'zone_enter' | 'zone_dwell' | 'item_view' | 'item_dwell' | 'panel_open' | 'inspect_open' | 'video_play' | 'tour_start' | 'tour_complete' | 'tour_step' | 'pos', zone?, itemKind?, itemId?, seconds?, tier?, meta?, x?, z? }`. The batch body may carry `exhibition` (slug; default when absent/unknown).
+`AnalyticsEvent = { t: number (epoch ms), type: 'session_start' | 'zone_enter' | 'zone_dwell' | 'item_view' | 'item_dwell' | 'panel_open' | 'inspect_open' | 'video_play' | 'tour_start' | 'tour_complete' | 'tour_step' | 'stamp' | 'perch' | 'cue' | 'film_end' | 'moment' | 'pos', zone?, itemKind?, itemId?, seconds?, tier?, meta?, x?, z? }`. The batch body may carry `exhibition` (slug; default when absent/unknown).
+The pavilion's own events: `stamp` (a clay passport stamp, `itemId` = the stamp), `perch` (a ride, `zone` = where it leads), `cue` (a theatre or show cue, `itemId` = the cue), `film_end` (a film watched to its end) and `moment` (a timed moment seen).
 `tour_step`: `itemId` = stop id, `meta.index` = stop index. `pos` (sampled every 2 s by the tracker, `x`/`z` in metres): **never stored raw** — aggregated on insert into `analytics_heat` (0.5 m cells per exhibition / UTC day / zone).
 No personal data is stored for anonymous visitors (random session id only).
+
+```mermaid
+%%{init: {"theme":"base","fontFamily":"Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif","themeVariables":{"fontSize":"15px","primaryColor":"#F2E9FE","primaryTextColor":"#1E1B2E","primaryBorderColor":"#9148D2","secondaryColor":"#FAEECD","secondaryTextColor":"#1E1B2E","secondaryBorderColor":"#CD9200","tertiaryColor":"#F3F1FA","tertiaryTextColor":"#1E1B2E","tertiaryBorderColor":"#A7A3BC","mainBkg":"#F2E9FE","nodeBorder":"#9148D2","nodeTextColor":"#1E1B2E","lineColor":"#AA69E9","textColor":"#857F9E","edgeLabelBackground":"#F9F5FF","clusterBkg":"#F9F5FF","clusterBorder":"#D6B6FB","titleColor":"#762CB1","noteBkgColor":"#FAEECD","noteTextColor":"#1E1B2E","noteBorderColor":"#CD9200","actorBkg":"#F2E9FE","actorBorder":"#9148D2","actorTextColor":"#1E1B2E","actorLineColor":"#AA69E9","signalColor":"#AA69E9","signalTextColor":"#857F9E","labelBoxBkgColor":"#F2E9FE","labelBoxBorderColor":"#9148D2","labelTextColor":"#1E1B2E","loopTextColor":"#857F9E","activationBkgColor":"#E7D5FE","activationBorderColor":"#9148D2","sequenceNumberColor":"#FFFFFF","transitionColor":"#AA69E9","transitionLabelColor":"#857F9E","stateLabelColor":"#1E1B2E","stateBkg":"#F2E9FE","compositeBackground":"#F9F5FF","compositeTitleBackground":"#F2E9FE","attributeBackgroundColorOdd":"#FFFFFF","attributeBackgroundColorEven":"#F9F5FF","relationColor":"#AA69E9","relationLabelBackground":"#F9F5FF","relationLabelColor":"#1E1B2E"}}}%%
+flowchart LR
+  T["Tracker<br/>random session id"] -->|batch with batchId| E["POST<br/>/api/analytics/events"]
+  E --> Q{"sessionId + batchId<br/>seen before?"}
+  Q -->|yes| D["202, duplicate<br/>nothing stored"]
+  Q -->|no| K{"Event type"}
+  K -->|pos| H[("analytics_heat<br/>0.5 m cells")]
+  K -->|other| V[("analytics_events")]
+  H --> C["Daily cleanup<br/>after retention"]
+  V --> C
+  classDef accent fill:#762CB1,stroke:#5F1C93,color:#FFFFFF
+  class Q accent
+```
 
 Curator analytics (role ≥ admin; all take `exhibition` (id|slug, default when absent), `from` / `to` (YYYY-MM-DD, UTC, default the last 30 days, max 400 days)):
 
@@ -287,7 +353,7 @@ Every change immediately re-evaluates the role of the matching accounts.
 
 ## Live guided tours & presence
 Realtime transport is **Supabase Realtime** (public broadcast + presence channel `live:<room>`, room = `NEXT_PUBLIC_LIVE_ROOM`,
-default the site's own `SITE.liveRoom` — `hand-block-printing` here, `clay-pavilion` in the clay app; no tables, no service key). Without `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+default the site's own `SITE.liveRoom` — `clay-pavilion` here, `hand-block-printing` in the hand block museum; no tables, no service key). Without `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 with `?static` / `?nolive`, or when the channel can't subscribe within ~15 s, every live feature hides itself.
 Client: `src/museum/live/*`.
 
@@ -309,3 +375,8 @@ mask). Supabase RLS-authorised private channels would need Supabase Auth session
 Channel protocol: presence meta `{ name, hand, joined, docent }` (key = per-tab id); broadcast `p` `{ id, x, z, y, t }` at 5 Hz while
 moving (keep-alive every 4 s); `chat` `{ tour, mid, from, name, text, t }`; `d` = signed docent envelope `{ tour, from, seq, t, k, d, s }`
 (`s` = ECDSA-SHA256 over `tour|seq|t|k|d`).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="readme-kit/assets/footer-dark.svg">
+  <img src="readme-kit/assets/footer-light.svg" width="100%" alt="Made for the people who make things by hand. DC Handicrafts, IIT Kharagpur, Clay Traditions.">
+</picture>

@@ -1,0 +1,73 @@
+{
+  "hero": {
+    "eyebrow": "DC Handicrafts · IIT Kharagpur",
+    "name": "Clay Traditions Virtual Pavilion",
+    "titleWrap": 17,
+    "tagline": "Walk India's clay traditions under a 32 m terracotta dome in the browser, from the Earth Room to the Sphere Well, curated live from one admin.",
+    "chips": ["Next.js 16", "Three.js r186", "WebXR", "Postgres + S3", "Vercel"],
+    "motifCaption": "earth · water · hand · fire",
+    "label": "Clay Traditions Virtual Pavilion: walk India's clay traditions under a 32 metre terracotta dome in the browser, curated live from one admin"
+  },
+  "cards": {
+    "label": "What the pavilion does: walk, traditions, light, rides, tours and curation",
+    "columns": 3,
+    "items": [
+      { "icon": "map", "tag": "Walk", "title": "Fifteen spaces, one rotunda", "body": "Forecourt, Earth Room, the court under the dome, Galleries A to C, the Parikrama, Red Room and Sphere Well." },
+      { "icon": "landmark", "tag": "Traditions", "title": "Twenty-one ways with clay", "body": "Bankura, Molela and Longpi in the galleries, and eighteen more in the Red Room's five regional bays." },
+      { "icon": "sparkles", "tag": "Light", "title": "Sun through the oculus", "body": "Five times of day, a sun dial on Kharagpur time, monsoon rain, diyas at dusk and four quality tiers." },
+      { "icon": "compass", "tag": "Rides", "title": "To the dome, into the well", "body": "Rail rides to the balcony, to the Sky Rim 20 m above the lotus, and round the Sphere Well's spiral." },
+      { "icon": "radio-tower", "tag": "Live", "title": "Tours, guided or live", "body": "A 21-stop guided tour, signed docent tours with chat and raised hands, a clay passport, and VR." },
+      { "icon": "notebook-pen", "tag": "Curate", "title": "An admin for curators", "body": "Exhibitions, makers, media, deep zoom and scan import, history with restore, trash and an activity log." }
+    ]
+  },
+  "pipeline": {
+    "label": "How workshop material reaches a visitor: capture, process, curate, store, visit",
+    "stages": [
+      { "icon": "camera", "title": "Capture", "sub": "Pot scans, relief photos, text" },
+      { "icon": "cpu", "title": "Process", "sub": "Deep zoom and glTF, in the browser" },
+      { "icon": "notebook-pen", "title": "Curate", "sub": "Exhibitions, makers and the tour" },
+      { "icon": "database", "title": "Store", "sub": "Postgres and S3, site clay" },
+      { "icon": "globe", "title": "Visit", "sub": "The rotunda on any device" }
+    ]
+  },
+  "pipeline:tour": {
+    "label": "The guided tour, Earth to Fire: earth, water, hand, air, fire and the return, twenty-one stops from the forecourt to the Sphere Well",
+    "hop": 1.2,
+    "stages": [
+      { "icon": "layers", "title": "Earth", "sub": "Guardians, Earth Room, the lippan wall" },
+      { "icon": "cloud", "title": "Water", "sub": "The turn, the lotus under the oculus" },
+      { "icon": "pen-tool", "title": "Hand", "sub": "Galleries A, B and C" },
+      { "icon": "compass", "title": "Air", "sub": "Balcony, Wine Hall, Parikrama" },
+      { "icon": "zap", "title": "Fire", "sub": "Clay Atlas, Agni Theatre" },
+      { "icon": "map", "title": "Return", "sub": "Red Room, the Haat, the Sphere Well" }
+    ]
+  },
+  "stats": {
+    "label": "At a glance: fifteen spaces, twenty-one clay traditions, a 32 metre dome, three languages",
+    "tiles": [
+      { "icon": "building-2", "kicker": "Spaces", "value": "15", "label": "From forecourt to Sphere Well" },
+      { "icon": "landmark", "kicker": "Traditions", "value": "21", "label": "Three galleries, eighteen more" },
+      { "icon": "globe", "kicker": "Dome", "value": "32", "unit": "m", "label": "Across, open to the sky" },
+      { "icon": "languages", "kicker": "Languages", "value": "3", "label": "English, Hindi and Bengali" }
+    ]
+  },
+  "timeline": {
+    "label": "The pavilion so far: forked from the hand block museum on 31 October, raised into a domed rotunda on 1 November, every room and the landing page finished on 2 November, the workshop's confirmation next",
+    "items": [
+      { "date": "31 Oct", "title": "Forked", "sub": "From the hand block museum" },
+      { "date": "31 Oct", "title": "Shared backend", "sub": "One database, site clay" },
+      { "date": "1 Nov", "title": "The rotunda", "sub": "Dome and 21 traditions" },
+      { "date": "1 Nov", "title": "Direct uploads", "sub": "Clay origins in S3 CORS" },
+      { "date": "2 Nov", "title": "Every room", "sub": "Kiln film, atlas, herd" },
+      { "date": "2 Nov", "title": "Landing", "sub": "Real frames, hero film", "now": true },
+      { "date": "Next", "title": "Confirmed", "sub": "Workshop names and pieces" }
+    ]
+  },
+  "divider": { "label": "Section divider" },
+  "footer": {
+    "title": "Made for the people who make things by hand.",
+    "sub": "DC Handicrafts · IIT Kharagpur · Clay Traditions",
+    "label": "Made for the people who make things by hand. DC Handicrafts, IIT Kharagpur, Clay Traditions."
+  },
+  "icons": "all"
+}
