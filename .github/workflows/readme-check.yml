@@ -43,15 +43,6 @@ jobs:
         with:
           node-version: "26"
 
-      - name: Build kit assets
-        run: node docs/readme-kit/tools/build.mjs
-
-      - name: Upload kit assets
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: kit-assets
-          path: docs/readme-kit/assets
-
       - name: Kit assets match kit.json
         run: |
           node docs/readme-kit/tools/build.mjs
