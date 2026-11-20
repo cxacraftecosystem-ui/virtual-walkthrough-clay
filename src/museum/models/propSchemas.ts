@@ -228,6 +228,10 @@ const LIST: KindSchema[] = [
   },
   { kind: 'round-plinth', label: 'Round plinth (tiered)', owner: 'P3', props: [n('tiers', 2, { min: 1, max: 5 }), n('r', 1.4, { min: 0.2 }), n('h', 0.6, { min: 0.05 }), c('color', '#7d1a17')] },
   { kind: 'courtyard-garden', label: 'Courtyard garden', owner: 'P3', props: [t('trees', ''), n('shrubs', 8, { min: 0, max: 60 }), b('gravel', true), b('basin', false), n('seed', 1)] },
+
+  // ── The workshop team's pieces (config/objects.ts TEAM_PIECES) ─────────────────────
+  // the model is the piece's own GLB (its `model`); 'slot' stands a flat piece upright in a low brass base
+  { kind: 'team-piece', label: 'Workshop piece (its 3D model)', owner: 'existing', props: [s('stand', ['none', 'slot'], 'none')] },
 ]
 
 export const KIND_SCHEMAS: Readonly<Record<string, KindSchema>> = Object.fromEntries(LIST.map((k) => [k.kind, k]))

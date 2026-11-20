@@ -19,8 +19,11 @@ import { QUALITY_PRESETS, withDevOverrides } from '../config/quality'
 import { isWebGPU } from '../utils/renderer'
 import { projectionTargets } from '../media/projection/projectionTarget'
 import { requestShadowRefresh } from '../lighting/SkyAndSun'
+import { teamModels } from '../models/teamPiece'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+/** Never wait longer than this for the team's pieces (their preload gives up sooner on its own). */
+const TEAM_WAIT_MAX_MS = 250000
 
 /**
  * Draw the whole scene once where the real frames will go: the composer's half-float buffer when
@@ -147,12 +150,14 @@ export function Precompile() {
     let cancelled = false
     const start = performance.now()
     ;(async () => {
-      // Wait for loaders (artwork images, models) to go idle, max 20 s.
+      // Wait for loaders (artwork images, models) to go idle, max 20 s — and for the workshop team's pieces
+      // (models/teamPiece.tsx: loaded and on the GPU, or given up on), so their programs compile here too.
       for (;;) {
         if (cancelled) return
         const p = useProgress.getState()
         const elapsed = performance.now() - start
-        if ((!p.active && elapsed > 900) || elapsed > 20000) break
+        const team = teamModels()
+        if (((!p.active && elapsed > 900) || elapsed > 20000) && (team.settled || elapsed > TEAM_WAIT_MAX_MS)) break
         await sleep(150)
       }
       await sleep(300) // let Suspense commits and canvas typography settle

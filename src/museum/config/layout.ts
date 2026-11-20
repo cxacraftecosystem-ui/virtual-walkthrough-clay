@@ -1096,6 +1096,15 @@ export interface PodiumSlot {
 /** Podium dimensions (top surface at `height`). */
 export const PODIUM = { size: MUSEUM.podium.size, height: MUSEUM.podium.height }
 
+/**
+ * The glass hoods on four of the fourteen podiums (GRAND §3 #14), drawn by architecture/Pavilion.tsx: the glass
+ * stands `height` over a brass base plate `base` thick that covers the podium top, `margin` in from its edge. A
+ * piece under a hood stands on that plate.
+ */
+export const PODIUM_HOODS = { ids: ['pod-a-2', 'pod-b-3', 'pod-b-5', 'pod-c-2'] as readonly string[], height: 0.62, margin: 0.012, base: 0.025 }
+/** The height a piece on podium `slotId` stands at: the podium's top, or the hood's base plate on it. */
+export const podiumStandY = (slotId: string) => PODIUM.height + (PODIUM_HOODS.ids.includes(slotId) ? PODIUM_HOODS.base : 0)
+
 export const PODIUM_SLOTS: PodiumSlot[] = (['a', 'b', 'c'] as const).flatMap((k) =>
   MUSEUM.podium.anglesDeg[k].map((aDeg, i) => {
     const [x, z] = polar(MUSEUM.podium.ringR, aDeg)

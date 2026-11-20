@@ -11,9 +11,8 @@
  * is the size the procedural model is built to. Rotation is about +y in degrees.
  * `zone` drives render culling (ZONE_VISIBILITY) — it must be the zone the object stands in.
  */
-import { COURT_CENTER, PODIUM, PODIUM_SLOTS, type ZoneId } from './layout'
+import { COURT_CENTER, PODIUM_SLOTS, podiumStandY, type ZoneId } from './layout'
 import { DEG, GRAND_FLAGS, KEY, MUSEUM, polar, type Vec3 } from './museum'
-import { STUDY_NOTE, type TraditionKey } from './artworks'
 import type { ContentI18n } from '../i18n/core'
 import { AMENITY_OBJECTS } from './amenities'
 import { ROOM_OBJECTS } from './spectacleObjects/rooms'
@@ -21,7 +20,7 @@ import { COURT_OBJECTS } from './spectacleObjects/court'
 import { ATMOS_OBJECTS } from './spectacleObjects/atmosphere'
 import { CRAFT_OBJECTS } from './spectacleObjects/craft'
 import { EXPERIENCE_OBJECTS } from './spectacleObjects/experience'
-import { GRAND_CRAFTS_OBJECTS } from './grandObjects/crafts'
+import { GRAND_CRAFTS_OBJECTS, herdPlace } from './grandObjects/crafts'
 import { GRAND_INSTALLATIONS_OBJECTS } from './grandObjects/installations'
 import { GRAND_EXPERIENCE_OBJECTS } from './grandObjects/experience'
 
@@ -135,6 +134,8 @@ export type ProceduralModelId =
   | 'curved-shelf'
   | 'round-plinth'
   | 'courtyard-garden'
+  /** The workshop team's textured GLBs (TEAM_PIECES): a soft clay silhouette while one loads or if it fails (models/teamPiece.tsx). */
+  | 'team-piece'
 
 /** Every ProceduralModelId once (a missing or extra key fails the type check). Lists for the admin's kind select. */
 const KIND_SET: Record<ProceduralModelId, true> = {
@@ -231,6 +232,7 @@ const KIND_SET: Record<ProceduralModelId, true> = {
   'curved-shelf': true,
   'round-plinth': true,
   'courtyard-garden': true,
+  'team-piece': true,
 }
 export const PROCEDURAL_KINDS: readonly ProceduralModelId[] = Object.keys(KIND_SET) as ProceduralModelId[]
 
@@ -304,203 +306,265 @@ const at = (r: number, aDeg: number, y = 0): Vec3 => {
 
 type Lang3 = [string, string, string]
 
-interface PodiumPiece {
-  slot: string
-  tradition: TraditionKey
-  id: string
+/* ------------------------------------------------------------------ */
+/* The workshop team's pieces                                          */
+/* ------------------------------------------------------------------ */
+
+/** Where the workshop team's GLBs live (scripts/import-team-models.mjs writes them; models/teamPiece.tsx preloads them). */
+export const TEAM_MODEL_DIR = '/models/team/'
+
+/** A team piece stands on a podium of the row, or on the Herd's plinth (grandObjects/crafts.ts `herdPlace`). */
+type TeamPlace = { podium: string } | { herd: true }
+
+interface TeamPiece {
+  slug: string
+  place: TeamPlace
+  /** Titles from the file names, [en, hi, bn]. */
   title: Lang3
-  kind: ProceduralModelId
-  /** Footprint on the podium top (it is 0.305 m square). */
-  size: number
+  /** Display height (m): the height scripts/import-team-models.mjs bakes into the GLB (base at y = 0). */
   height: number
-  props: Record<string, string | number | boolean>
-  alt: Lang3
+  /** The GLB's footprint [x, z] at that height (m, before rotation): its click box and collider. */
+  size: [number, number]
+  /** Turn (deg) away from facing the court: animals stand three-quarters to the visitor. */
+  turn?: number
+  /** Flat pieces stand upright in a low slotted brass base (models/teamPiece.tsx PlaqueStand). */
+  stand?: boolean
+  /** What is visible, nothing more: no maker, place, material or date the workshop has not given. */
+  text: string
+  alt: string
 }
 
+/** Every team piece's description ends with this until the workshop's details arrive (`placeholder: true`). */
+const TEAM_NOTE = 'A piece from the workshop’s team, shown from its 3D model. Its maker, place and materials are still to be recorded.'
+
 /**
- * The podium row (PDF: "Podium product display", 12 in × 12 in at 4 ft) — one piece per podium,
- * standing on its top and facing the court. The podiums themselves are architecture (they always
- * collide, layout.ts PODIUM_SLOTS), so the pieces carry no footprint of their own beyond the top.
- * Every piece is a procedural stand-in (`placeholder: true`) until the workshop's objects are
- * photographed or scanned; set `model` to a GLB then.
+ * The workshop's own pieces (the craft deliverables the design held the podium row empty for): sixteen
+ * textured 3D models, one per podium of the row (12 in × 12 in at 4 ft, each under its own sconce) and
+ * two on the front step of the Herd. Grouped by what can be seen, never by a tradition the workshop has
+ * not named:
+ *   A, warm red wall   the four figures — a standing figure, two women seated at work, dancers — and the
+ *                      two horses with the Herd (only the Bankura Horse's name places it)
+ *   B, white wall      the flat pieces, upright on slotted stands: the peacock pair and the round plaque,
+ *                      then the three blue-painted pieces together, and the frame of miniature pots by C
+ *   C, charcoal wall   the black elephant and the three Ganeshas (the black one under glass)
+ * Each fits its podium's top (≤ 0.28 m, inside the glass hood where there is one) at its display height.
+ * Titles come from the file names; every piece stays `placeholder: true` for the curators.
  */
-const PODIUM_PIECES: PodiumPiece[] = [
-  // A — Bankura terracotta
+const TEAM_PIECES_SPEC: TeamPiece[] = [
+  // ── A ──
   {
-    slot: 'pod-a-1',
-    tradition: 'a',
-    id: 'clay-a-horse',
-    title: ['Horse — Study', 'घोड़ा — अध्ययन', 'ঘোড়া — চর্চা'],
-    kind: 'terracotta-horse',
-    size: 0.26,
-    height: 0.6,
-    props: { scale: 1.2 },
-    alt: [
-      'A red terracotta horse standing square, with a tall straight neck, pricked ears and an open, hollow body.',
-      'सीधा खड़ा लाल टेराकोटा घोड़ा — ऊँची सीधी गर्दन, खड़े कान और भीतर से खोखला शरीर।',
-      'সোজা দাঁড়ানো লাল টেরাকোটার ঘোড়া — উঁচু খাড়া গলা, খাড়া কান আর ভেতরে ফাঁপা দেহ।',
-    ],
+    slug: 'silent-sentinel',
+    place: { podium: 'pod-a-1' },
+    title: ['Silent Sentinel', 'मौन प्रहरी', 'নীরব প্রহরী'],
+    height: 0.45,
+    size: [0.22, 0.16],
+    text: 'A standing figure with a full beard, a round cap and heavy earrings. One hand is raised beside his face holding a small bell-shaped object; the other holds a small pot at his side. His robe flares to a fluted hem, and the whole surface is a glossy deep brown.',
+    alt: 'A tall brown figure of a bearded man in a round cap, one hand raised to his face, a small pot at his side.',
   },
   {
-    slot: 'pod-a-2',
-    tradition: 'a',
-    id: 'clay-a-horse-small',
-    title: ['Small Horse — Study', 'छोटा घोड़ा — अध्ययन', 'ছোট ঘোড়া — চর্চা'],
-    kind: 'terracotta-horse',
-    size: 0.2,
-    height: 0.48,
-    props: { scale: 0.96 },
-    alt: [
-      'A smaller red terracotta horse of the same upright form.',
-      'उसी सीधे रूप का एक छोटा लाल टेराकोटा घोड़ा।',
-      'একই খাড়া গড়নের একটি ছোট লাল টেরাকোটার ঘোড়া।',
-    ],
+    slug: 'harvest-guardian',
+    place: { podium: 'pod-a-2' },
+    title: ['Harvest Guardian', 'फ़सल की रखवाली', 'ফসলের পাহারা'],
+    height: 0.25,
+    size: [0.27, 0.23],
+    text: 'A woman in a red sari sits cross-legged on a dark board, holding a shallow tray heaped with grain. Four bowls of grain stand around her and a few loose stalks lie at her feet.',
+    alt: 'A seated woman in a red sari with a tray of grain in her hands and bowls of grain around her.',
   },
   {
-    slot: 'pod-a-3',
-    tradition: 'a',
-    id: 'clay-a-pot',
-    title: ['Water Pot — Study', 'पानी का घड़ा — अध्ययन', 'জলের কলসি — চর্চা'],
-    kind: 'clay-vessel',
-    size: 0.26,
-    height: 0.4,
-    props: { form: 'matka', clay: 'terracotta', burnish: 0.35 },
-    alt: [
-      'A round-bellied red clay water pot with a short rolled rim.',
-      'छोटे मुड़े किनारे वाला, गोल पेट का लाल मिट्टी का पानी का घड़ा।',
-      'ছোট গোটানো কানার, গোল পেটের লাল মাটির জলের কলসি।',
-    ],
-  },
-  // B — Molela votive plaques
-  {
-    slot: 'pod-b-1',
-    tradition: 'b',
-    id: 'clay-b-plaque-rider',
-    title: ['Plaque: Rider — Study', 'पट्टिका: अश्वारोही — अध्ययन', 'ফলক: অশ্বারোহী — চর্চা'],
-    kind: 'votive-plaque',
-    size: 0.26,
-    height: 0.5,
-    props: { motif: 'rider' },
-    alt: [
-      'A small arched clay plaque standing upright, with a horse and rider in relief, painted red, ochre and white.',
-      'सीधी खड़ी एक छोटी मेहराबदार मिट्टी की पट्टिका, जिस पर उभरे घोड़ा और सवार, लाल, पीले और सफ़ेद रंग में।',
-      'খাড়া করে রাখা একটি ছোট খিলান-আকারের মাটির ফলক, তাতে উঁচু করে গড়া ঘোড়া ও সওয়ার, লাল, হলুদ আর সাদায় রং করা।',
-    ],
+    slug: 'the-basket-weaver',
+    place: { podium: 'pod-a-3' },
+    title: ['The Basket Weaver', 'टोकरी बुनने वाली', 'ঝুড়ি বোনার কারিগর'],
+    height: 0.22,
+    size: [0.22, 0.27],
+    text: 'A woman in a purple patterned sari sits on a dark mat, weaving a round basket in front of her; its upright strands are not yet worked in. A small metal bowl stands at her side.',
+    alt: 'A seated woman in a purple sari weaving a round basket on a mat.',
   },
   {
-    slot: 'pod-b-2',
-    tradition: 'b',
-    id: 'clay-b-cups',
-    title: ['Cups — Study', 'कुल्हड़ — अध्ययन', 'ভাঁড় — চর্চা'],
-    kind: 'clay-vessel',
-    size: 0.2,
-    height: 0.16,
-    props: { form: 'kulhad', clay: 'red', burnish: 0 },
-    alt: ['A plain, unglazed red clay cup.', 'बिना चमक का एक सादा लाल मिट्टी का कुल्हड़।', 'চকচকে প্রলেপ ছাড়া একটি সাধারণ লাল মাটির ভাঁড়।'],
+    slug: 'festival-dancers',
+    place: { podium: 'pod-a-4' },
+    title: ['Festival Dancers', 'उत्सव के नर्तक', 'উৎসবের নর্তক'],
+    height: 0.355,
+    size: [0.27, 0.13],
+    text: 'Two dancers in yellow and red. A man in a feathered red turban beats a drum slung at his waist; beside him a woman in a yellow sari balances a stack of pots crowned with a sheaf on her head and holds a white cloth in each hand.',
+    alt: 'Two dancing figures: a drummer in a feathered turban and a woman in a yellow sari balancing pots on her head.',
   },
   {
-    slot: 'pod-b-3',
-    tradition: 'b',
-    id: 'clay-b-plaque-deity',
-    title: ['Plaque: Seated Deity — Study', 'पट्टिका: आसीन देवता — अध्ययन', 'ফলক: উপবিষ্ট দেবতা — চর্চা'],
-    kind: 'votive-plaque',
-    size: 0.28,
-    height: 0.58,
-    props: { motif: 'deity' },
-    alt: [
-      'An arched clay plaque with a seated figure in relief under a canopy, painted in earth colours.',
-      'मेहराबदार मिट्टी की पट्टिका, जिस पर छत्र के नीचे बैठी एक उभरी आकृति, मिट्टी के रंगों में रँगी।',
-      'খিলান-আকারের মাটির ফলক, তাতে চাঁদোয়ার নিচে বসা এক রিলিফ মূর্তি, মাটির রঙে রং করা।',
-    ],
+    slug: 'bankura-horse',
+    place: { herd: true },
+    title: ['Bankura Horse', 'बाँकुड़ा घोड़ा', 'বাঁকুড়ার ঘোড়া'],
+    height: 0.45,
+    size: [0.11, 0.25],
+    turn: -35,
+    text: 'A horse standing square on four column legs, its long neck held straight up, ears pricked and a crest between them. Bands of ornament run round the neck and over the saddle cloth; the surface is a glossy deep brown.',
+    alt: 'A brown horse figure with a very long upright neck, pricked ears and a decorated saddle cloth.',
   },
   {
-    slot: 'pod-b-4',
-    tradition: 'b',
-    id: 'clay-b-lamp',
-    title: ['Oil Lamp — Study', 'दीया — अध्ययन', 'প্রদীপ — চর্চা'],
-    kind: 'clay-vessel',
-    size: 0.16,
-    height: 0.1,
-    props: { form: 'diya', clay: 'red', burnish: 0 },
-    alt: ['A small, shallow clay oil lamp with a pinched spout.', 'चुटकी से बनी टोंटी वाला छोटा, उथला मिट्टी का दीया।', 'চিমটি দিয়ে গড়া নলওয়ালা একটি ছোট, অগভীর মাটির প্রদীপ।'],
+    slug: 'horse-figurine',
+    place: { herd: true },
+    title: ['Horse Figurine', 'घोड़े की मूर्तिका', 'ঘোড়ার ছোট মূর্তি'],
+    height: 0.38,
+    size: [0.1, 0.25],
+    turn: 35,
+    text: 'A standing horse with a carved mane falling down its neck, a raised tail curled at the tip and a patterned saddle cloth, in a glossy warm brown.',
+    alt: 'A brown horse figure with a carved mane, a curled tail and a saddle cloth.',
+  },
+  // ── B ──
+  {
+    slug: 'peacock-shubh-labh',
+    place: { podium: 'pod-b-1' },
+    title: ['Peacock Shubh Labh', 'मोर शुभ लाभ', 'ময়ূর শুভ লাভ'],
+    height: 0.24,
+    size: [0.26, 0.07],
+    stand: true,
+    text: 'A pair of plaques, each shaped as a blue peacock curving round a dark medallion edged with white beads. The medallions carry the words ‘Shubh’ and ‘Labh’ in gold.',
+    alt: 'Two blue peacock-shaped plaques side by side, lettered Shubh and Labh in gold.',
   },
   {
-    slot: 'pod-b-5',
-    tradition: 'b',
-    id: 'clay-b-plaque-serpent',
-    title: ['Plaque: Serpent — Study', 'पट्टिका: नाग — अध्ययन', 'ফলক: নাগ — চর্চা'],
-    kind: 'votive-plaque',
-    size: 0.26,
-    height: 0.5,
-    props: { motif: 'serpent' },
-    alt: [
-      'An arched clay plaque with a hooded serpent in relief, in red and cream.',
-      'मेहराबदार मिट्टी की पट्टिका, जिस पर फन फैलाए उभरा नाग, लाल और क्रीम रंग में।',
-      'খিলান-আকারের মাটির ফলক, তাতে ফণা তোলা রিলিফ সাপ, লাল আর ঘিয়ে রঙে।',
-    ],
-  },
-  // C — Longpi black pottery
-  {
-    slot: 'pod-c-1',
-    tradition: 'c',
-    id: 'clay-c-kettle',
-    title: ['Kettle — Study', 'केतली — अध्ययन', 'কেটলি — চর্চা'],
-    kind: 'clay-vessel',
-    size: 0.26,
-    height: 0.4,
-    props: { form: 'kettle', clay: 'black', burnish: 0.85 },
-    alt: [
-      'A black clay kettle with a short spout and a cane-bound handle, polished to a soft shine.',
-      'छोटी टोंटी और बेंत से बँधे हत्थे वाली काली मिट्टी की केतली, हल्की चमक तक घिसी हुई।',
-      'ছোট নল আর বেত-বাঁধা হাতলওয়ালা কালো মাটির কেটলি, নরম আভা পর্যন্ত ঘষা।',
-    ],
+    slug: 'sunset-shores',
+    place: { podium: 'pod-b-2' },
+    title: ['Sunset Shores', 'सूर्यास्त का तट', 'সূর্যাস্তের তীর'],
+    height: 0.25,
+    size: [0.25, 0.07],
+    stand: true,
+    text: 'A round plaque with a seashore in low relief: an orange sun between green hills, blue waves breaking on a sandy beach and dark blue shrubs along the bottom, inside a border of red and pale triangles.',
+    alt: 'A round plaque of a beach at sunset: sun, green hills, blue waves and sand, in a border of triangles.',
   },
   {
-    slot: 'pod-c-2',
-    tradition: 'c',
-    id: 'clay-c-bowl',
-    title: ['Bowl — Study', 'कटोरा — अध्ययन', 'বাটি — চর্চা'],
-    kind: 'clay-vessel',
-    size: 0.26,
-    height: 0.18,
-    props: { form: 'bowl', clay: 'black', burnish: 0.85 },
-    alt: ['A wide, low black clay bowl with a burnished surface.', 'घिसकर चमकाई सतह वाला चौड़ा, नीचा काली मिट्टी का कटोरा।', 'ঘষে-মাজা তলের একটি চওড়া, নিচু কালো মাটির বাটি।'],
+    slug: 'hand-of-blue-blossoms',
+    place: { podium: 'pod-b-3' },
+    title: ['Hand of Blue Blossoms', 'नीले फूलों वाला हाथ', 'নীল ফুলের হাত'],
+    height: 0.28,
+    size: [0.16, 0.07],
+    stand: true,
+    text: 'A plaque in the shape of an open hand, fingers up, outlined in yellow: pale blue fingers above a deep blue palm painted with one turquoise flower and white leaves.',
+    alt: 'A hand-shaped plaque with light blue fingers and a dark blue palm painted with a flower.',
   },
   {
-    slot: 'pod-c-3',
-    tradition: 'c',
-    id: 'clay-c-pot',
-    title: ['Cooking Pot — Study', 'खाना पकाने का बर्तन — अध्ययन', 'রান্নার হাঁড়ি — চর্চা'],
-    kind: 'clay-vessel',
-    size: 0.26,
-    height: 0.4,
-    props: { form: 'matka', clay: 'black', burnish: 0.7 },
-    alt: ['A round black clay cooking pot with a wide mouth.', 'चौड़े मुँह वाला गोल, काली मिट्टी का खाना पकाने का बर्तन।', 'চওড়া মুখের গোল, কালো মাটির রান্নার হাঁড়ি।'],
+    slug: 'blue-floral-tile',
+    place: { podium: 'pod-b-4' },
+    title: ['Blue Floral Tile', 'नीली फूलदार टाइल', 'নীল ফুলেল টালি'],
+    height: 0.2,
+    size: [0.2, 0.07],
+    stand: true,
+    text: 'A square tile on a deep blue ground with a white border, painted with white and yellow flowers, red buds and green leaves on curling stems.',
+    alt: 'A square deep blue tile painted with white flowers and green leaves.',
+  },
+  {
+    slug: 'blossom-bowl',
+    place: { podium: 'pod-b-5' },
+    title: ['Blossom Bowl', 'फूलों वाला कटोरा', 'ফুলের বাটি'],
+    height: 0.3,
+    size: [0.21, 0.07],
+    stand: true,
+    text: 'A shallow oval bowl, shown upright on its rim so its inside can be seen: white leaves and dark blue flowers with brown buds on a turquoise ground, within a white line.',
+    alt: 'An oval bowl painted with blue flowers and white leaves on turquoise, standing upright.',
+  },
+  {
+    slug: 'miniature-pottery',
+    place: { podium: 'pod-b-6' },
+    title: ['Miniature Pottery', 'लघु मृद्भांड', 'ক্ষুদ্র মৃৎপাত্র'],
+    height: 0.26,
+    size: [0.27, 0.07],
+    stand: true,
+    text: 'A square frame of twenty-five small compartments, each holding one miniature pot. Most are black, a few red or brown; several carry fine white lines.',
+    alt: 'A square frame of twenty-five cubbies, each with a tiny pot, most of them black.',
+  },
+  // ── C ──
+  {
+    slug: 'black-elephant',
+    place: { podium: 'pod-c-1' },
+    title: ['Black Elephant', 'काला हाथी', 'কালো হাতি'],
+    height: 0.19,
+    size: [0.12, 0.26],
+    turn: -40,
+    text: 'A standing elephant in black, its trunk curled up at the tip, with a cloth worked in raised patterns over its back and bands round its legs.',
+    alt: 'A small black elephant figure with its trunk curled and a patterned cloth on its back.',
+  },
+  {
+    slug: 'black-ganesha-statue',
+    place: { podium: 'pod-c-2' },
+    title: ['Black Ganesha Statue', 'काली गणेश प्रतिमा', 'কালো গণেশ মূর্তি'],
+    height: 0.38,
+    size: [0.24, 0.22],
+    text: 'A smooth, rounded figure of Ganesha in black: an egg-shaped body, broad ears spread wide and a trunk curving down over the belly, with a small point at the crown.',
+    alt: 'A smooth, rounded black Ganesha with broad ears and a curving trunk.',
+  },
+  {
+    slug: 'mud-ganesha',
+    place: { podium: 'pod-c-3' },
+    title: ['Mud Ganesha', 'मिट्टी के गणेश', 'মাটির গণেশ'],
+    height: 0.36,
+    size: [0.22, 0.2],
+    text: 'Ganesha on a round pedestal, with a tall pointed crown, a trunk curling to one side and a garland of large beads hanging round him, in a mottled red-brown.',
+    alt: 'A red-brown Ganesha with a tall crown and a garland of beads, on a round pedestal.',
+  },
+  {
+    slug: 'twin-clay-ganeshas',
+    place: { podium: 'pod-c-4' },
+    title: ['Twin Clay Ganeshas', 'मिट्टी के जुड़वाँ गणेश', 'মাটির যমজ গণেশ'],
+    height: 0.17,
+    size: [0.27, 0.12],
+    text: 'Two small seated Ganeshas side by side in orange clay, each with its trunk curled across its body, its ears spread and a pointed crown, modelled in soft coils.',
+    alt: 'Two small orange clay Ganeshas seated side by side.',
   },
 ]
 
-function podiumObject(p: PodiumPiece): SceneObjectConfig {
-  const slot = PODIUM_SLOTS.find((s) => s.id === p.slot)
-  if (!slot) throw new Error(`objects.ts: unknown podium slot ${p.slot}`)
-  const note = STUDY_NOTE[p.tradition]
+function teamObject(p: TeamPiece): SceneObjectConfig {
+  let where: { position: Vec3; rotationDeg: number; zone: ZoneId }
+  if ('podium' in p.place) {
+    const id = p.place.podium
+    const slot = PODIUM_SLOTS.find((s) => s.id === id)
+    if (!slot) throw new Error(`objects.ts: unknown podium slot ${id}`)
+    // on the podium's top (a hooded podium's: its base plate), the podium's front (+z) facing the court
+    where = { position: [slot.x, podiumStandY(slot.id), slot.z], rotationDeg: slot.rotationY / DEG + (p.turn ?? 0), zone: slot.zone }
+  } else {
+    const h = herdPlace(p.slug)
+    where = { position: h.position, rotationDeg: facingIn(h.aDeg) + (p.turn ?? 0), zone: h.zone }
+  }
   return {
-    id: p.id,
+    id: `team-${p.slug}`,
     title: p.title[0],
-    kind: p.kind,
-    position: [slot.x, PODIUM.height, slot.z],
-    rotationDeg: slot.rotationY / DEG,
-    footprint: [p.size, p.size],
+    kind: 'team-piece',
+    model: `${TEAM_MODEL_DIR}${p.slug}.glb`,
+    ...where,
+    footprint: p.size,
     height: p.height,
-    props: p.props,
+    ...(p.stand ? { props: { stand: 'slot' } } : {}),
     interactive: true,
     inspectable: true,
-    description: note.en,
-    zone: slot.zone,
+    description: `${p.text} ${TEAM_NOTE}`,
     placeholder: true,
-    alt: p.alt[0],
-    i18n: { hi: { title: p.title[1], description: note.hi, alt: p.alt[1] }, bn: { title: p.title[2], description: note.bn, alt: p.alt[2] } },
+    alt: p.alt,
+    i18n: { hi: { title: p.title[1] }, bn: { title: p.title[2] } },
   }
 }
+
+/** The sixteen team pieces as scene objects (`team-<slug>`), in walking order A → B → C. */
+export const TEAM_PIECES: SceneObjectConfig[] = TEAM_PIECES_SPEC.map(teamObject)
+
+/**
+ * The procedural stand-ins the team's pieces took the place of: the podium row's fourteen and the Herd's two
+ * front horses, each with the piece that now stands there. A content store seeded before this still holds
+ * them; scripts/sync-team-models.mjs removes them there (only while they are untouched stand-ins).
+ */
+export const TEAM_REPLACES: readonly { id: string; by: string }[] = [
+  { id: 'clay-a-horse', by: 'team-silent-sentinel' },
+  { id: 'clay-a-horse-small', by: 'team-harvest-guardian' },
+  { id: 'clay-a-pot', by: 'team-the-basket-weaver' },
+  { id: 'craft-bankura-podium-plaque', by: 'team-festival-dancers' },
+  { id: 'craft-bankura-herd-1', by: 'team-bankura-horse' },
+  { id: 'craft-bankura-herd-2', by: 'team-horse-figurine' },
+  { id: 'clay-b-plaque-rider', by: 'team-peacock-shubh-labh' },
+  { id: 'clay-b-cups', by: 'team-sunset-shores' },
+  { id: 'clay-b-plaque-deity', by: 'team-hand-of-blue-blossoms' },
+  { id: 'clay-b-lamp', by: 'team-blue-floral-tile' },
+  { id: 'clay-b-plaque-serpent', by: 'team-blossom-bowl' },
+  { id: 'craft-molela-podium-pot', by: 'team-miniature-pottery' },
+  { id: 'clay-c-kettle', by: 'team-black-elephant' },
+  { id: 'clay-c-bowl', by: 'team-black-ganesha-statue' },
+  { id: 'clay-c-pot', by: 'team-mud-ganesha' },
+  { id: 'craft-longpi-podium-bowl', by: 'team-twin-clay-ganeshas' },
+]
 
 /**
  * The visitors' clay studio: the potter's wheel in Gallery B (it opens studio/ClayStudio.tsx) and
@@ -588,8 +652,8 @@ export const SCENE_OBJECTS: SceneObjectConfig[] = [
     i18n: { hi: { title: 'बेंच' }, bn: { title: 'বেঞ্চ' } },
   })),
 
-  // ── The podium row, A → B → C ───────────────────────────────────────────────────
-  ...PODIUM_PIECES.map(podiumObject),
+  // ── The podium row, A → B → C, and the Herd's front step: the workshop team's pieces ──
+  ...TEAM_PIECES,
 
   // ── Oculus court: the plinth under the open sky ─────────────────────────────────
   {

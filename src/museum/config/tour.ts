@@ -243,7 +243,7 @@ export const TOUR_STOPS: TourStop[] = [
     title: 'Bankura terracotta',
     text: 'Against a deep red wall, a row of podiums each holds one piece under its own lamp. In front of them a herd of terracotta horses rises in steps, necks held high.',
     view: polarPose(CURB + 1.1, 5, 95, 4),
-    item: objectItem('clay-a-horse'),
+    item: objectItem('team-bankura-horse'),
     dwellSec: 12,
   },
   {
@@ -263,7 +263,7 @@ export const TOUR_STOPS: TourStop[] = [
     title: 'The votive plaques of Molela',
     text: 'Here the wall turns white, and tall niches between the podiums hold clay plaques modelled in relief, each caught by a raking light.',
     view: polarPose(ISLAND_WALK_R, -59, 31, 4),
-    item: objectItem('clay-b-plaque-deity'),
+    item: objectItem('team-blue-floral-tile'),
     dwellSec: 12,
   },
   {
@@ -274,7 +274,7 @@ export const TOUR_STOPS: TourStop[] = [
     title: 'Longpi black pottery',
     text: 'Under one cool beam, black pots polished to a soft shine stand on a low dark table. Beyond them, a small window shows the glow of a kiln.',
     view: polarPose(ISLAND_WALK_R, -117, 333, -4),
-    item: objectItem('clay-c-kettle'),
+    item: objectItem('team-black-ganesha-statue'),
     dwellSec: 12,
   },
 

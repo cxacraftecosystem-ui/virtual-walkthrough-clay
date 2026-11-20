@@ -75,3 +75,20 @@ bake/merge path, and fails if more than 1 % of the pixels differ. Sizes are reco
 model, re-run `npm run optimize:assets`. It skips outputs that are up to date; use `--force` to rebuild all.
 The same script writes `public/artworks/<name>.1024.webp` / `.2048.webp`. Low/Medium tiers use the 1024
 variant, High/Ultra the 2048 one, and the original file is the fallback (`exhibits/artworkTexture.ts`).
+
+## 5. The workshop team's pieces (`team/`)
+
+`team/<slug>.glb` are the workshop team's own textured models of their clay pieces, written by
+
+```sh
+node scripts/import-team-models.mjs "<dir of the team's GLBs>" --verify [--sheets <dir>]
+```
+
+Each keeps every triangle and every texture byte of the file it came from (the JPEGs are written back as they
+are, at 1024 px or 4096 px; the script asserts both). Only the geometry changes: node transforms and the
+orientation fix are baked in, the piece is scaled to its display height in metres with its base at y = 0 and
+centred on x/z, then quantised (positions 16-bit, normals 12-bit, texcoords 16-bit) and meshopt-compressed at
+level `medium`. `--verify` renders source and output side by side, textured, from five views, and fails on any
+visible difference. `optimize-assets.mjs` skips `team/`. The pieces stand on the podium row
+(`config/objects.ts` `TEAM_PIECES`); the museum loads them in full before the entry screen offers Enter
+(`src/museum/models/teamPiece.tsx`) and resizes their textures to the tier's texture size (512 px) on the Low tier only.

@@ -4,10 +4,12 @@
  *
  * Where the pieces stand, in walking order:
  *   forecourt      two 4.2 m Ayyanar guardian horses flanking the approach
- *   gallery A      the fourth podium; The Herd, nine horses on a three-step red plinth
- *   gallery B      the sixth podium; plaques up to 1.1 m in the five niches of the white wall;
- *                  a maker's table with a plaque in progress
- *   gallery C      the fourth podium; the black ware island under one cool beam
+ *   gallery A      The Herd, nine horses on a three-step red plinth (the two at the front are the
+ *                  workshop team's horses, config/objects.ts TEAM_PIECES)
+ *   gallery B      plaques up to 1.1 m in the five niches of the white wall; a maker's table with a
+ *                  plaque in progress
+ *   gallery C      the black ware island under one cool beam
+ * (the podium row itself holds the workshop team's pieces: config/objects.ts TEAM_PIECES)
  *   upper register 24 pieces on brackets over A, B and C; 12 Bishnupur-style relief panels
  *   F, the court   the niche figure ("form rising from matter") on a 1.4 m plinth
  *   F, corridor    the lippan wall: 25 m of mud-and-mirror relief
@@ -34,7 +36,7 @@
 import { CRAFTS, REGIONS, type CraftRegion, type CraftSlug } from '../../content/crafts'
 import { traditionsVisible } from '../../content/review'
 import { STUDY_NOTE, type TraditionKey } from '../artworks'
-import { PODIUM_SLOTS, SURFACES, surfacePoint, type SurfaceId, type ZoneId } from '../layout'
+import { SURFACES, surfacePoint, type SurfaceId, type ZoneId } from '../layout'
 import { DEG, KEY, MUSEUM, polar, type Vec3 } from '../museum'
 import type { SceneObjectConfig } from '../objects'
 import { RED_ROOM, SATELLITES, SAT_WALL, SERPENTINE, THEATRE, serpentineOffset, serpentineOuterRuns } from '../satellites'
@@ -290,20 +292,8 @@ const GUARDIANS: SceneObjectConfig[] = [-1, 1].map((side, i) =>
 )
 
 /* ------------------------------------------------------------------ */
-/* Gallery A: the fourth podium and The Herd                           */
+/* Gallery A: The Herd                                                 */
 /* ------------------------------------------------------------------ */
-
-const slot = (id: string) => PODIUM_SLOTS.find((s) => s.id === id)!
-const onPodium = (id: string): { position: Vec3; rotationDeg: number; zone: ZoneId } => {
-  const s = slot(id)
-  return { position: [s.x, MUSEUM.podium.height, s.z], rotationDeg: s.rotationY / DEG, zone: s.zone }
-}
-
-const PODIUM_EXTRA: SceneObjectConfig[] = [
-  piece({ id: 'craft-bankura-podium-plaque', title: W.plaque, craft: 'bankura', kind: 'votive-plaque', ...onPodium('pod-a-4'), height: 0.52, props: { motif: 'serpent', size: 0.52 } }),
-  piece({ id: 'craft-molela-podium-pot', title: W.lidded, craft: 'molela', kind: 'clay-vessel', ...onPodium('pod-b-6'), height: 0.4, footprint: undefined, props: vessel('lidded', 'red', 0.2) }),
-  piece({ id: 'craft-longpi-podium-bowl', title: W.blackBowl, craft: 'longpi', kind: 'clay-vessel', ...onPodium('pod-c-4'), height: 0.32, props: vessel('lidded', 'black', 0.85) }),
-]
 
 /**
  * The Herd (GRAND §4.2): an island in Gallery A at polar(KEY.podiumR − 4.6, 5), clear of the
@@ -327,9 +317,13 @@ function herdAt(x: number, out: number, y: number): Vec3 {
   return [cx + tx * x, y, cz + tz * x]
 }
 const stepOut = (i: number) => (HERD_STEPS[0].len - HERD_STEPS[i].len) / 2
-const HERD_HORSES: { x: number; out: number; step: number; h: number; flip: boolean }[] = [
-  { x: -0.85, out: -1.12, step: 0, h: 0.4, flip: false },
-  { x: 0.75, out: -1.05, step: 0, h: 0.5, flip: true },
+/**
+ * The horses, front step first. `team`: the place is the workshop team's horse of that slug (config/objects.ts
+ * TEAM_PIECES places it with `herdPlace`); the other seven are stand-ins, numbered as they always were.
+ */
+const HERD_HORSES: { x: number; out: number; step: number; h: number; flip: boolean; team?: string }[] = [
+  { x: -0.85, out: -1.12, step: 0, h: 0.4, flip: false, team: 'bankura-horse' },
+  { x: 0.5, out: -1.12, step: 0, h: 0.5, flip: true, team: 'horse-figurine' },
   { x: -0.1, out: -0.8, step: 0, h: 0.56, flip: false },
   { x: 0.95, out: -0.7, step: 0, h: 0.64, flip: true },
   { x: -0.75, out: -0.3, step: 1, h: 0.82, flip: false },
@@ -343,8 +337,8 @@ const HERD: SceneObjectConfig[] = [
   // rose-lime steps (not the oxblood lacquer): under the red light they stay a warm red, never black
   // lacquered red (a low roughness, so the steps carry a sheen) with a brass lip on every edge
   ...HERD_STEPS.map((st, i) => stand(`herd-plinth-${i + 1}`, herdAt(0, stepOut(i), 0), facingIn(HERD_A), [st.w, st.len], st.h, 'ring-a', 'plain', '#a8382a', { roughness: 0.3, edge: true })),
-  ...HERD_HORSES.map((hh, i) =>
-    piece({
+  ...HERD_HORSES.flatMap((hh, i) =>
+    hh.team ? [] : piece({
       id: `craft-bankura-herd-${i + 1}`,
       title: hh.h > 1 ? W.horse : W.smallHorse,
       craft: 'bankura',
@@ -367,6 +361,17 @@ const HERD: SceneObjectConfig[] = [
     }),
   ),
 ]
+
+/**
+ * Where the workshop team's horse `slug` stands on the Herd's plinth: the step's top under it, its plan
+ * angle (the Herd runs radially along `HERD_A`) and the step's id. The front of the team's GLBs (+z) is
+ * the horse's head, so `facingIn(HERD_A)` turns it to the court.
+ */
+export function herdPlace(slug: string): { position: Vec3; aDeg: number; step: string; zone: ZoneId } {
+  const hh = HERD_HORSES.find((h) => h.team === slug)
+  if (!hh) throw new Error(`crafts.ts: no Herd place for ${slug}`)
+  return { position: herdAt(hh.x, hh.out, HERD_STEPS[hh.step].h), aDeg: HERD_A, step: `herd-plinth-${hh.step + 1}`, zone: 'ring-a' }
+}
 
 /* ------------------------------------------------------------------ */
 /* Gallery B: the niche wall and the maker's table                     */
@@ -1287,7 +1292,6 @@ const C_WALL: SceneObjectConfig[] = C_WALL_PIECES.flatMap((p, i) => {
 
 export const GRAND_CRAFTS_OBJECTS: SceneObjectConfig[] = [
   ...GUARDIANS,
-  ...PODIUM_EXTRA,
   ...HERD,
   ...NICHE_PLAQUES,
   ...MAKERS_TABLE,

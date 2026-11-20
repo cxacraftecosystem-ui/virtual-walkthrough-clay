@@ -181,12 +181,11 @@ Edge with at least 8 GB of RAM for large photos.
 3. **Optimise.** The model is de-duplicated, welded, simplified with meshoptimizer, its textures resized and
    re-encoded as WebP, re-centred with its bottom at 0 and scaled to metres, then meshopt-compressed. Check the
    before and after table and the **3D preview** (grid = 10 cm).
-4. **Upload & assign** to the **Scene object** that stands in for the piece: the podium pieces `clay-a-horse`,
-   `clay-a-horse-small`, `clay-a-pot`, `clay-b-plaque-rider`, `clay-b-cups`, `clay-b-plaque-deity`, `clay-b-lamp`,
-   `clay-b-plaque-serpent`, `clay-c-kettle`, `clay-c-bowl`, `clay-c-pot`, and the `craft-*` pieces of the herd, the
+4. **Upload & assign** to the **Scene object** that stands in for the piece: the `craft-*` pieces of the herd, the
    niches, the islands, the register, the Parikrama and the Red Room. This sets `model`; the procedural stand-in is
-   then only a loading fallback. A podium top is 30.5 cm square: a piece wider than about 28 cm needs a curator's
-   decision.
+   then only a loading fallback. The podium row already holds the workshop team's own pieces (`team-*`, from their
+   textured models through `scripts/import-team-models.mjs`, which keeps every triangle and texture). A podium top
+   is 30.5 cm square: a piece wider than about 28 cm needs a curator's decision.
 5. Fill in the text (section 3) and untick *Needs content from the workshop*.
 
 ### Checklist before publishing

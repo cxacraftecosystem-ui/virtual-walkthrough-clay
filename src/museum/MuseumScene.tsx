@@ -26,6 +26,7 @@ import { Lighting } from './lighting/Lighting'
 import { VideoScreens } from './media/VideoScreens'
 import { VisitorController } from './navigation/VisitorController'
 import { SceneObjects } from './models/SceneObjects'
+import { TeamModelPreload } from './models/teamPiece'
 import { Amenities } from './amenities/Amenities'
 import { Spectacle } from './spectacle/Spectacle'
 import { useMuseum } from './state/store'
@@ -82,6 +83,8 @@ export function MuseumScene() {
       <ZoneCuller />
       <Lighting />
       <Architecture />
+      {/* the workshop team's GLBs, in full, before Enter (before the scene objects, so the loads carry byte progress) */}
+      <TeamModelPreload />
       <Suspense fallback={null}>
         <Content />
         <VideoScreens />

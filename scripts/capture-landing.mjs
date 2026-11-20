@@ -329,26 +329,26 @@ await shot('f-rides', async () => {
   await snap('f-rides')
 })
 
-// The information panel on a Bankura horse, standing on its podium (pod-a-1: r 15.1 m, 26°).
+// The information panel on a piece from the workshop, standing on its podium (pod-a-1: r 15.1 m, 26°).
 await shot('f-info', async () => {
   await ui(true)
   await view(FEATURE_W, FEATURE_H)
   await tod('midday')
   await go(...polarLook(12.9, 31, 15.1, 26), -4)
   await settle(1500)
-  await page.evaluate(() => window.__museum.store.getState().select({ kind: 'object', id: 'clay-a-horse' }))
+  await page.evaluate(() => window.__museum.store.getState().select({ kind: 'object', id: 'team-silent-sentinel' }))
   await waitFor(() => !!document.querySelector('.ui-info.is-open'), null, 15000)
   await settle(2500)
   await snap('f-info')
 })
 
-// The 3D viewer on the Bankura horse.
+// The 3D viewer on the same piece.
 await shot('f-inspect', async () => {
   await ui(true)
   await view(FEATURE_W, FEATURE_H)
   await tod('midday')
   await go(...polarLook(12.9, 31, 15.1, 26), -4)
-  await page.evaluate(() => window.__museum.store.getState().inspect('object:clay-a-horse'))
+  await page.evaluate(() => window.__museum.store.getState().inspect('object:team-silent-sentinel'))
   await waitFor(() => !!document.querySelector('.inspect-root canvas') && !!window.__museum.store.getState().inspecting, null, 30000)
   await settle(5000)
   await snap('f-inspect')
@@ -420,7 +420,7 @@ await shot('f-hindi', async () => {
   await tod('midday')
   await goStop('gallery-c')
   await setLang('हिन्दी')
-  await page.evaluate(() => window.__museum.store.getState().select({ kind: 'object', id: 'clay-c-kettle' }))
+  await page.evaluate(() => window.__museum.store.getState().select({ kind: 'object', id: 'team-black-ganesha-statue' }))
   await waitFor(() => !!document.querySelector('.ui-info.is-open'), null, 15000)
   await settle(3000)
   await snap('f-hindi')

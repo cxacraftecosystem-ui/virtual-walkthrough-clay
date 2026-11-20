@@ -63,7 +63,7 @@ Old links that put these parameters on `/` are redirected to `/gallery` with the
 |---|---|
 | `/` | landing page: real frames of the pavilion and a hero film (`scripts/capture-landing.mjs`), the fifteen spaces, the experience |
 | `/gallery`, `/gallery/<slug>` | the pavilion, default exhibition (`clay-traditions`) or another published one; `/e/<slug>` redirects |
-| `/gallery#<kind>=<id>` | deep link to an artwork, object, exhibit, infographic, video or zone, such as `#zone=ring-b` or `#object=clay-a-horse` |
+| `/gallery#<kind>=<id>` | deep link to an artwork, object, exhibit, infographic, video or zone, such as `#zone=ring-b` or `#object=team-silent-sentinel` |
 | `/guide?lang=` | the accessible, printable text guide, space by space |
 | `/qr/<kind>/<id>` | a printable QR label that links a physical piece to its place in the pavilion |
 | `/makers/<id>` | a maker's server-rendered profile (hidden while the profile is a stand-in) |
@@ -119,9 +119,9 @@ flowchart TB
 | The Earth Room | `annex` | annex G, 30 ft clear: eroded clay formations, curved shelves of everyday pots and a round table under a round roof light |
 | Entry Ways | `entry-e` | the ambulatory either side of the annex mouth, the E arches and the corridor between H and F: the title wall, the 25 m lippan relief of mud and mirror, the strata |
 | Oculus Court | `inner` | the pool and the red lotus under the 10 m oculus, the brass floor ring, the niche figure on F's court face |
-| Gallery A | `ring-a` | Bankura terracotta: four podiums against the red wall and The Herd, nine horses on a three-step plinth |
-| Gallery B | `ring-b` | Molela plaques: six podiums, plaques in the five niches of the white wall, a maker's table with a plaque in progress |
-| Gallery C | `ring-c` | Longpi pottery: four podiums, the black ware island under one cool beam, works on the curved wall |
+| Gallery A | `ring-a` | Bankura terracotta: four podiums against the red wall with the workshop's figures, and The Herd, nine horses on a three-step plinth (the two at the front from the workshop) |
+| Gallery B | `ring-b` | Molela plaques: six podiums with the workshop's plaques, tile and bowl on slotted stands, plaques in the five niches of the white wall, a maker's table with a plaque in progress |
+| Gallery C | `ring-c` | Longpi pottery: four podiums with the workshop's black elephant and Ganeshas, the black ware island under one cool beam, works on the curved wall |
 | Wine Hall | `hallway-d` | *Clay Elsewhere*: credited scans of clay from other places and times on the wine plinths, a relief on the end wall |
 | Parikrama Walk, west and east | `parikrama-west`, `parikrama-east` | the serpentine walk between red walls, sunken gardens and courtyards, one tradition's piece in each niche |
 | Clay Atlas | `atlas` | the map of India, the constellation of tradition vessels, the partners' panel |
@@ -181,7 +181,7 @@ for these records. Scans of objects from elsewhere (the Wine Hall) carry their o
 given an Indian tradition's name.
 
 Where the pieces stand is set in `config/grandObjects/crafts.ts`: the guardian horses on the forecourt, the
-podiums and islands of A, B and C, 24 pieces and 12 Bishnupur-style relief panels in the upper register, the
+Herd and the islands of A, B and C, 24 pieces and 12 Bishnupur-style relief panels in the upper register, the
 niche figure on F, the lippan wall, the Wine Hall plinths, a piece per tradition in the Parikrama niches, the
 theatre lobby, the Red Room's bays and the Earth Room's table.
 
@@ -251,9 +251,14 @@ workshop*).
 
 ### Podium pieces and scene objects
 
-Pieces on the podiums are scene objects. `PODIUM_PIECES` in `config/objects.ts` takes a slot (`pod-a-1` to
-`pod-c-4`), a procedural kind (`clay-vessel` with `form`, `clay` and `burnish`, `terracotta-horse`,
-`votive-plaque` with `motif`) and a height; the piece stands on the podium top facing the court. The other
+The podiums hold the workshop team's own pieces: `TEAM_PIECES` in `config/objects.ts` gives each one a slot
+(`pod-a-1` to `pod-c-4`, or the Herd's front step), its GLB in `public/models/team/`, its display height and a
+description of what can be seen; it stands on the podium top facing the court, flat pieces upright in a slotted
+brass stand (`props.stand: 'slot'`). `node scripts/import-team-models.mjs <dir of GLBs> --verify` writes the GLBs:
+every triangle and every texture byte kept, the geometry quantised and meshopt-compressed, each orientated, sized
+and checked against its source in side-by-side renders. Every team model is loaded, textures on the GPU, before
+the entry screen offers Enter (`models/teamPiece.tsx`). A live museum gets them through
+`scripts/sync-team-models.mjs`, which also removes the stand-ins they replaced (`TEAM_REPLACES`). The other
 pieces, islands and furniture live in `config/grandObjects/` and `config/spectacleObjects/`.
 
 To show a scan instead, set the object's `model` to a GLB; the procedural `kind` stays as the loading and error
@@ -400,7 +405,7 @@ The drawings are concept sketches without a dimension grid. What they leave open
 | Podiums | 12 in × 12 in × 4 ft, as drawn, 14 on one circle; formation gates of eroded clay separate the galleries |
 | Mood boards | each one is a room: the eroded formations, the lotus under the oculus, the round red room of shelves, the spiral round a sphere, the wine-red hallway, the white niche wall, the planted walks |
 | Palette | terracotta, rose clay and ochre from the inspiration page, with oxblood walls, lime bands and warm-to-neutral pools of light |
-| Content | every piece and caption is a stand-in until the workshop confirms it; nothing is passed off as a documented object |
+| Content | the podium row holds the workshop team's own pieces, described by what can be seen; every other piece and caption is a stand-in until the workshop confirms it; nothing is passed off as a documented object |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="readme-kit/assets/footer-dark.svg">

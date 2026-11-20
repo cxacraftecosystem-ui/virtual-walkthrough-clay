@@ -15,7 +15,7 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { EXHIBITION_TITLE } from '../config/infographics'
 import { LIGHTING } from '../config/lighting'
-import { PODIUM, PODIUM_SLOTS, WALLS, type WallBox } from '../config/layout'
+import { PODIUM, PODIUM_HOODS, PODIUM_SLOTS, WALLS, type WallBox } from '../config/layout'
 import { KEY, MUSEUM, type Vec3 } from '../config/museum'
 import { SCENE_OBJECTS } from '../config/objects'
 import { QUALITY_PRESETS, withDevOverrides } from '../config/quality'
@@ -46,10 +46,10 @@ const H = MUSEUM.pavilion.ceilingHeight
 /* Podiums                                                             */
 /* ------------------------------------------------------------------ */
 
-/** The podiums that carry a glass hood (GRAND §3 #14: four of the fourteen), by slot id. */
-export const HOODED_PODIUMS: ReadonlySet<string> = new Set(['pod-a-2', 'pod-b-3', 'pod-b-5', 'pod-c-2'])
+/** The podiums that carry a glass hood (GRAND §3 #14: four of the fourteen), by slot id (config/layout.ts PODIUM_HOODS). */
+export const HOODED_PODIUMS: ReadonlySet<string> = new Set(PODIUM_HOODS.ids)
 /** The hood: its height over the podium's top (clear of a 0.5 m horse) and its glass wall's margin. */
-export const PODIUM_HOOD = { height: 0.62, margin: 0.012 }
+export const PODIUM_HOOD = { height: PODIUM_HOODS.height, margin: PODIUM_HOODS.margin }
 /** The brass label rail on each podium's court face: its top height and size. */
 export const LABEL_RAIL = { top: 0.95, width: 0.26, depth: 0.075, thick: 0.022 }
 
@@ -109,7 +109,7 @@ function PodiumHoods() {
   const geo = useMemo(() => {
     const s = PODIUM.size - 2 * PODIUM_HOOD.margin
     const g = new THREE.BoxGeometry(s, PODIUM_HOOD.height, s)
-    return { glass: g, band: createMeterBoxGeometry(PODIUM.size - 0.004, 0.025, PODIUM.size - 0.004) }
+    return { glass: g, band: createMeterBoxGeometry(PODIUM.size - 0.004, PODIUM_HOODS.base, PODIUM.size - 0.004) }
   }, [])
   useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo])
   // the hoods' own glass: out of the accent field (a sconce's cone through the hood lit both faces
@@ -127,8 +127,8 @@ function PodiumHoods() {
     <group name="podium-hoods">
       {PODIUM_SLOTS.filter((p) => HOODED_PODIUMS.has(p.id)).map((p) => (
         <group key={p.id} position={[p.x, PODIUM.height, p.z]} rotation={[0, p.rotationY, 0]}>
-          <mesh geometry={geo.glass} material={glass} position={[0, PODIUM_HOOD.height / 2 + 0.025, 0]} raycast={() => null} renderOrder={2} />
-          <mesh geometry={geo.band} material={m.brass} position={[0, 0.0125, 0]} />
+          <mesh geometry={geo.glass} material={glass} position={[0, PODIUM_HOOD.height / 2 + PODIUM_HOODS.base, 0]} raycast={() => null} renderOrder={2} />
+          <mesh geometry={geo.band} material={m.brass} position={[0, PODIUM_HOODS.base / 2, 0]} />
         </group>
       ))}
     </group>

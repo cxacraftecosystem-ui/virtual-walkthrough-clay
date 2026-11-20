@@ -104,15 +104,15 @@ await page.keyboard.press('Escape')
 await sleep(700)
 check(await page.evaluate(() => window.__museum.store.getState().selection === null), 'Esc closes the information panel')
 
-// Podium piece click → info panel → 3D viewer (the large horse in A).
+// Podium piece click → info panel → 3D viewer (a piece from the workshop in A).
 await page.evaluate(() => window.__museum.teleport(5.2, 1.6, 102, -14))
 await sleep(1800)
 await shot('podium-view')
 await page.mouse.click(800, 450)
 await sleep(3500)
 const sel2 = await page.evaluate(() => window.__museum.store.getState().selection)
-check(sel2?.kind === 'object' && /^clay-a-/.test(sel2.id), `clicking a podium piece selects it (${JSON.stringify(sel2)})`)
-const id2 = sel2?.id ?? 'clay-a-horse'
+check(sel2?.kind === 'object' && /^team-/.test(sel2.id), `clicking a podium piece selects it (${JSON.stringify(sel2)})`)
+const id2 = sel2?.id ?? 'team-silent-sentinel'
 await page.evaluate((id) => window.__museum.store.getState().inspect(`object:${id}`), id2)
 await sleep(2500)
 const modal = await page.$('.inspect-root, [class*="inspect-"]')

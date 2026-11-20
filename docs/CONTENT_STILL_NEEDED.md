@@ -38,8 +38,8 @@ The admin's **Checklist** page lists, per item, what is still missing and export
 
 | What | Where in the pavilion | What is shown meanwhile |
 |---|---|---|
-| 3D scans or photographs and details of the 14 podium pieces (`clay-a-horse`, `clay-a-horse-small`, `clay-a-pot`, `craft-bankura-podium-plaque`, `clay-b-plaque-rider`, `clay-b-cups`, `clay-b-plaque-deity`, `clay-b-lamp`, `clay-b-plaque-serpent`, `craft-molela-podium-pot`, `clay-c-kettle`, `clay-c-bowl`, `clay-c-pot`, `craft-longpi-podium-bowl`) | the podium row, A → B → C | modelled pieces |
-| The Herd: nine Bankura horses | Gallery A, on the three-step plinth | modelled horses |
+| Makers, places, materials and dates of the workshop team's 16 pieces (`team-*`: their 3D models are in, their details are not) | the podium row, A → B → C, and the Herd's front step | the pieces themselves, described by what can be seen |
+| The Herd: seven more Bankura horses (the two at the front are the team's) | Gallery A, on the three-step plinth | modelled horses |
 | Plaques for the five niches of the white wall, and a plaque in progress for the maker's table | Gallery B | modelled plaques |
 | Black ware for the island | Gallery C | modelled pots |
 | Pieces for the upper register (24 on brackets) and the 12 relief panels | over A, B and C, seen from the balcony | modelled pieces and panels |

@@ -44,6 +44,41 @@ function dequantize(g: THREE.BufferGeometry) {
   return g
 }
 
+/**
+ * A vertex normal of zero length (some exported scans carry a few) normalises to NaN in the shader, and the
+ * post-processing bloom smears one NaN pixel over the whole frame, blacking out the museum. Such a vertex takes
+ * the area-weighted normal of its triangles (straight up if it has none); every valid normal is left alone.
+ */
+function repairZeroNormals(g: THREE.BufferGeometry) {
+  const n = g.getAttribute('normal') as THREE.BufferAttribute | undefined
+  if (!n) return
+  let bad: Map<number, THREE.Vector3> | null = null
+  for (let v = 0; v < n.count; v++) {
+    if (Math.hypot(n.getX(v), n.getY(v), n.getZ(v)) > 1e-6) continue
+    ;(bad ??= new Map()).set(v, new THREE.Vector3())
+  }
+  if (!bad) return
+  const p = g.getAttribute('position')
+  const idx = g.index
+  const [a, b, c, f] = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]
+  const count = idx ? idx.count : p.count
+  for (let t = 0; t + 2 < count; t += 3) {
+    const tri = idx ? [idx.getX(t), idx.getX(t + 1), idx.getX(t + 2)] : [t, t + 1, t + 2]
+    if (!tri.some((v) => bad.has(v))) continue
+    a.fromBufferAttribute(p, tri[0])
+    b.fromBufferAttribute(p, tri[1]).sub(a)
+    c.fromBufferAttribute(p, tri[2]).sub(a)
+    f.crossVectors(b, c)
+    for (const v of tri) bad.get(v)?.add(f)
+  }
+  for (const [v, s] of bad) {
+    if (s.lengthSq() > 0) s.normalize()
+    else s.set(0, 1, 0)
+    n.setXYZ(v, s.x, s.y, s.z)
+  }
+  n.needsUpdate = true
+}
+
 function mergeScene(url: string, scene: THREE.Object3D): MergedModel {
   const hit = merged.get(url)
   if (hit) return hit
@@ -58,6 +93,7 @@ function mergeScene(url: string, scene: THREE.Object3D): MergedModel {
     g.applyMatrix4(mesh.matrixWorld)
     // scans exported without normals would render flat black under a finish
     if (!g.getAttribute('normal')) g.computeVertexNormals()
+    else repairZeroNormals(g)
     let list = groups.get(mats[0])
     if (!list) groups.set(mats[0], (list = []))
     list.push(g)

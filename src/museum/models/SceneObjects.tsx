@@ -32,6 +32,7 @@ import { ModelClock } from './modelMaterials'
 import { InMuseumScene } from './sceneContext'
 import { sourcedHeight, sourcedOf, sourcedFootprint, useStreamed } from './sourcedModel'
 import { StaticObjectBatches } from './staticBatch'
+import { isTeamModel, PlaqueStand } from './teamPiece'
 import { GRAND_CRAFTS_OBJECTS } from '../config/grandObjects/crafts'
 import { traditionsVisible } from '../content/review'
 import { num, str } from './types'
@@ -98,20 +99,34 @@ export function objectBounds(o: SceneObjectConfig): { center: Vec3; size: Vec3 }
   return { center: [0, h / 2, 0], size: [fx, h, fz] }
 }
 
-/** The object's model (GLB with procedural fallback) in local space — also used by the 3D viewer. */
+/**
+ * The object's model (GLB with procedural fallback) in local space — also used by the 3D viewer. A flat piece
+ * with `props.stand: 'slot'` stands in a low brass base (models/teamPiece.tsx), whatever draws it.
+ */
 export function ObjectModel({ config }: { config: SceneObjectConfig }) {
   const Procedural = PROCEDURAL_MODELS[config.kind]
   const fallback = Procedural ? <Procedural config={config} /> : null
   const inScene = useContext(InMuseumScene)
   const streamed = useStreamed(config.zone as ZoneId, inScene)
-  // 'splat' reads its own `model` (a Gaussian splat, not a GLB)
-  if (!config.model || config.kind === 'splat' || !streamed) return fallback
+  const stand = config.props?.stand === 'slot' ? <PlaqueStand config={config} /> : null
+  // 'splat' reads its own `model` (a Gaussian splat, not a GLB); the workshop team's GLBs are loaded before
+  // Enter (TeamModelPreload), so they mount at once rather than waiting for their zone to stream
+  if (!config.model || config.kind === 'splat' || (!streamed && !isTeamModel(config.model)))
+    return (
+      <>
+        {fallback}
+        {stand}
+      </>
+    )
   return (
-    <ErrorBoundary key={config.model} fallback={fallback}>
-      <Suspense fallback={fallback}>
-        <GLTFModel url={config.model} scale={config.modelScale} height={config.height} />
-      </Suspense>
-    </ErrorBoundary>
+    <>
+      <ErrorBoundary key={config.model} fallback={fallback}>
+        <Suspense fallback={fallback}>
+          <GLTFModel url={config.model} scale={config.modelScale} height={config.height} />
+        </Suspense>
+      </ErrorBoundary>
+      {stand}
+    </>
   )
 }
 

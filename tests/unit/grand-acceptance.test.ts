@@ -13,7 +13,7 @@ import { join } from 'node:path'
 import { describe, it } from 'node:test'
 import { zoneAt, type ZoneId } from '../../src/museum/config/layout'
 import { GRAND_FLAGS, MUSEUM } from '../../src/museum/config/museum'
-import { SCENE_OBJECTS } from '../../src/museum/config/objects'
+import { SCENE_OBJECTS, TEAM_MODEL_DIR } from '../../src/museum/config/objects'
 import { SOURCED_REGISTRY } from '../../src/museum/config/sourcedRegistry.generated'
 import { resolveCircle } from '../../src/museum/navigation/collision'
 
@@ -166,7 +166,9 @@ describe('grand acceptance: sourced models (§5)', () => {
         const slug = String(o.props?.slug ?? '')
         assert.ok(SOURCED_REGISTRY[slug], `${o.id}: slug "${slug}" is not in the registry`)
       }
-      if (o.model && !o.model.startsWith('/models/opt/') && o.model.includes('/models/')) assert.ok(o.credit || o.kind === 'sourced-model', `${o.id}: GLB ${o.model} without a credit`)
+      // a downloaded model carries its credit; the workshop team's own pieces (public/models/team/) are the
+      // exhibition's content, their makers still to be recorded (team-pieces.test.ts)
+      if (o.model && !o.model.startsWith('/models/opt/') && !o.model.startsWith(TEAM_MODEL_DIR) && o.model.includes('/models/')) assert.ok(o.credit || o.kind === 'sourced-model', `${o.id}: GLB ${o.model} without a credit`)
     }
   })
 

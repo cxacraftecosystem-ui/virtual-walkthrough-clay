@@ -99,7 +99,8 @@ describe('grand crafts: staging (§4.2)', () => {
 
   it('stages the counts of the plan', () => {
     const count = (re: RegExp) => GRAND_CRAFTS_OBJECTS.filter((o) => re.test(o.id)).length
-    assert.equal(count(/^craft-bankura-herd-/), 9, 'nine horses in The Herd')
+    // nine horses in The Herd: seven stand-ins and, at the front, the workshop team's two (team-pieces.test.ts)
+    assert.equal(count(/^craft-bankura-herd-/), 7, 'seven stand-in horses in The Herd')
     assert.equal(count(/^craft-molela-niche-/), 5, 'five niche plaques')
     assert.equal(count(/^craft-longpi-island-/), 12, 'twelve pieces of black ware')
     assert.equal(count(/-register-\d+$/), 24, 'twenty-four register pieces')

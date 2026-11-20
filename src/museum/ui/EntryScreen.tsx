@@ -11,6 +11,7 @@ import type { DictKey } from '../i18n/en'
 import { LanguageSwitch } from './LanguageMenu'
 import { useFocusTrap } from '../a11y/focus'
 import { TrailEntryLink } from '../trail/TrailUI'
+import { teamModels, useTeamModels } from '../models/teamPiece'
 import './entry.css'
 
 /** Delay before the tour starts walking, so the entry fade has cleared. */
@@ -70,6 +71,8 @@ export function EntryScreen() {
   const compiled = useMuseum((s) => s.sceneCompiled)
   const still = useMuseum((s) => s.reducedMotion)
   const { progress, loaded, total } = useProgress()
+  // the workshop team's pieces load in full before the door opens (models/teamPiece.tsx)
+  const team = useTeamModels()
   const [gone, setGone] = useState(phase === 'entered')
   const [shown, setShown] = useState(0)
   const [assetsDone, setAssetsDone] = useState(false)
@@ -93,11 +96,14 @@ export function EntryScreen() {
     const check = () => {
       const s = useProgress.getState()
       const elapsed = performance.now() - mountedAt.current
-      const done = !s.active && (s.progress >= 100 || (s.total === 0 && elapsed > IDLE_GRACE_MS))
+      // …and every piece of the workshop's on the GPU (or given up on: its preload gives up on a stall)
+      const tm = teamModels()
+      const done = !s.active && (s.progress >= 100 || (s.total === 0 && elapsed > IDLE_GRACE_MS)) && tm.settled
       setAssetsDone(done)
       // Also wait for the scene's shaders to finish compiling (see Precompile in MuseumScene).
       const finished = done && useMuseum.getState().sceneCompiled
-      if (finished || elapsed > SAFETY_TIMEOUT_MS) {
+      // the safety timeout never cuts the workshop's pieces short while they are still arriving
+      if (finished || (elapsed > SAFETY_TIMEOUT_MS && (tm.settled || tm.total === 0))) {
         if (useMuseum.getState().phase === 'loading') setPhase('ready')
       }
       setSlow(elapsed > SLOWER_MS ? 2 : elapsed > SLOW_MS ? 1 : 0)
@@ -116,10 +122,14 @@ export function EntryScreen() {
 
   // Progress figure: downloads fill the first ASSET_SHARE %, then shader compilation creeps
   // toward the end (it reports no progress of its own), and "ready" completes the bar.
-  const targetRef = useRef({ phase, progress, total, assetsDone, compiled })
+  // the share of the downloads done: the slower of the loaders' file count and the team's bytes (its
+  // 4096 px textures are most of the bytes, so the bar keeps moving while they arrive)
+  const teamFrac = team.settled ? 1 : team.bytesTotal > 0 ? Math.min(1, team.bytes / team.bytesTotal) : team.total > 0 ? team.done / team.total : 1
+  const assetPct = Math.min(progress, teamFrac * 100)
+  const targetRef = useRef({ phase, progress: assetPct, total, assetsDone, compiled })
   useEffect(() => {
-    targetRef.current = { phase, progress, total, assetsDone, compiled }
-  }, [phase, progress, total, assetsDone, compiled])
+    targetRef.current = { phase, progress: assetPct, total, assetsDone, compiled }
+  }, [phase, assetPct, total, assetsDone, compiled])
   useEffect(() => {
     if (phase === 'entered') return
     // ~15 Hz is plenty for a hairline bar (the CSS transition smooths it) and keeps React
@@ -265,7 +275,13 @@ export function EntryScreen() {
                 >
                   <div className="ui-progress__meta" aria-hidden="true">
                     <span className="ui-progress__label">{label}</span>
-                    <span className="ui-progress__pct">{total > 0 && !assetsDone ? `${loaded} / ${total}` : `${pct}%`}</span>
+                    <span className="ui-progress__pct">
+                      {!assetsDone && !team.settled && team.bytes > 0
+                        ? `${(team.bytes / 1048576).toFixed(0)}${team.bytesTotal > 0 ? ` / ${(team.bytesTotal / 1048576).toFixed(0)}` : ''} MB`
+                        : total > 0 && !assetsDone
+                          ? `${loaded} / ${total}`
+                          : `${pct}%`}
+                    </span>
                   </div>
                   <div className="ui-progress__track">
                     <div className="ui-progress__bar" style={{ transform: `scaleX(${Math.max(0.02, shown / 100)})` }} />

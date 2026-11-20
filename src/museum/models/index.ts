@@ -64,6 +64,7 @@ import { WinePlinth } from './winePlinth'
 import { CurvedShelf } from './curvedShelf'
 import { RoundPlinth } from './roundPlinth'
 import { CourtyardGarden } from './courtyardGarden'
+import { TeamPiece } from './teamPiece'
 
 export type { ModelProps } from './types'
 
@@ -161,4 +162,5 @@ export const PROCEDURAL_MODELS: Record<ProceduralModelId, ComponentType<ModelPro
   'curved-shelf': CurvedShelf,
   'round-plinth': RoundPlinth,
   'courtyard-garden': CourtyardGarden,
+  'team-piece': TeamPiece,
 }

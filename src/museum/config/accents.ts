@@ -471,7 +471,8 @@ function lippanRake(): Accent[] {
  * far side falling to dark) instead of reading flat under a top light.
  */
 function herdKey(objects: readonly SceneObjectConfig[]): Accent[] {
-  const herd = objects.filter((o) => o.id.startsWith('craft-bankura-herd-'))
+  // the seven stand-ins and the workshop team's two horses on the front step (objects.ts TEAM_PIECES)
+  const herd = objects.filter((o) => o.id.startsWith('craft-bankura-herd-') || o.id === 'team-bankura-horse' || o.id === 'team-horse-figurine')
   if (!herd.length) return []
   const cx = herd.reduce((s, o) => s + o.position[0], 0) / herd.length
   const cz = herd.reduce((s, o) => s + o.position[2], 0) / herd.length

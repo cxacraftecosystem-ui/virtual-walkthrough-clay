@@ -244,7 +244,8 @@ export function InspectModal() {
   const artwork = ex ? getArtwork(ex.artworkId) : undefined
   // "Inside the clay": only what the curator has recorded, never for a placeholder
   const section = obj && !obj.placeholder && isSection(obj.props?.section) ? obj.props.section : null
-  const eyebrow = ex ? (loc(ex, 'tradition', lang) ?? '') : obj ? zoneName(obj.zone, lang) : ''
+  // a workshop team piece names only its gallery: the gallery's full name carries a tradition the workshop has not given the piece
+  const eyebrow = ex ? (loc(ex, 'tradition', lang) ?? '') : obj ? zoneName(obj.zone, lang, obj.kind === 'team-piece') : ''
   const title = (ex ? loc(ex, 'title', lang) : obj ? loc(obj, 'title', lang) : '') ?? ''
   const description = ex ? loc(ex, 'description', lang) : obj ? loc(obj, 'description', lang) : undefined
   const facts: [string, string | undefined][] = ex
