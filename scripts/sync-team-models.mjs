@@ -13,10 +13,14 @@
  *   1. refuses to run unless the server already serves every public/models/team/*.glb (HEAD, and the same byte
  *      length where the server reports one): deploy them first, or the pieces would show only their silhouette;
  *   2. POST /api/auth/login → GET /api/admin/content/stamps (each item's updatedAt) → GET /api/admin/content/objects;
- *   3. a team piece that is not there is created: PUT …/objects/<id> with X-Expected-Updated-At: new;
+ *   3. the furniture a team piece needs that the seed did not have (TEAM_EXTRAS: the life-size Bankura horse's
+ *      floor plinth) is created (X-Expected-Updated-At: new) — one already there but different is LEFT (exit 1);
+ *      a team piece that is not there is created: PUT …/objects/<id> with X-Expected-Updated-At: new;
  *      a team piece that is there but placed or modelled differently from objects.ts is updated with its current
  *      stamp — only the fields this script owns (kind, model, position, rotationDeg, footprint, height, zone and
- *      props.stand); a curator's text (title, description, alt, translations, placeholder, links…) is kept;
+ *      props.stand) — and its label (description, placeholder) becomes its caption only while the stored
+ *      description is still the one first seeded (scripts/team-labels-previous.json): a curator's text is kept
+ *      (reported, exit 1), as are its title, alt, translations and links — all in one write per piece;
  *   4. a replaced stand-in is deleted with its stamp (it goes to the admin's trash and can be restored there) —
  *      once the piece replacing it is in the museum, and only while it is still an untouched stand-in: no `model` of its own, still a placeholder, not
  *      re-kinded, and never saved since it was seeded (its history holds no save after the last re-seed). One a
@@ -51,14 +55,33 @@ if (!base || !email || !password) {
   process.exit(2)
 }
 
-const { TEAM_PIECES, TEAM_REPLACES, TEAM_MODEL_DIR } = await tsImport('../src/museum/config/objects.ts', import.meta.url)
+const { TEAM_PIECES, TEAM_REPLACES, TEAM_MODEL_DIR, SCENE_OBJECTS } = await tsImport('../src/museum/config/objects.ts', import.meta.url)
 const q = exhibition ? `?exhibition=${encodeURIComponent(exhibition)}` : ''
 const label = (o) => `${o.id} (${o.title})`
 
 /** The fields of a team piece this script owns; everything else (the curators' text) is kept as stored. */
 const OWNED = ['kind', 'model', 'position', 'rotationDeg', 'footprint', 'height', 'zone']
-const round = (v) => (typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : Array.isArray(v) ? v.map(round) : v)
-const same = (a, b) => JSON.stringify(round(a)) === JSON.stringify(round(b))
+/** A piece's label, written only over the description first seeded (never over a curator's). */
+const LABEL = ['description', 'placeholder']
+const PREVIOUS_LABELS = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/team-labels-previous.json'), 'utf8'))
+/** Furniture the team pieces need that a seeded museum lacks: the life-size Bankura horse's floor plinth. */
+const TEAM_EXTRAS = ['herd-floor-plinth'].map((id) => {
+  const o = SCENE_OBJECTS.find((x) => x.id === id)
+  if (!o) throw new Error(`objects.ts has no ${id}`)
+  return o
+})
+/** JSON with sorted keys and rounded numbers: a stored item may come back with its keys reordered (Postgres jsonb). */
+const canon = (v) =>
+  Array.isArray(v)
+    ? `[${v.map(canon).join(',')}]`
+    : v && typeof v === 'object'
+      ? `{${Object.keys(v)
+          .filter((k) => v[k] !== undefined)
+          .sort()
+          .map((k) => `${JSON.stringify(k)}:${canon(v[k])}`)
+          .join(',')}}`
+      : JSON.stringify(typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : (v ?? null))
+const same = (a, b) => canon(a) === canon(b)
 function ownedOf(o) {
   const out = {}
   for (const k of OWNED) if (o[k] !== undefined) out[k] = o[k]
@@ -140,7 +163,40 @@ try {
   /** Team pieces that stand in the museum after this run (a stand-in goes only once its replacement is there). */
   const standing = new Set()
 
-  // 3. the team's pieces: create, or bring their placement in line
+  // 3a. the furniture they need (created once; never overwritten)
+  console.log('their furniture:')
+  for (const want of TEAM_EXTRAS) {
+    const have = current.get(want.id)
+    if (have) {
+      const changes = diff(have, want)
+      if (!changes.length) {
+        n.current++
+        console.log(`  up to date     ${label(have)}`)
+      } else {
+        n.left++
+        console.error(`  LEFT           ${label(have)}: differs from objects.ts (${changes.join('; ')}) — not overwritten; check it in the admin`)
+      }
+      continue
+    }
+    if (dryRun) {
+      n.created++
+      console.log(`  would create   ${label(want)}  ${want.kind} at ${fmt(want.position)}`)
+      continue
+    }
+    const r = await call('PUT', `/api/admin/content/objects/${encodeURIComponent(want.id)}${q}`, want, { 'x-expected-updated-at': 'new' })
+    if (r.res.ok) {
+      n.created++
+      console.log(`  created        ${label(want)}`)
+    } else if (r.res.status === 409) {
+      n.conflicts++
+      console.error(`  CONFLICT       ${label(want)}: created by someone else meanwhile — skipped, not overwritten`)
+    } else {
+      n.failed++
+      console.error(`  FAILED         ${label(want)}: ${why(r)}`)
+    }
+  }
+
+  // 3b. the team's pieces: create, or bring their placement (and, over the seeded text only, their label) in line
   console.log('the workshop team’s pieces:')
   for (const want of TEAM_PIECES) {
     const have = current.get(want.id)
@@ -167,6 +223,17 @@ try {
     }
     standing.add(want.id)
     const changes = diff(ownedOf(have), ownedOf(want))
+    // the label: its caption, over the description first seeded only
+    let relabel = false
+    if (have.description !== want.description || have.placeholder !== want.placeholder) {
+      if (have.description === want.description || have.description === PREVIOUS_LABELS[want.id]) {
+        relabel = true
+        changes.push(have.description === want.description ? `placeholder ${have.placeholder} → ${want.placeholder}` : `label → its caption (${want.description.slice(0, 48)}…)`)
+      } else {
+        n.left++
+        console.error(`  LEFT (label)   ${label(have)}: a curator has written its description — kept; its caption is in objects.ts if wanted`)
+      }
+    }
     if (!changes.length) {
       n.current++
       console.log(`  up to date     ${label(have)}`)
@@ -189,6 +256,7 @@ try {
       if (want[k] === undefined) delete body[k]
       else body[k] = want[k]
     }
+    if (relabel) for (const k of LABEL) body[k] = want[k]
     const props = { ...(have.props ?? {}) }
     if (want.props?.stand) props.stand = want.props.stand
     else delete props.stand

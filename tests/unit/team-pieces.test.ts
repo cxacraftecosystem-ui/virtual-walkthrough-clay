@@ -1,10 +1,14 @@
 /**
  * The workshop team's pieces (src/museum/config/objects.ts TEAM_PIECES; GLBs in public/models/team/ from
- * scripts/import-team-models.mjs): sixteen pieces, fourteen on the podium row — one per podium, every podium
- * used — and two on the front step of the Herd. Each stands on its support at its baked height, fits the
- * 12 in podium top (and the glass hood where there is one, the slotted stand included), sits inside its
- * support's collider without touching any other, keeps its podium's sconce, and a visitor can walk from the
- * entrance to stand in front of it (tour/pathing). The replaced stand-ins are gone.
+ * scripts/import-team-models.mjs): sixteen models as seventeen pieces — fourteen on the podium row, one per
+ * podium, every podium used; the horse figurine on the Herd's front step; the Bankura horse twice (one GLB),
+ * 1.6 m on the Herd's top step and life-size (2.2 m) on its floor plinth beside the Herd. Each is labelled with
+ * its caption (the workshop's deck, one slide per model, or — for the two the deck has no slide for — the
+ * museum's own, worded "in the manner of"), stands on its support at its display height (the GLB's baked
+ * height, or that height scaled for the Bankura horse's two sizes), fits the 12 in podium top (and the glass
+ * hood where there is one, the slotted stand included) or its step / plinth, sits inside its support's collider
+ * without touching any other, keeps its podium's sconce, and a visitor can walk from the entrance to stand in
+ * front of it (tour/pathing). The replaced stand-ins are gone.
  */
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -13,7 +17,7 @@ import { describe, it } from 'node:test'
 import { ACCENTS } from '../../src/museum/config/accents'
 import { PODIUM, PODIUM_HOODS, PODIUM_SLOTS, podiumStandY, zoneAt } from '../../src/museum/config/layout'
 import { DEG, MUSEUM, polar } from '../../src/museum/config/museum'
-import { SCENE_OBJECTS, TEAM_MODEL_DIR, TEAM_PIECES, TEAM_REPLACES, type SceneObjectConfig } from '../../src/museum/config/objects'
+import { SCENE_OBJECTS, TEAM_MODEL_DIR, TEAM_PIECES, TEAM_PIECES_SPEC, TEAM_REPLACES, type SceneObjectConfig } from '../../src/museum/config/objects'
 import { GRAND_CRAFTS_OBJECTS } from '../../src/museum/config/grandObjects/crafts'
 import { TOUR_STOPS } from '../../src/museum/config/tour'
 import { COLLIDERS, pointDistance, type Collider } from '../../src/museum/navigation/collision'
@@ -35,9 +39,19 @@ const PODIUM_TOP = 0.28
 
 const pieces = TEAM_PIECES
 const onPodium = pieces.filter((p) => PODIUM_SLOTS.some((s) => Math.hypot(s.x - p.position[0], s.z - p.position[2]) < 1e-6))
-const onHerd = pieces.filter((p) => !onPodium.includes(p))
+const offPodium = pieces.filter((p) => !onPodium.includes(p))
 const slotOf = (p: SceneObjectConfig) => PODIUM_SLOTS.find((s) => Math.hypot(s.x - p.position[0], s.z - p.position[2]) < 1e-6)!
 const herdSteps = SCENE_OBJECTS.filter((o) => o.id.startsWith('herd-plinth-'))
+const object = (id: string) => SCENE_OBJECTS.find((o) => o.id === id)!
+/** Where each piece off the podium row stands: the Herd's steps, or the life-size horse's floor plinth. */
+const SUPPORT: Record<string, string> = {
+  'team-horse-figurine': 'herd-plinth-1',
+  'team-bankura-horse': 'herd-plinth-3',
+  'team-bankura-horse-life-size': 'herd-floor-plinth',
+}
+/** The support's collider, for a piece on the podium row or off it (a Herd step's own collider is the base's). */
+const supportCollider = (p: SceneObjectConfig) => (onPodium.includes(p) ? `podium-${slotOf(p).id}` : SUPPORT[p.id].startsWith('herd-plinth-') ? 'object-herd-plinth-1' : `object-${SUPPORT[p.id]}`)
+const slugOf = (p: SceneObjectConfig) => path.basename(p.model!, '.glb')
 
 /** World size [x, y, z] of a GLB's single mesh: the quantised accessor's bounds × the node's de-quantising scale. */
 function glbSize(file: string): [number, number, number] {
@@ -77,34 +91,40 @@ function footprintPoints(o: SceneObjectConfig): P2[] {
 }
 
 describe('the workshop team’s pieces', () => {
-  it('places all sixteen, each a titled, described, inspectable placeholder with its GLB', () => {
-    assert.equal(pieces.length, 16)
+  it('places all sixteen models (the Bankura horse twice), each a titled, captioned, inspectable piece with its GLB', () => {
+    assert.equal(pieces.length, 17)
     const ids = SCENE_OBJECTS.map((o) => o.id)
     assert.equal(new Set(ids).size, ids.length, 'scene object ids are unique')
     const slugs = fs.readdirSync(path.join(ROOT, 'public', TEAM_MODEL_DIR)).filter((f) => f.endsWith('.glb'))
     assert.equal(slugs.length, 16, 'sixteen GLBs in public/models/team/')
+    assert.deepEqual([...new Set(pieces.map(slugOf))].sort(), slugs.map((f) => path.basename(f, '.glb')).sort(), 'every GLB shown')
+    // each model once, but the Bankura horse twice — life-size, and slightly smaller on the Herd
+    for (const slug of new Set(pieces.map(slugOf))) assert.equal(pieces.filter((p) => slugOf(p) === slug).length, slug === 'bankura-horse' ? 2 : 1, slug)
     for (const p of pieces) {
       assert.ok(SCENE_OBJECTS.includes(p), `${p.id} is in SCENE_OBJECTS`)
       assert.equal(p.kind, 'team-piece')
       assert.match(p.model!, /^\/models\/team\/[a-z0-9-]+\.glb$/)
       assert.ok(fs.existsSync(path.join(ROOT, 'public', p.model!)), `${p.model} exists`)
-      assert.equal(p.id, `team-${path.basename(p.model!, '.glb')}`)
-      assert.ok(p.interactive && p.inspectable && p.placeholder, `${p.id}: interactive, inspectable, placeholder`)
+      assert.equal(p.id, p.id === 'team-bankura-horse-life-size' ? 'team-bankura-horse-life-size' : `team-${slugOf(p)}`)
+      assert.ok(p.interactive && p.inspectable && p.placeholder === false, `${p.id}: interactive, inspectable, captioned (not a placeholder)`)
       assert.ok(p.title && p.description && p.alt && p.i18n?.hi?.title && p.i18n?.bn?.title, `${p.id}: title, description, alt and hi/bn titles`)
       assert.equal(zoneAt(p.position[0], p.position[2])?.id, p.zone, `${p.id} stands in its zone`)
     }
   })
 
-  it('names no tradition, region or maker the file names do not give', () => {
-    // the traditions of the pavilion's galleries and survey; only the Bankura Horse's own name carries one
-    const NAMES = /\b(Bankura|Molela|Longpi|Nizamabad|Khurja|Jaipur|Kumartuli|Majuli|Bishnupur|Ayyanar|Gorakhpur|Khavda|Pokaran|Lippan|Asharikandi|Andro|Chinhat|Manamadurai|Villianur|Odisha|Gujarat|Rajasthan|Bengal|Manipur|Assam)\b/i
-    for (const p of pieces) {
-      const own = NAMES.exec(p.title)?.[0]
-      for (const text of [p.description!, p.alt!]) {
-        const m = NAMES.exec(text)
-        assert.ok(!m || m[0] === own, `${p.id} names “${m?.[0]}”`)
-      }
+  it('labels each piece with its caption: the deck’s, one slide per model, or the museum’s own, worded "in the manner of"', () => {
+    for (const s of TEAM_PIECES_SPEC) {
+      const p = pieces.find((x) => x.id === (s.id ?? `team-${s.slug}`))!
+      assert.ok(p.description!.startsWith(s.caption), `${p.id}: its description is its caption`)
+      assert.ok(s.caption.length > 200 && /[.!?]$/.test(s.caption), `${p.id}: a full caption`)
+      if (s.slide === undefined) assert.match(s.caption, /\bin the (lifelike |colours and )?manner of\b/, `${p.id}: the museum’s caption names no place as fact`)
     }
+    // the deck's fourteen slides, each used — slide 13, the Bankura horse, by both its sizes
+    const slides = TEAM_PIECES_SPEC.filter((s) => s.slide !== undefined)
+    assert.deepEqual([...new Set(slides.map((s) => s.slide))].sort((a, b) => a! - b!), Array.from({ length: 14 }, (_, i) => i + 1))
+    assert.deepEqual(slides.filter((s) => s.slide === 13).map((s) => s.slug), ['bankura-horse', 'bankura-horse'])
+    // the two copies say they are one horse shown at two sizes
+    for (const id of ['team-bankura-horse', 'team-bankura-horse-life-size']) assert.match(pieces.find((p) => p.id === id)!.description!, /shown twice here, life-size on the floor beside the Herd/)
   })
 
   it('fills every podium of the row with one piece, standing on its top and facing the court', () => {
@@ -128,35 +148,44 @@ describe('the workshop team’s pieces', () => {
     }
   })
 
-  it('stands two horses on the Herd’s front step, inside it, clear of the other horses', () => {
-    assert.deepEqual(onHerd.map((p) => p.id).sort(), ['team-bankura-horse', 'team-horse-figurine'])
-    const step = herdSteps.find((s) => s.id === 'herd-plinth-1')!
-    for (const p of onHerd) {
-      assert.ok(Math.abs(p.position[1] - step.height!) < 1e-9, `${p.id} stands on the front step's top`)
-      // every corner of the horse inside the step's footprint (the step's local frame)
+  it('stands the horses on the Herd’s steps and the life-size horse on its floor plinth, inside them, clear of the other horses', () => {
+    assert.deepEqual(offPodium.map((p) => p.id).sort(), Object.keys(SUPPORT).sort())
+    for (const p of offPodium) {
+      const step = object(SUPPORT[p.id])
+      assert.ok(step, SUPPORT[p.id])
+      assert.ok(Math.abs(p.position[1] - step.height!) < 1e-9, `${p.id} stands on the top of ${step.id}`)
+      // every corner of the horse inside the support's footprint (the support's local frame), 5 cm in
       const r = ((step.rotationDeg ?? 0) * Math.PI) / 180
       for (const q of footprintPoints(p)) {
         const dx = q.x - step.position[0]
         const dz = q.z - step.position[2]
         const lx = dx * Math.cos(r) - dz * Math.sin(r)
         const lz = dx * Math.sin(r) + dz * Math.cos(r)
-        assert.ok(Math.abs(lx) <= step.footprint![0] / 2 - 0.05 && Math.abs(lz) <= step.footprint![1] / 2 - 0.05, `${p.id} overhangs the step`)
+        assert.ok(Math.abs(lx) <= step.footprint![0] / 2 - 0.05 && Math.abs(lz) <= step.footprint![1] / 2 - 0.05, `${p.id} overhangs ${step.id}`)
       }
-      for (const h of SCENE_OBJECTS.filter((o) => o.id.startsWith('craft-bankura-herd-') || (onHerd.includes(o) && o !== p))) {
+      for (const h of SCENE_OBJECTS.filter((o) => o.id.startsWith('craft-bankura-herd-') || (offPodium.includes(o) && o !== p))) {
         const d = Math.hypot(h.position[0] - p.position[0], h.position[2] - p.position[2])
-        if (Math.abs(h.position[1] - p.position[1]) < 0.05) assert.ok(d > 0.45, `${p.id} is ${d.toFixed(2)} m from ${h.id}`)
+        if (Math.abs(h.position[1] - p.position[1]) < 0.05) assert.ok(d > 0.45 + (p.height! > 1 ? 0.3 : 0), `${p.id} is ${d.toFixed(2)} m from ${h.id}`)
       }
     }
-    // nine horses on the Herd, as before: seven stand-ins and the two
-    assert.equal(GRAND_CRAFTS_OBJECTS.filter((o) => o.id.startsWith('craft-bankura-herd-')).length + onHerd.length, 9)
+    // the life-size horse is taller than any horse of the Herd; the Herd's own tallest is the team's Bankura horse
+    const herd = [...SCENE_OBJECTS.filter((o) => o.id.startsWith('craft-bankura-herd-')), object('team-bankura-horse')]
+    assert.equal(Math.max(...herd.map((o) => o.height!)), object('team-bankura-horse').height)
+    assert.ok(object('team-bankura-horse-life-size').height! > object('team-bankura-horse').height!)
+    // eight horses on the Herd: six stand-ins and the team's two (the front place the Bankura horse left stays free)
+    assert.equal(GRAND_CRAFTS_OBJECTS.filter((o) => o.id.startsWith('craft-bankura-herd-')).length, 6)
+    assert.equal(herdSteps.length, 3)
   })
 
-  it('bakes each GLB at its display height, and it fits its podium top, its hood and its stand', () => {
+  it('bakes each GLB at its display height (the Bankura horse’s two sizes scale it), and it fits its podium top, its hood and its stand', () => {
     for (const p of pieces) {
-      const [w, h, d] = glbSize(path.join(ROOT, 'public', p.model!))
-      assert.ok(Math.abs(h - p.height!) < 0.002, `${p.id}: GLB ${h.toFixed(3)} m tall, config ${p.height}`)
+      const [w0, h0, d0] = glbSize(path.join(ROOT, 'public', p.model!))
+      // GLTFModel fits a GLB to `height`: the Bankura horse's copies scale its baked 0.45 m; every other piece is shown as baked
+      const k = slugOf(p) === 'bankura-horse' ? p.height! / h0 : 1
+      if (slugOf(p) !== 'bankura-horse') assert.ok(Math.abs(h0 - p.height!) < 0.002, `${p.id}: GLB ${h0.toFixed(3)} m tall, config ${p.height}`)
+      const [w, h, d] = [w0 * k, h0 * k, d0 * k]
       // the click box covers the piece
-      assert.ok(p.footprint![0] >= w - 0.006 && p.footprint![1] >= d - 0.006, `${p.id}: footprint ${p.footprint} under the GLB's ${w.toFixed(3)} × ${d.toFixed(3)}`)
+      assert.ok(p.footprint![0] >= w - 0.006 * k && p.footprint![1] >= d - 0.006 * k, `${p.id}: footprint ${p.footprint} under the GLB's ${w.toFixed(3)} × ${d.toFixed(3)}`)
       if (!onPodium.includes(p)) continue
       const s = slotOf(p)
       const turn = p.rotationDeg! - s.rotationY / DEG
@@ -180,12 +209,13 @@ describe('the workshop team’s pieces', () => {
     for (const p of pieces) {
       const own = COLLIDERS.find((c) => c.id === `object-${p.id}`)
       assert.ok(own, `${p.id} has its collider (its click box)`)
-      const support = onPodium.includes(p) ? `podium-${slotOf(p).id}` : 'object-herd-plinth-1'
+      const support = supportCollider(p)
       const sup = COLLIDERS.find((c) => c.id === support)!
       assert.ok(sup, support)
       const pts = footprintPoints(p)
       for (const q of pts) assert.equal(pointDistance(sup, q.x, q.z), 0, `${p.id} reaches out of ${support}`)
-      const others = COLLIDERS.filter((c: Collider) => c !== own && c !== sup && !(onHerd.includes(p) && c.id.startsWith('object-herd-plinth-')))
+      const onTheHerd = offPodium.includes(p) && SUPPORT[p.id].startsWith('herd-plinth-')
+      const others = COLLIDERS.filter((c: Collider) => c !== own && c !== sup && !(onTheHerd && c.id.startsWith('object-herd-plinth-')))
       for (const c of others) for (const q of pts) assert.ok(pointDistance(c, q.x, q.z) > 0, `${p.id} overlaps ${c.id}`)
     }
   })
@@ -202,10 +232,16 @@ describe('the workshop team’s pieces', () => {
   it('a visitor can walk from the entrance to stand in front of each piece', () => {
     const start = { x: MUSEUM.visitor.start.x, z: MUSEUM.visitor.start.z }
     for (const p of pieces) {
-      // a step inside the podium row on the piece's own angle (the court side of the Herd for the horses)
+      // a step inside the podium row on the piece's own angle; for the horses, 0.6 m on the court side of the
+      // support they stand on (the Herd's front edge, or the floor plinth's)
       const a = Math.atan2(p.position[2], p.position[0]) / DEG
       const r = Math.hypot(p.position[0], p.position[2])
-      const [x, z] = polar(onPodium.includes(p) ? r - 1.0 : r - 2.0, a)
+      let spot = r - 1.0
+      if (!onPodium.includes(p)) {
+        const base = object(SUPPORT[p.id].startsWith('herd-plinth-') ? 'herd-plinth-1' : SUPPORT[p.id])
+        spot = Math.hypot(base.position[0], base.position[2]) - base.footprint![1] / 2 - 0.6
+      }
+      const [x, z] = polar(spot, a)
       const goal = { x, z }
       const route = planPath(start, goal)
       assert.ok(route, `no route to ${p.id}`)
@@ -216,8 +252,11 @@ describe('the workshop team’s pieces', () => {
   })
 
   it('retires the stand-ins it replaced, and the tour names pieces that are there', () => {
-    assert.equal(TEAM_REPLACES.length, 16)
-    assert.deepEqual(TEAM_REPLACES.map((r) => r.by).sort(), pieces.map((p) => p.id).sort(), 'one stand-in per piece')
+    // a stand-in for every model; the Bankura horse also took the Herd's tallest stand-in's place on the top step
+    // (its life-size copy stands on new floor and replaced none)
+    assert.equal(TEAM_REPLACES.length, 17)
+    assert.deepEqual([...new Set(TEAM_REPLACES.map((r) => r.by))].sort(), pieces.map((p) => p.id).filter((id) => id !== 'team-bankura-horse-life-size').sort())
+    assert.deepEqual(TEAM_REPLACES.filter((r) => r.by === 'team-bankura-horse').map((r) => r.id).sort(), ['craft-bankura-herd-1', 'craft-bankura-herd-9'])
     for (const { id } of TEAM_REPLACES) assert.ok(!SCENE_OBJECTS.some((o) => o.id === id), `${id} is gone`)
     for (const t of TOUR_STOPS) if (t.item?.kind === 'object') assert.ok(SCENE_OBJECTS.some((o) => o.id === t.item!.id), `${t.id}: ${t.item.id}`)
   })

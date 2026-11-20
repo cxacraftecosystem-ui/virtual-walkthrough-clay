@@ -4,8 +4,10 @@
  *
  * Where the pieces stand, in walking order:
  *   forecourt      two 4.2 m Ayyanar guardian horses flanking the approach
- *   gallery A      The Herd, nine horses on a three-step red plinth (the two at the front are the
- *                  workshop team's horses, config/objects.ts TEAM_PIECES)
+ *   gallery A      The Herd, horses climbing a three-step red plinth: the workshop team's Bankura horse
+ *                  (1.6 m) on the top step and its horse figurine on the front step (config/objects.ts
+ *                  TEAM_PIECES), stand-ins between; the team's Bankura horse again, life-size, on a floor
+ *                  plinth beside it
  *   gallery B      plaques up to 1.1 m in the five niches of the white wall; a maker's table with a
  *                  plaque in progress
  *   gallery C      the black ware island under one cool beam
@@ -319,10 +321,13 @@ function herdAt(x: number, out: number, y: number): Vec3 {
 const stepOut = (i: number) => (HERD_STEPS[0].len - HERD_STEPS[i].len) / 2
 /**
  * The horses, front step first. `team`: the place is the workshop team's horse of that slug (config/objects.ts
- * TEAM_PIECES places it with `herdPlace`); the other seven are stand-ins, numbered as they always were.
+ * TEAM_PIECES places it with `herdPlace`); `vacant`: no horse (the team's Bankura horse stood here before it
+ * moved up to the top step); the others are stand-ins, numbered as they always were. The team's Bankura horse
+ * (1.6 m) takes the top step's middle, where the 1.5 m stand-in stood: its 0.89 m body, turned 35°, spans the
+ * 1.0 m step.
  */
-const HERD_HORSES: { x: number; out: number; step: number; h: number; flip: boolean; team?: string }[] = [
-  { x: -0.85, out: -1.12, step: 0, h: 0.4, flip: false, team: 'bankura-horse' },
+const HERD_HORSES: { x: number; out: number; step: number; h: number; flip: boolean; team?: string; vacant?: boolean }[] = [
+  { x: -0.85, out: -1.12, step: 0, h: 0.4, flip: false, vacant: true },
   { x: 0.5, out: -1.12, step: 0, h: 0.5, flip: true, team: 'horse-figurine' },
   { x: -0.1, out: -0.8, step: 0, h: 0.56, flip: false },
   { x: 0.95, out: -0.7, step: 0, h: 0.64, flip: true },
@@ -330,15 +335,31 @@ const HERD_HORSES: { x: number; out: number; step: number; h: number; flip: bool
   { x: 0.7, out: -0.18, step: 1, h: 0.96, flip: true },
   { x: -0.02, out: 0.1, step: 1, h: 1.1, flip: false },
   { x: -0.55, out: 0.6, step: 2, h: 1.2, flip: true },
-  { x: 0.5, out: 1.08, step: 2, h: 1.5, flip: false },
+  { x: 0.45, out: stepOut(2), step: 2, h: 1.6, flip: false, team: 'bankura-horse' },
 ]
+/**
+ * The life-size Bankura horse (config/objects.ts TEAM_PIECES, 2.2 m to the ears) on its own low plinth on the
+ * gallery floor on the court side of Gallery A, head-on to the court: polar(HERD_R − 1.7, HERD_A + 20), its plinth
+ * wholly inside ring-a (which ends at 30°), clear of the sightline between podiums A1 and A2 (20.5°), ≥ 1 m of floor
+ * from every collider (the Herd's plinth, the oculus plinth), and away from ring-a's spawn point and every tour stop
+ * (the floor beside the Herd holds the spawn and that sightline on one side and the "gate" stop on the other). The
+ * plinth (tangential × radial) holds the horse's 0.54 × 1.22 m footprint with ≥ 9 cm to spare.
+ */
+const HERD_FLOOR = { r: HERD_R - 1.7, aDeg: HERD_A + 20, w: 0.8, len: 1.45, h: 0.12 }
+/** The floor plinth's centre at height `y`. */
+function herdFloorAt(y: number): Vec3 {
+  const [x, z] = polar(HERD_FLOOR.r, HERD_FLOOR.aDeg)
+  return [x, y, z]
+}
 const HERD: SceneObjectConfig[] = [
   // footprint [across, along]: the podium's local x is tangential, its z radial
   // rose-lime steps (not the oxblood lacquer): under the red light they stay a warm red, never black
   // lacquered red (a low roughness, so the steps carry a sheen) with a brass lip on every edge
   ...HERD_STEPS.map((st, i) => stand(`herd-plinth-${i + 1}`, herdAt(0, stepOut(i), 0), facingIn(HERD_A), [st.w, st.len], st.h, 'ring-a', 'plain', '#a8382a', { roughness: 0.3, edge: true })),
+  // the life-size horse's floor plinth, in the Herd's lacquer
+  stand('herd-floor-plinth', herdFloorAt(0), facingIn(HERD_FLOOR.aDeg), [HERD_FLOOR.w, HERD_FLOOR.len], HERD_FLOOR.h, 'ring-a', 'plain', '#a8382a', { roughness: 0.3, edge: true }),
   ...HERD_HORSES.flatMap((hh, i) =>
-    hh.team ? [] : piece({
+    hh.team || hh.vacant ? [] : piece({
       id: `craft-bankura-herd-${i + 1}`,
       title: hh.h > 1 ? W.horse : W.smallHorse,
       craft: 'bankura',
@@ -350,14 +371,6 @@ const HERD: SceneObjectConfig[] = [
       props: { scale: hh.h / 0.5, style: 'bankura' },
       zone: 'ring-a',
       inspectable: hh.h < 1,
-      alt:
-        i === 8
-          ? [
-              'The tallest of nine red terracotta horses, high on a stepped red plinth: a long upright neck, pricked ears, a hollow body on four column legs.',
-              'लाल सीढ़ीदार चबूतरे पर नौ लाल टेराकोटा घोड़ों में सबसे ऊँचा: लंबी सीधी गर्दन, खड़े कान, चार खंभे-सी टाँगों पर खोखला शरीर।',
-              'লাল ধাপকাটা বেদির ওপর নয়টি লাল টেরাকোটার ঘোড়ার মধ্যে সবচেয়ে উঁচুটি: লম্বা খাড়া গলা, খাড়া কান, চারটি থামের মতো পায়ের ওপর ফাঁপা দেহ।',
-            ]
-          : undefined,
     }),
   ),
 ]
@@ -371,6 +384,11 @@ export function herdPlace(slug: string): { position: Vec3; aDeg: number; step: s
   const hh = HERD_HORSES.find((h) => h.team === slug)
   if (!hh) throw new Error(`crafts.ts: no Herd place for ${slug}`)
   return { position: herdAt(hh.x, hh.out, HERD_STEPS[hh.step].h), aDeg: HERD_A, step: `herd-plinth-${hh.step + 1}`, zone: 'ring-a' }
+}
+
+/** Where the life-size Bankura horse stands: the top of its floor plinth beside the Herd (`herd-floor-plinth`). */
+export function herdFloorPlace(): { position: Vec3; aDeg: number; plinth: string; size: [number, number]; zone: ZoneId } {
+  return { position: herdFloorAt(HERD_FLOOR.h), aDeg: HERD_FLOOR.aDeg, plinth: 'herd-floor-plinth', size: [HERD_FLOOR.w, HERD_FLOOR.len], zone: 'ring-a' }
 }
 
 /* ------------------------------------------------------------------ */

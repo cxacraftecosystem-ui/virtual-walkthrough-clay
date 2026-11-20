@@ -20,7 +20,7 @@ import { COURT_OBJECTS } from './spectacleObjects/court'
 import { ATMOS_OBJECTS } from './spectacleObjects/atmosphere'
 import { CRAFT_OBJECTS } from './spectacleObjects/craft'
 import { EXPERIENCE_OBJECTS } from './spectacleObjects/experience'
-import { GRAND_CRAFTS_OBJECTS, herdPlace } from './grandObjects/crafts'
+import { GRAND_CRAFTS_OBJECTS, herdFloorPlace, herdPlace } from './grandObjects/crafts'
 import { GRAND_INSTALLATIONS_OBJECTS } from './grandObjects/installations'
 import { GRAND_EXPERIENCE_OBJECTS } from './grandObjects/experience'
 
@@ -313,11 +313,16 @@ type Lang3 = [string, string, string]
 /** Where the workshop team's GLBs live (scripts/import-team-models.mjs writes them; models/teamPiece.tsx preloads them). */
 export const TEAM_MODEL_DIR = '/models/team/'
 
-/** A team piece stands on a podium of the row, or on the Herd's plinth (grandObjects/crafts.ts `herdPlace`). */
-type TeamPlace = { podium: string } | { herd: true }
+/**
+ * A team piece stands on a podium of the row, on the Herd's plinth (grandObjects/crafts.ts `herdPlace`), or on
+ * the floor plinth beside the Herd (`herdFloorPlace`: the life-size horse).
+ */
+export type TeamPlace = { podium: string } | { herd: true } | { floor: true }
 
-interface TeamPiece {
+export interface TeamPiece {
   slug: string
+  /** Its scene object's id when a model is shown more than once (the Bankura horse at two sizes); default `team-<slug>`. */
+  id?: string
   place: TeamPlace
   /** Titles from the file names, [en, hi, bn]. */
   title: Lang3
@@ -329,28 +334,38 @@ interface TeamPiece {
   turn?: number
   /** Flat pieces stand upright in a low slotted brass base (models/teamPiece.tsx PlaqueStand). */
   stand?: boolean
-  /** What is visible, nothing more: no maker, place, material or date the workshop has not given. */
-  text: string
+  /**
+   * The label: the workshop's caption for the piece, verbatim, from its deck "clay craft 3d.pptx" (`slide`), a
+   * full stop added where the slide's text ends without one. The two pieces the deck has no slide for carry a
+   * caption the museum wrote from what they show, saying "in the manner of" where their place is not recorded.
+   */
+  caption: string
+  /** The deck's slide the caption comes from; absent = written by the museum. */
+  slide?: number
+  /** A museum's note after the caption (how the piece is shown). */
+  note?: string
   alt: string
 }
 
-/** Every team piece's description ends with this until the workshop's details arrive (`placeholder: true`). */
-const TEAM_NOTE = 'A piece from the workshop’s team, shown from its 3D model. Its maker, place and materials are still to be recorded.'
+/** The Bankura horse is shown at two sizes (one GLB): each copy's label says so after the workshop's caption. */
+const HORSE_SIZES_NOTE =
+  'Bankura’s horses are made in many sizes, from small toys to votive horses taller than a person: this one is shown twice here, life-size on the floor beside the Herd and slightly smaller high on the Herd’s top step.'
 
 /**
  * The workshop's own pieces (the craft deliverables the design held the podium row empty for): sixteen
- * textured 3D models, one per podium of the row (12 in × 12 in at 4 ft, each under its own sconce) and
- * two on the front step of the Herd. Grouped by what can be seen, never by a tradition the workshop has
- * not named:
+ * textured 3D models, fourteen on the podiums of the row (12 in × 12 in at 4 ft, each under its own sconce)
+ * and the two horses with the Herd — the Bankura horse twice, as such horses are made in many sizes:
+ * slightly smaller than life high on the Herd's top step and life-size on the floor beside it; the horse
+ * figurine on the Herd's front step. Grouped by what can be seen:
  *   A, warm red wall   the four figures — a standing figure, two women seated at work, dancers — and the
- *                      two horses with the Herd (only the Bankura Horse's name places it)
+ *                      horses with the Herd
  *   B, white wall      the flat pieces, upright on slotted stands: the peacock pair and the round plaque,
  *                      then the three blue-painted pieces together, and the frame of miniature pots by C
  *   C, charcoal wall   the black elephant and the three Ganeshas (the black one under glass)
- * Each fits its podium's top (≤ 0.28 m, inside the glass hood where there is one) at its display height.
- * Titles come from the file names; every piece stays `placeholder: true` for the curators.
+ * Each podium piece fits its podium's top (≤ 0.28 m, inside the glass hood where there is one) at its display
+ * height. Titles come from the file names; each piece's label is its caption (`caption`), so none is a placeholder.
  */
-const TEAM_PIECES_SPEC: TeamPiece[] = [
+export const TEAM_PIECES_SPEC: readonly TeamPiece[] = [
   // ── A ──
   {
     slug: 'silent-sentinel',
@@ -358,7 +373,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     title: ['Silent Sentinel', 'मौन प्रहरी', 'নীরব প্রহরী'],
     height: 0.45,
     size: [0.22, 0.16],
-    text: 'A standing figure with a full beard, a round cap and heavy earrings. One hand is raised beside his face holding a small bell-shaped object; the other holds a small pot at his side. His robe flares to a fluted hem, and the whole surface is a glossy deep brown.',
+    caption:
+      'Handcrafted in the pottery of Krishnanagar, West Bengal, this terracotta sculpture depicts a stylized standing bearded sentinel with a dark-burnished umber patina. Shaped from fine Jalangi riverbed alluvial clay using traditional tools and local kiln-firing, the figure features an elongated conical torso, expressive circular eyes, a rounded turban, a pleated collar, a handbell, and a hip pouch, celebrating the sculptural heritage of Krishnanagar master potters.',
+    slide: 9,
     alt: 'A tall brown figure of a bearded man in a round cap, one hand raised to his face, a small pot at his side.',
   },
   {
@@ -367,7 +384,8 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     title: ['Harvest Guardian', 'फ़सल की रखवाली', 'ফসলের পাহারা'],
     height: 0.25,
     size: [0.27, 0.23],
-    text: 'A woman in a red sari sits cross-legged on a dark board, holding a shallow tray heaped with grain. Four bowls of grain stand around her and a few loose stalks lie at her feet.',
+    caption:
+      'Modelled in the lifelike manner of the Ghurni clay dolls (Krishnanagar matir putul) of Nadia district, West Bengal, this hand-painted miniature shows a village woman seated cross-legged at work after the harvest. Wrapped in a crimson sari, with a red bindi and dark hair, she holds a shallow winnowing tray heaped with grain, while four small bowls of grain stand around her and a few loose stalks lie at her feet on a low earthen board. Like the realist figures of Krishnanagar, it turns an everyday task of rural life into a quiet, closely observed portrait.',
     alt: 'A seated woman in a red sari with a tray of grain in her hands and bowls of grain around her.',
   },
   {
@@ -376,7 +394,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     title: ['The Basket Weaver', 'टोकरी बुनने वाली', 'ঝুড়ি বোনার কারিগর'],
     height: 0.22,
     size: [0.22, 0.27],
-    text: 'A woman in a purple patterned sari sits on a dark mat, weaving a round basket in front of her; its upright strands are not yet worked in. A small metal bowl stands at her side.',
+    caption:
+      'Originating from Ghurni, Krishnanagar, in West Bengal Nadia district, this handcrafted Ghurni Clay Doll (Krishnanagar matir putul) depicts a seated female basket weaver immersed in her craft with lifelike realism. Draped in a purple-and-white patterned sari with a red bindi and dark hair, she bends forward to weave split bamboo into a rounded basket, accompanied by a small ceramic water bowl. Crafted for over two centuries by master kumbhakar (potter) artisans, these miniature sculptures are hand-modeled over wire and bamboo armatures using fine alluvial riverbed clay (etail mati) from the Jalangi River. Sun-dried or lightly baked, and finished with delicate hand-painted brushwork and mixed-media bamboo detailing, they celebrate the intimate storytelling of Bengal’s miniature clay-modeling heritage.',
+    slide: 10,
     alt: 'A seated woman in a purple sari weaving a round basket on a mat.',
   },
   {
@@ -385,17 +405,38 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     title: ['Festival Dancers', 'उत्सव के नर्तक', 'উৎসবের নর্তক'],
     height: 0.355,
     size: [0.27, 0.13],
-    text: 'Two dancers in yellow and red. A man in a feathered red turban beats a drum slung at his waist; beside him a woman in a yellow sari balances a stack of pots crowned with a sheaf on her head and holds a white cloth in each hand.',
+    caption:
+      'Originating from the famed artisan quarter of Ghurni in Krishnanagar, Nadia district, West Bengal, this handcrafted Ghurni Clay Doll (Krishnanagar matir putul) depicts a lively pair of traditional tribal festival performers—a male drummer (madal player) and a female dancer—captured mid-celebration with lifelike anatomical realism and expressive grace. Dressed in vibrant yellow and crimson-red festive attire, the male figure wears a red headband crowned with colorful plumage as he plays a cylindrical madal drum slung across his shoulder, while his companion balances a painted ceremonial vessel topped with golden-orange plumes on her head, holding white dance clothes in each hand.',
+    slide: 4,
     alt: 'Two dancing figures: a drummer in a feathered turban and a woman in a yellow sari balancing pots on her head.',
   },
+  // the Bankura horse twice, as such horses are made in many sizes: slightly smaller than life high on the
+  // Herd's top step, and life-size on the floor beside it (one GLB; its footprint scales with the height)
   {
     slug: 'bankura-horse',
     place: { herd: true },
     title: ['Bankura Horse', 'बाँकुड़ा घोड़ा', 'বাঁকুড়ার ঘোড়া'],
-    height: 0.45,
-    size: [0.11, 0.25],
-    turn: -35,
-    text: 'A horse standing square on four column legs, its long neck held straight up, ears pricked and a crest between them. Bands of ornament run round the neck and over the saddle cloth; the surface is a glossy deep brown.',
+    height: 1.6,
+    size: [0.39, 0.89],
+    // head-on to the court, no three-quarter turn: its 0.89 m body then spans the top step's 1.0 m with room
+    caption:
+      'Handcrafted in West Bengal\'s Krishnanagar, this terracotta ceremonial horse features the classic Bankura votive silhouette with a dark-burnished umber finish. Characterized by a towering neck, alert ears, curved reins, and a relief-molded saddle, the figure is sculpted from fine Jalangi riverbed alluvial clay (etail mati). Shaped by hand and wheel using traditional tools and kiln-fired with natural slips, this sculpture showcases the enduring heritage of Bengal\'s master potters.',
+    slide: 13,
+    note: HORSE_SIZES_NOTE,
+    alt: 'A brown horse figure with a very long upright neck, pricked ears and a decorated saddle cloth.',
+  },
+  {
+    slug: 'bankura-horse',
+    id: 'team-bankura-horse-life-size',
+    place: { floor: true },
+    title: ['Bankura Horse (life-size)', 'बाँकुड़ा घोड़ा (पूरे आकार का)', 'বাঁকুড়ার ঘোড়া (পূর্ণ আকারের)'],
+    height: 2.2,
+    size: [0.54, 1.22],
+    // head-on to the court, so its floor plinth stays narrow (crafts.ts HERD_FLOOR)
+    caption:
+      'Handcrafted in West Bengal\'s Krishnanagar, this terracotta ceremonial horse features the classic Bankura votive silhouette with a dark-burnished umber finish. Characterized by a towering neck, alert ears, curved reins, and a relief-molded saddle, the figure is sculpted from fine Jalangi riverbed alluvial clay (etail mati). Shaped by hand and wheel using traditional tools and kiln-fired with natural slips, this sculpture showcases the enduring heritage of Bengal\'s master potters.',
+    slide: 13,
+    note: HORSE_SIZES_NOTE,
     alt: 'A brown horse figure with a very long upright neck, pricked ears and a decorated saddle cloth.',
   },
   {
@@ -405,7 +446,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     height: 0.38,
     size: [0.1, 0.25],
     turn: 35,
-    text: 'A standing horse with a carved mane falling down its neck, a raised tail curled at the tip and a patterned saddle cloth, in a glossy warm brown.',
+    caption:
+      'Originating from the famed pottery workshops of Krishnanagar in Nadia district, West Bengal, this handcrafted Krishnanagar Terracotta sculpture presents a stately, stylized ceremonial horse standing in proud, upright poise with a rich, dark-burnished finish. Sculpted with an elongated, arched neck, finely incised flowing mane, pointed ears, and an upturned tail, the figure is adorned with delicate relief-molded harnesses, saddle trappings, and banded leg ornaments that echo West Bengal’s age-old votive horse traditions.',
+    slide: 5,
     alt: 'A brown horse figure with a carved mane, a curled tail and a saddle cloth.',
   },
   // ── B ──
@@ -416,7 +459,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     height: 0.24,
     size: [0.26, 0.07],
     stand: true,
-    text: 'A pair of plaques, each shaped as a blue peacock curving round a dark medallion edged with white beads. The medallions carry the words ‘Shubh’ and ‘Labh’ in gold.',
+    caption:
+      'Handcrafted in Kutch, Gujarat, this pair of Mud & Mirror Work (Lippan Kaam) wall hangings features mirrored peacock silhouettes symbolizing auspiciousness. Set on a midnight-navy base, each paisley-curved body showcases turquoise plumage, inlaid mirrors (abhla), pearl-white beads, and raised gold Gujarati script for "Shubh" (Auspiciousness) and "Labh" (Prosperity), topped by arched necks and golden crests. Rooted in Kutch\'s pastoral mural traditions, artisans sculpt local clay and mud relief coils by hand, embedding gleaming mirrors to celebrate the shimmering elegance of Lippan heritage.',
+    slide: 11,
     alt: 'Two blue peacock-shaped plaques side by side, lettered Shubh and Labh in gold.',
   },
   {
@@ -426,7 +471,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     height: 0.25,
     size: [0.25, 0.07],
     stand: true,
-    text: 'A round plaque with a seashore in low relief: an orange sun between green hills, blue waves breaking on a sandy beach and dark blue shrubs along the bottom, inside a border of red and pale triangles.',
+    caption:
+      'Originating from the arid desert villages of Kutch, Gujarat, this handcrafted Mud & Mirror Work (Lippan Kaam) circular wall plaque reimagines traditional relief artistry through a serene coastal sunset landscape. Framed by a terracotta-red border inlaid with triangular mirrors (abhla), the relief depicts a glowing orange sun descending behind emerald-green mountains against a golden sky with soaring birds. Below, layered cobalt and turquoise waves lap onto a warm sandy shore accented by dark pebbles. Rooted in Kutch\'s vernacular mural tradition, artisans sculpt raised contours from local clay and natural binders, embedding cut mirrors to catch the light and celebrate the tactile warmth and contemporary storytelling of Lippan heritage.',
+    slide: 8,
     alt: 'A round plaque of a beach at sunset: sun, green hills, blue waves and sand, in a border of triangles.',
   },
   {
@@ -436,7 +483,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     height: 0.28,
     size: [0.16, 0.07],
     stand: true,
-    text: 'A plaque in the shape of an open hand, fingers up, outlined in yellow: pale blue fingers above a deep blue palm painted with one turquoise flower and white leaves.',
+    caption:
+      'Handcrafted in Jaipur, Rajasthan, this Blue Pottery Hamsa—a protective stylized palm—unites auspicious symbolism with vibrant botanical artistry. Framed by a yellow rim, the pale sky-blue fingers feature dark-lined articulation above a deep cobalt palm showcasing a turquoise blossom with a terracotta center and white foliage. Unlike traditional clay ceramics, Jaipur\'s Turko-Persian-inspired art uses a unique quartz-stone dough molded without clay. Freehand-painted with mineral oxides, glazed in transparent alkaline, and low-fire glazed, it achieves a signature glass-like sheen and translucent depth.',
+    slide: 1,
     alt: 'A hand-shaped plaque with light blue fingers and a dark blue palm painted with a flower.',
   },
   {
@@ -446,7 +495,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     height: 0.2,
     size: [0.2, 0.07],
     stand: true,
-    text: 'A square tile on a deep blue ground with a white border, painted with white and yellow flowers, red buds and green leaves on curling stems.',
+    caption:
+      'Handcrafted in Jaipur, Rajasthan, this Blue Pottery architectural tile features a symmetrical, diagonal botanical design with sage-green foliage, budding blossoms, and white-and-turquoise flowers with terracotta-coral and yellow centers against a cobalt-blue ground, framed in white, black, and cobalt. Rooted in Mughal and Turko-Persian traditions, Jaipur Blue Pottery is uniquely made without clay from a dough of crushed quartz, powdered glass, Fuller\'s earth, borax, gum, and water. Hand-molded and freehand-painted with natural mineral oxides—cobalt, copper, chrome, and iron—the tile is finished with a transparent alkaline glaze and low-fired for a glass-like sheen and jewel-toned clarity.',
+    slide: 3,
     alt: 'A square deep blue tile painted with white flowers and green leaves.',
   },
   {
@@ -456,7 +507,8 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     height: 0.3,
     size: [0.21, 0.07],
     stand: true,
-    text: 'A shallow oval bowl, shown upright on its rim so its inside can be seen: white leaves and dark blue flowers with brown buds on a turquoise ground, within a white line.',
+    caption:
+      'Painted in the colours and manner of Jaipur Blue Pottery from Rajasthan, this shallow oval bowl is shown upright on its rim so that its painted inside can be seen. Dark cobalt-blue blossoms with brown buds and curling white leaves spread across a turquoise ground, framed by a fine white line. Jaipur’s blue pottery is known for this cool palette of cobalt, turquoise and white: rather than ordinary clay, it is shaped from a dough of crushed quartz and glass, painted freehand with mineral oxides and sealed under a clear, low-fired glaze.',
     alt: 'An oval bowl painted with blue flowers and white leaves on turquoise, standing upright.',
   },
   {
@@ -466,7 +518,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     height: 0.26,
     size: [0.27, 0.07],
     stand: true,
-    text: 'A square frame of twenty-five small compartments, each holding one miniature pot. Most are black, a few red or brown; several carry fine white lines.',
+    caption:
+      'Hailing from Nizamabad, Uttar Pradesh, this curated shadow-box features twenty-five wheel-thrown micro-vessels in a natural wooden grid. Spanning classic silhouettes like surahi flasks, matka pots, urns, and tumblers, the collection pairs signature lustrous black pottery with terracotta-red and olive-brown variations, etched with silvery-white floral and geometric patterns. Crafted from local clay, each vessel is treated with a kabiz bark and mustard oil slip, burnished, and smoke-fired in a rice-husk reduction kiln before its incised details are highlighted with a zinc-mercury amalgam (ranga), celebrating the precision of Nizamabad miniature ceramic artistry.',
+    slide: 7,
     alt: 'A square frame of twenty-five cubbies, each with a tiny pot, most of them black.',
   },
   // ── C ──
@@ -477,7 +531,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     height: 0.19,
     size: [0.12, 0.26],
     turn: -40,
-    text: 'A standing elephant in black, its trunk curled up at the tip, with a cloth worked in raised patterns over its back and bands round its legs.',
+    caption:
+      'Handcrafted in Nizamabad, Uttar Pradesh, this ceremonial elephant sculpture showcases the region\'s renowned black pottery with a rich metallic-black luster and obsidian sheen. The stoutly modeled figure features an upturned trunk, ridged ears, and intricate relief-molded royal trappings, including a braided browband, crown medallion, patterned saddle cloth, and leg bands. Crafted from local clay, the piece is treated with an herbal kabiz bark and mustard oil slip, burnished to a satin smoothness, and smoke-fired in a reduction kiln fueled by rice husk and dried leaves to infuse carbon deeply into the clay without artificial glazes.',
+    slide: 12,
     alt: 'A small black elephant figure with its trunk curled and a patterned cloth on its back.',
   },
   {
@@ -486,7 +542,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     title: ['Black Ganesha Statue', 'काली गणेश प्रतिमा', 'কালো গণেশ মূর্তি'],
     height: 0.38,
     size: [0.24, 0.22],
-    text: 'A smooth, rounded figure of Ganesha in black: an egg-shaped body, broad ears spread wide and a trunk curving down over the belly, with a small point at the crown.',
+    caption:
+      'Hailing from the historic ceramic workshops of Nizamabad in Azamgarh, Uttar Pradesh, this handcrafted Nizamabad Black Pottery sculpture depicts a minimalist, rounded idol of Lord Ganesha with a lustrous, metallic-black sheen. Smoothly contoured with large, ridged ears, delicate etched facial markings, and a gently curving trunk resting over a globular torso, the form balances sacred iconography with tactile, sculptural simplicity.',
+    slide: 2,
     alt: 'A smooth, rounded black Ganesha with broad ears and a curving trunk.',
   },
   {
@@ -495,7 +553,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     title: ['Mud Ganesha', 'मिट्टी के गणेश', 'মাটির গণেশ'],
     height: 0.36,
     size: [0.22, 0.2],
-    text: 'Ganesha on a round pedestal, with a tall pointed crown, a trunk curling to one side and a garland of large beads hanging round him, in a mottled red-brown.',
+    caption:
+      'Handcrafted in West Bengal\'s Krishnanagar workshops, this stylized Lord Ganesha terracotta sculpture features an umber-and-ochre patina, ornate leaf-crested headgear, and a bead garland. Modeled from fine Jalangi riverbed alluvial clay using traditional tools, the piece is kiln-baked and finished with natural earthy slips to highlight its organic textures and devotional artistry.',
+    slide: 6,
     alt: 'A red-brown Ganesha with a tall crown and a garland of beads, on a round pedestal.',
   },
   {
@@ -504,7 +564,9 @@ const TEAM_PIECES_SPEC: TeamPiece[] = [
     title: ['Twin Clay Ganeshas', 'मिट्टी के जुड़वाँ गणेश', 'মাটির যমজ গণেশ'],
     height: 0.17,
     size: [0.27, 0.12],
-    text: 'Two small seated Ganeshas side by side in orange clay, each with its trunk curled across its body, its ears spread and a pointed crown, modelled in soft coils.',
+    caption:
+      'Handcrafted in Krishnanagar, West Bengal, this pair of miniature terracotta Lord Ganesha idols features twin seated figures shaped from fine Jalangi riverbed alluvial clay (etail mati). Hand-pinched with organic fluidity, each figure wears a tiered conical headdress and displays ridged ears, applied eyes, and inward-curling trunks. Baked in local kilns without artificial glazes, the raw burnt-sienna sculptures showcase the traditional sculptural heritage of Krishnanagar\'s master potters.',
+    slide: 14,
     alt: 'Two small orange clay Ganeshas seated side by side.',
   },
 ]
@@ -517,12 +579,15 @@ function teamObject(p: TeamPiece): SceneObjectConfig {
     if (!slot) throw new Error(`objects.ts: unknown podium slot ${id}`)
     // on the podium's top (a hooded podium's: its base plate), the podium's front (+z) facing the court
     where = { position: [slot.x, podiumStandY(slot.id), slot.z], rotationDeg: slot.rotationY / DEG + (p.turn ?? 0), zone: slot.zone }
+  } else if ('floor' in p.place) {
+    const f = herdFloorPlace()
+    where = { position: f.position, rotationDeg: facingIn(f.aDeg) + (p.turn ?? 0), zone: f.zone }
   } else {
     const h = herdPlace(p.slug)
     where = { position: h.position, rotationDeg: facingIn(h.aDeg) + (p.turn ?? 0), zone: h.zone }
   }
   return {
-    id: `team-${p.slug}`,
+    id: p.id ?? `team-${p.slug}`,
     title: p.title[0],
     kind: 'team-piece',
     model: `${TEAM_MODEL_DIR}${p.slug}.glb`,
@@ -532,8 +597,8 @@ function teamObject(p: TeamPiece): SceneObjectConfig {
     ...(p.stand ? { props: { stand: 'slot' } } : {}),
     interactive: true,
     inspectable: true,
-    description: `${p.text} ${TEAM_NOTE}`,
-    placeholder: true,
+    description: p.note ? `${p.caption} ${p.note}` : p.caption,
+    placeholder: false,
     alt: p.alt,
     i18n: { hi: { title: p.title[1] }, bn: { title: p.title[2] } },
   }
@@ -553,6 +618,8 @@ export const TEAM_REPLACES: readonly { id: string; by: string }[] = [
   { id: 'clay-a-pot', by: 'team-the-basket-weaver' },
   { id: 'craft-bankura-podium-plaque', by: 'team-festival-dancers' },
   { id: 'craft-bankura-herd-1', by: 'team-bankura-horse' },
+  // the Bankura horse moved up to the top step at 1.6 m, in the place of the Herd's tallest stand-in
+  { id: 'craft-bankura-herd-9', by: 'team-bankura-horse' },
   { id: 'craft-bankura-herd-2', by: 'team-horse-figurine' },
   { id: 'clay-b-plaque-rider', by: 'team-peacock-shubh-labh' },
   { id: 'clay-b-cups', by: 'team-sunset-shores' },

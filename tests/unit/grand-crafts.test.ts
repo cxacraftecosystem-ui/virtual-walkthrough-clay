@@ -24,7 +24,9 @@ const texts = (o: SceneObjectConfig) => [o.title, o.description, o.alt, o.i18n?.
 describe('grand crafts: placeholder silence (§4.1)', () => {
   it('names no survey tradition while they are unconfirmed', () => {
     const survey = CRAFTS.filter((c) => !DEEP_DIVES.has(c.slug))
-    for (const o of SCENE_OBJECTS)
+    // the workshop team's pieces carry the workshop's own captions (their traditions named by the workshop):
+    // the silence is the museum's, over its own unconfirmed survey
+    for (const o of SCENE_OBJECTS.filter((x) => x.kind !== 'team-piece'))
       for (const t of texts(o))
         for (const c of survey) {
           for (const s of [c.name, c.place, c.caption, c.i18n.hi?.name, c.i18n.bn?.name, c.i18n.hi?.caption, c.i18n.bn?.caption].filter((x): x is string => !!x))
@@ -99,8 +101,9 @@ describe('grand crafts: staging (§4.2)', () => {
 
   it('stages the counts of the plan', () => {
     const count = (re: RegExp) => GRAND_CRAFTS_OBJECTS.filter((o) => re.test(o.id)).length
-    // nine horses in The Herd: seven stand-ins and, at the front, the workshop team's two (team-pieces.test.ts)
-    assert.equal(count(/^craft-bankura-herd-/), 7, 'seven stand-in horses in The Herd')
+    // eight horses in The Herd: six stand-ins and the workshop team's two — its horse figurine on the front step,
+    // its Bankura horse on the top step (team-pieces.test.ts); the front place that horse left stays free
+    assert.equal(count(/^craft-bankura-herd-/), 6, 'six stand-in horses in The Herd')
     assert.equal(count(/^craft-molela-niche-/), 5, 'five niche plaques')
     assert.equal(count(/^craft-longpi-island-/), 12, 'twelve pieces of black ware')
     assert.equal(count(/-register-\d+$/), 24, 'twenty-four register pieces')

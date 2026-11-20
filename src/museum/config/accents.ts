@@ -335,7 +335,10 @@ function objectMount(o: SceneObjectConfig, target: Vec3, foot: number): { pos: V
 
 /** A spot over a placed piece: sized to its footprint, from the room's ceiling or ledge. */
 export function objectAccent(o: SceneObjectConfig): Accent | null {
-  if (!PIECE_KINDS.has(o.kind) || NO_OBJECT_ACCENTS.has(o.zone)) return null
+  // a workshop team piece has its podium's sconce or the Herd's key, unless it stands on the floor (the
+  // life-size Bankura horse on its low plinth): that one is a staged piece with its own pool of light
+  const floorTeamPiece = o.kind === 'team-piece' && o.position[1] < 0.3
+  if ((!PIECE_KINDS.has(o.kind) && !floorTeamPiece) || NO_OBJECT_ACCENTS.has(o.zone)) return null
   // the court's lotus and the Red Room plinth have their own accents above
   if (o.kind === 'lotus' || (o.kind === 'round-plinth' && o.zone === 'library')) return null
   // the Red Room's curved shelves light their own tiers (LED strips): a cone from its ceiling would
@@ -471,7 +474,7 @@ function lippanRake(): Accent[] {
  * far side falling to dark) instead of reading flat under a top light.
  */
 function herdKey(objects: readonly SceneObjectConfig[]): Accent[] {
-  // the seven stand-ins and the workshop team's two horses on the front step (objects.ts TEAM_PIECES)
+  // the stand-ins and the workshop team's two horses on the Herd (objects.ts TEAM_PIECES)
   const herd = objects.filter((o) => o.id.startsWith('craft-bankura-herd-') || o.id === 'team-bankura-horse' || o.id === 'team-horse-figurine')
   if (!herd.length) return []
   const cx = herd.reduce((s, o) => s + o.position[0], 0) / herd.length
