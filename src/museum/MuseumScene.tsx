@@ -16,7 +16,7 @@ import { ArrivalFlight } from './navigation/ArrivalFlight'
 import { PresenceLayer } from './live/PresenceLayer'
 import { XRRoot } from './xr/XRRoot'
 import { useXRMode } from './xr/xrStore'
-import { Precompile } from './effects/Precompile'
+import { LateCompile, Precompile } from './effects/Precompile'
 import { ZoneCuller, ZoneGroup } from './navigation/zoneCulling'
 import { Artwork } from './exhibits/Artwork'
 import { Exhibit } from './exhibits/Exhibit'
@@ -101,6 +101,7 @@ export function MuseumScene() {
       {!inXR && <RayTraceManager />}
       {debug && <DebugScene />}
       <Precompile />
+      <LateCompile />
       <PresenceLayer />
       <XRRoot />
     </>

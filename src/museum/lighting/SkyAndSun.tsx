@@ -243,6 +243,7 @@ let refreshFrames = 0
 /** How long the shadow maps keep redrawing after (re)configuration, and after a late asset loads (ms). */
 const SHADOW_SETTLE_MS = 4000
 const SHADOW_LATE_MS = 600
+const SHADOW_LATE_GAP_MS = 4000
 /** Ask the frozen shadow map to re-render for a few frames (after moving the frustum / loading assets). */
 export function requestShadowRefresh(frames = 3) {
   refreshFrames = Math.max(refreshFrames, frames)
@@ -262,16 +263,31 @@ export function ShadowUpdater() {
     gl.shadowMap.needsUpdate = true
     until.current = performance.now() + SHADOW_SETTLE_MS
   }, [gl, tier])
-  // Late assets (artworks, GLBs) re-arm a short refresh window when they finish loading.
+  // Late assets (artworks, GLBs) re-arm a short refresh window when they finish loading — at most one window every
+  // SHADOW_LATE_GAP_MS, and one more at its end if loads kept arriving: the scans stream in two at a time for a
+  // minute (models/sourcedModel.tsx), and back-to-back windows redrew every shadow map on almost every frame.
   useEffect(() => {
     const mgr = THREE.DefaultLoadingManager
     const prev = mgr.onLoad
+    let last = -Infinity
+    let trailing: ReturnType<typeof setTimeout> | null = null
+    const arm = () => {
+      last = performance.now()
+      until.current = Math.max(until.current, last + SHADOW_LATE_MS)
+    }
     mgr.onLoad = () => {
-      until.current = Math.max(until.current, performance.now() + SHADOW_LATE_MS)
+      const now = performance.now()
+      if (now - last >= SHADOW_LATE_GAP_MS) arm()
+      else if (!trailing)
+        trailing = setTimeout(() => {
+          trailing = null
+          arm()
+        }, SHADOW_LATE_GAP_MS - (now - last))
       prev?.()
     }
     return () => {
       mgr.onLoad = prev
+      if (trailing) clearTimeout(trailing)
     }
   }, [])
   useFrame(() => {

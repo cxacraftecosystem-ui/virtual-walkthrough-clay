@@ -356,8 +356,9 @@ function Belts() {
   // 40k model only reads within a few metres, and nobody stands there); the mid belt is drawn as
   // impostors with the far woods (Woods)
   // Low: the near belt is drawn as impostors with the woods (Woods)
-  const near = useMemo(() => (tier === 'low' ? [[], []] : nearBelt(byTier(tier, 24, 40, 50, 110))), [tier])
-  const under = useMemo(() => understorey(byTier(tier, 0, 20, 30, 60)), [tier])
+  // Medium (integrated GPUs) trimmed: the forecourt's first view drew 3 M triangles, most of them planting
+  const near = useMemo(() => (tier === 'low' ? [[], []] : nearBelt(byTier(tier, 24, 28, 50, 110))), [tier])
+  const under = useMemo(() => understorey(byTier(tier, 0, 12, 30, 60)), [tier])
   return (
     <ZoneGroup zones={OUTDOOR_ZONES}>
       <group name="near-belt">
@@ -388,9 +389,9 @@ function Woods() {
 
 function Plantings() {
   const tier = useMuseum((s) => s.tier)
-  const beds = useMemo(() => forecourtBeds(tier === 'low' ? 4.4 : 1.6), [tier])
-  const hem = useMemo(() => border(tier === 'low' ? 5 : 1.7), [tier])
-  const cover = useMemo(() => groundCover(byTier(tier, 30, 100, 140, 380)), [tier])
+  const beds = useMemo(() => forecourtBeds(tier === 'low' ? 4.4 : tier === 'medium' ? 2.2 : 1.6), [tier])
+  const hem = useMemo(() => border(tier === 'low' ? 5 : tier === 'medium' ? 2.4 : 1.7), [tier])
+  const cover = useMemo(() => groundCover(byTier(tier, 30, 60, 140, 380)), [tier])
   return (
     <>
       <ZoneGroup zones={['entrance-court', 'sky-rim', 'annex']}>

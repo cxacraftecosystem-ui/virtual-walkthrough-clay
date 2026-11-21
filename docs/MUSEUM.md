@@ -320,12 +320,14 @@ breaking the scene. Frame styles in `config/frames.ts`: `frameless`, `textile-pa
 | Ray-traced photos | photo mode, `effects/PathTracer.tsx` | hold still and the view is progressively path-traced with three-gpu-pathtracer; the BVH builds in a worker from the zones shown; any failure falls back to raster. Photo mode also offers framed views (the dome's eye, the herd, the Red Room). |
 | Arrival flight | `navigation/ArrivalFlight.tsx` | *The wheel turns*: high over the oculus, round the crescent roofs, down to the annex door; 13 s on Medium and up, 8 s on Low, three held views for reduced motion; first entry of a session only, skippable |
 | WebGPU | `?renderer=webgpu`, `utils/renderer.ts` | experimental; the composer, probes and path tracer are WebGL-only and skipped |
-| Adaptive quality | `config/quality.ts`, `src/App.tsx` | `detectInitialTier()` picks the start; the pavilion steps down below about 32 fps, and on Low below about 30 fps switches the spectacle to Lite |
+| Adaptive quality | `config/quality.ts`, `src/App.tsx` | `detectInitialTier()` picks the start; the tier never changes during a visit (a change rebuilds the canvas and recompiles every shader): below about 32 fps the resolution drops (to 0.75) and the spectacle's costly extras switch off, and the next visit starts a tier lower |
+| Start-up | `effects/Precompile.tsx` | the door opens once the shaders seen from the forecourt are compiled and first-drawn; the rest of the museum is prepared afterwards, a zone at a time between frames; anything mounted later is held off the frame until its shader is compiled (`LateCompile`), and scans stream in two at a time, nearest first (`models/sourcedModel.tsx`) |
+| Lights and shaders | `navigation/zoneCulling.tsx` `Unculled` | every lit shader is built for the scene's light count: lights are never culled with a zone (a light that came into view recompiled every material) |
 
 | Tier | Shadows | Composer | Spot pool | Texture size | Pool mirror | Floor reflections |
 |---|---|---|---:|---:|:---:|:---:|
 | Low | · | · | 6 | 512 | · | · |
-| Medium | 2048, soft | · (native MSAA) | 10 | 1024 | · | · |
+| Medium | 2048, soft, the sun only | · (native MSAA) | 6, no area lights, analytic water | 1024 | · | · |
 | High | 4096, soft | AO, bloom, SMAA | 12 | 1024 | ✓ | · |
 | Ultra | 4096, soft | high AO, bloom, SMAA | 14 | 2048 | ✓ | ✓ |
 

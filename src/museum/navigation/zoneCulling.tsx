@@ -9,9 +9,9 @@
  * sectors, polygons), and only zones visible from the current one count as "being entered",
  * so a zone behind a wall never leaks in.
  */
-import { useFrame } from '@react-three/fiber'
-import { useLayoutEffect, useRef, type ReactNode } from 'react'
-import type * as THREE from 'three'
+import { createPortal, useFrame, useThree } from '@react-three/fiber'
+import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
+import * as THREE from 'three'
 import { ZONES, ZONE_VISIBILITY, zoneAt, zoneDistance, type ZoneId } from '../config/layout'
 import { DEG, KEY, MUSEUM } from '../config/museum'
 import { visitor } from '../state/visitor'
@@ -150,4 +150,43 @@ export function withZonesVisible<T>(zone: ZoneId | null, fn: () => T): T {
     visible = saved
     applyVisibility()
   }
+}
+
+/**
+ * Lights that zone culling must never hide. three.js counts only the lights it reaches when it draws, and builds
+ * every lit program for those counts: a light inside a culled zone group made every material in view recompile
+ * whenever its zone came into view, or a shader warm-up showed every zone (the theatre's screen spill, seen from
+ * both Parikrama walks, froze the museum for a minute the first time). The children are drawn under the scene's
+ * root, following this element's place in the tree, so the light count never changes; their owner dims them.
+ */
+export function Unculled({ children }: { children: ReactNode }) {
+  const scene = useThree((s) => s.scene)
+  const anchor = useRef<THREE.Group>(null)
+  const holder = useMemo(() => {
+    const g = new THREE.Group()
+    g.name = 'unculled'
+    g.matrixAutoUpdate = false
+    return g
+  }, [])
+  useLayoutEffect(() => {
+    scene.add(holder)
+    return () => {
+      holder.removeFromParent()
+    }
+  }, [scene, holder])
+  useFrame(() => {
+    const a = anchor.current
+    if (!a) return
+    a.updateWorldMatrix(true, false)
+    if (!holder.matrix.equals(a.matrixWorld)) {
+      holder.matrix.copy(a.matrixWorld)
+      holder.matrixWorldNeedsUpdate = true
+    }
+  })
+  return (
+    <>
+      <group ref={anchor} />
+      {createPortal(children, holder)}
+    </>
+  )
 }

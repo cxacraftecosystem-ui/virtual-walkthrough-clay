@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react'
 import * as THREE from 'three'
 import { LIGHTING } from './museum/config/lighting'
 import { MUSEUM } from './museum/config/museum'
-import { autoCeiling, QUALITY_ORDER, QUALITY_PRESETS, withDevOverrides } from './museum/config/quality'
+import { QUALITY_ORDER, QUALITY_PRESETS, rememberAutoTier, withDevOverrides } from './museum/config/quality'
 import { DebugOverlay } from './museum/debug/DebugOverlay'
 import { MuseumScene } from './museum/MuseumScene'
 import { useArrival } from './museum/navigation/ArrivalFlight'
 import { useMuseum } from './museum/state/store'
+import { usePrecompileProgress } from './museum/effects/Precompile'
 import { teleport, visitor } from './museum/state/visitor'
 import { InspectModal } from './museum/ui/InspectModal'
 import { UIOverlay } from './museum/ui/UIOverlay'
@@ -30,13 +31,16 @@ window.__museum = { teleport, visitor, store: useMuseum }
 
 /**
  * Adaptive quality ("auto"):
- *  • continuous resolution scaling inside the tier's DPR range (no reload, every ~1 s),
- *  • step UP a tier when the device holds the display's refresh rate with headroom,
- *  • step DOWN when it can't hold ~32 fps.
- * Tier changes rebuild the renderer (~1–2 s), so they are rationed: at most 3 per session,
- * never above the device-class ceiling, and never back up after a step down (no ping-pong).
+ *  • continuous resolution scaling (no reload, every ~1 s) inside the tier's DPR range, and down to
+ *    DPR_FLOOR on a device that cannot hold ~32 fps;
+ *  • never a tier change during the visit: a tier change remounts the canvas and recompiles its
+ *    programs ("Applying graphics settings…"), which on a laptop GPU kept the visitor waiting for
+ *    minutes. A device that keeps falling short drops the spectacle's costly extras (shaft, motes,
+ *    halos, mirror, smoke, grade; every geometry stays) at once, and its next visit starts a tier
+ *    lower (config/quality.ts rememberAutoTier).
  */
-const adaptive = { changes: 0, declined: false }
+const adaptive = { declined: false }
+const DPR_FLOOR = 0.75
 
 function AdaptiveQuality() {
   const quality = useMuseum((s) => s.quality)
@@ -46,39 +50,30 @@ function AdaptiveQuality() {
   const flying = useArrival((s) => s.active)
   const [armed, setArmed] = useState(false)
   useEffect(() => {
-    // The arrival flight is the heaviest view of the visit (no culling): judge the device after it.
+    // The arrival flight is the heaviest view of the visit: judge the device after it.
     if (phase !== 'entered' || flying) return
     const t = setTimeout(() => setArmed(true), 5000)
     return () => clearTimeout(t)
   }, [phase, tier, flying])
   if (quality !== 'auto' || !armed) return null
-  const [lo, hi] = QUALITY_PRESETS[tier].dpr
+  const [, hi] = QUALITY_PRESETS[tier].dpr
   const deviceMax = Math.min(hi, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1)
+  const lo = Math.min(DPR_FLOOR, deviceMax)
   return (
     <PerformanceMonitor
       ms={400}
       iterations={6}
       bounds={(refresh) => [Math.min(34, refresh * 0.55), Math.max(55, refresh * 0.95)]}
       flipflops={4}
-      onChange={({ factor }) => setDpr(Math.round((lo + (Math.max(lo, deviceMax) - lo) * factor) * 20) / 20)}
-      onIncline={() => {
-        const st = useMuseum.getState()
-        const i = QUALITY_ORDER.indexOf(st.tier)
-        const ceiling = QUALITY_ORDER.indexOf(autoCeiling())
-        if (adaptive.declined || adaptive.changes >= 3 || i >= ceiling) return
-        adaptive.changes++
-        st.setTier(QUALITY_ORDER[i + 1])
-      }}
+      // starts at the top of the range: factor 1 → the device's DPR (≤ the tier's), factor 0 → DPR_FLOOR
+      factor={1}
+      onChange={({ factor }) => setDpr(Math.round((lo + (deviceMax - lo) * factor) * 20) / 20)}
       onDecline={() => {
-        const st = useMuseum.getState()
-        const i = QUALITY_ORDER.indexOf(st.tier)
-        // Already on Low and still under ~30 fps (judged 5 s after arrival): drop the costly
-        // spectacle extras (shaft, motes, halos, mirror, smoke, grade), keep every geometry.
-        if (i <= 0) setSpectacleOff(true)
-        if (i <= 0 || adaptive.changes >= 3) return
-        adaptive.changes++
+        if (adaptive.declined) return
         adaptive.declined = true
-        st.setTier(QUALITY_ORDER[i - 1])
+        const i = QUALITY_ORDER.indexOf(useMuseum.getState().tier)
+        setSpectacleOff(true)
+        rememberAutoTier(QUALITY_ORDER[Math.max(0, i - 1)])
       }}
     />
   )
@@ -106,6 +101,8 @@ export default function App() {
   const tier = useMuseum((s) => s.tier)
   const compiled = useMuseum((s) => s.sceneCompiled)
   const entered = useMuseum((s) => s.phase === 'entered')
+  // entered before the first view was ready (the entry screen's safety timeout): say what is happening
+  const prep = usePrecompileProgress()
   const preset = withDevOverrides(QUALITY_PRESETS[tier])
   const [supported] = useState(hasWebGL)
   const [lost, setLost] = useState(false)
@@ -178,7 +175,7 @@ export default function App() {
             pointerEvents: 'none',
           }}
         >
-          {tr('hud.applyingGraphics')}
+          {prep.first ? `${tr('hud.preparingMuseum')}${prep.total ? ` ${Math.round((100 * prep.done) / prep.total)}%` : ''}` : tr('hud.applyingGraphics')}
         </div>
       )}
       <UIOverlay />

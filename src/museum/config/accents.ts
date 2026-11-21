@@ -69,6 +69,9 @@ const COOL_KEY = new Set<string>(['kumartuli-figure', 'majuli-mask'])
 const DARK_WARE_GAIN: Record<string, number> = { 'ring-c': 3 }
 const wareGain = (zone: string) => DARK_WARE_GAIN[zone] ?? 1
 
+/** The light on the pieces themselves (podiums, plinths, the Herd, the Wine Hall), raised a third so they read clearly. */
+const PIECE_GAIN = 1.35
+
 export { SCONCE }
 
 function podiumAccents(): Accent[] {
@@ -82,10 +85,10 @@ function podiumAccents(): Accent[] {
       zone: p.zone,
       pos,
       target,
-      // a tight 15° sconce beam on the piece (p02): the podium top is a bright island on the dark wall
-      beamDeg: 15,
+      // a tight sconce beam on the piece (p02): the podium top is a bright island on the dark wall
+      beamDeg: 17,
       colorK: GALLERY_K[p.zone] ?? 3000,
-      intensity: 34 * Math.max(1, (d / 1.6) ** 2) * wareGain(p.zone),
+      intensity: 34 * PIECE_GAIN * Math.max(1, (d / 1.6) ** 2) * wareGain(p.zone),
       cutY: PODIUM.height - 0.02,
       weight: 4,
       fixture: 'sconce',
@@ -267,7 +270,7 @@ function wineHallAccents(): Accent[] {
       // (neutral-warm: the wine wall stays mauve under it, never scarlet)
       colorK: 3600,
       // ≈ 1.4 at the plinths, whatever the throw
-      intensity: 1.4 * len(sub(p.position, pos)) ** 2,
+      intensity: 1.4 * PIECE_GAIN * len(sub(p.position, pos)) ** 2,
       weight: 3,
       fixture: 'track' as FixtureKind,
       stemTo: MUSEUM.pavilion.ceilingHeight,
@@ -363,7 +366,7 @@ export function objectAccent(o: SceneObjectConfig): Accent | null {
     colorK: COOL_KEY.has(o.kind) ? 4500 : GALLERY_K[o.zone] ?? (o.zone === 'sphere-well' ? 2700 : o.zone === 'annex' ? 3300 : 3000),
     // ≈ 3 at a piece (4.5 at a big one) whatever the throw: a clear pool over the dark ground
     // the workshop's figure and masks: a stronger cool key (a studio's north light), kept first on the low tiers' few slots
-    intensity: (big ? 4.5 : 3) * d * d * wareGain(o.zone) * (COOL_KEY.has(o.kind) ? 1.8 : 1),
+    intensity: (big ? 4.5 : 3) * PIECE_GAIN * d * d * wareGain(o.zone) * (COOL_KEY.has(o.kind) ? 1.8 : 1),
     weight: COOL_KEY.has(o.kind) ? 8 : Math.min(6, 1 + h + foot * 0.5),
     fixture: fixture ?? 'track',
     stemTo,
@@ -497,8 +500,8 @@ function herdKey(objects: readonly SceneObjectConfig[]): Accent[] {
   const ftarget: Vec3 = [cx, 2.0, cz]
   const fd = len(sub(ftarget, fpos))
   return [
-    { id: 'herd-key', zone: 'ring-a', pos, target, beamDeg: 24, colorK: 2900, intensity: 6.5 * d * d, weight: 9, fixture: 'track', stemTo: soffit + 0.12 },
-    { id: 'herd-front', zone: 'ring-a', pos: fpos, target: ftarget, beamDeg: 22, colorK: 3000, intensity: 7 * fd * fd, weight: 8.5, fixture: 'concealed' },
+    { id: 'herd-key', zone: 'ring-a', pos, target, beamDeg: 24, colorK: 2900, intensity: 6.5 * PIECE_GAIN * d * d, weight: 9, fixture: 'track', stemTo: soffit + 0.12 },
+    { id: 'herd-front', zone: 'ring-a', pos: fpos, target: ftarget, beamDeg: 22, colorK: 3000, intensity: 7 * PIECE_GAIN * fd * fd, weight: 8.5, fixture: 'concealed' },
   ]
 }
 

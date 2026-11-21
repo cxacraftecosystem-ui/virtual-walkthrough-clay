@@ -68,6 +68,7 @@ export const bn: Dict = {
   'hud.graphics': 'গ্রাফিক্স',
   'hud.languageTip': 'ভাষা',
   'hud.applyingGraphics': 'গ্রাফিক্স সেটিং প্রয়োগ হচ্ছে…',
+  'hud.preparingMuseum': 'সংগ্রহশালা তৈরি হচ্ছে…',
 
   'quality.auto': 'স্বয়ংক্রিয়',
   'quality.low': 'নিম্ন',

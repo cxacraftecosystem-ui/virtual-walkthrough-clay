@@ -582,7 +582,9 @@ export function SourcedInstances({ slug, spots, fallback, material, castShadow =
   const tier = useMuseum((s) => s.tier)
   const entry = sourcedEntry(slug)
   if (!entry || spots.length === 0) return <>{fallback}</>
-  const url = tier === 'low' && entry.lod1 ? entry.lod1 : entry.url
+  // LOD1 (a quarter of the triangles) on Low and Medium: the Parikrama's gardens and courts, all in view from
+  // the forecourt, held about 1.5 M triangles of LOD0 trees on Medium, most of a laptop GPU's frame
+  const url = (tier === 'low' || tier === 'medium') && entry.lod1 ? entry.lod1 : entry.url
   return (
     <ErrorBoundary key={url} fallback={fallback}>
       <Suspense fallback={fallback}>

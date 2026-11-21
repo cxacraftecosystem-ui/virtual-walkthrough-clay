@@ -40,7 +40,8 @@ import { useLang } from '../i18n'
 import { ensureWallFonts } from '../materials/wallGraphics'
 import { ProjectionTarget } from '../media/projection/projectionTarget'
 import { registerSpot, type SpotRequest } from '../lighting/SpotPool'
-import { isZoneVisible } from '../navigation/zoneCulling'
+import { isZoneVisible, Unculled } from '../navigation/zoneCulling'
+import { QUALITY_PRESETS } from '../config/quality'
 import { fireCue, useCue } from '../spectacle/cues'
 import { useSpectacle } from '../spectacle/settings'
 import { useMuseum } from '../state/store'
@@ -210,7 +211,8 @@ export function TheatreHouse({ config }: ModelProps) {
   const kilnOn = config.props?.kilnFilm !== false && !realFilm()
   const [rtW, rtH, hz, octaves] = sp.caps.kilnFilmRT
   const still = sp.mode === 'still'
-  const spill = tier !== 'low'
+  // the screen's coloured spill is a RectAreaLight: only where area lights are (High and Ultra), as a video screen's
+  const spill = QUALITY_PRESETS[tier].areaLights
 
   // local frame: the drum centre lies at +z, |position| away
   const cz = Math.hypot(config.position[0], config.position[2])
@@ -507,7 +509,12 @@ export function TheatreHouse({ config }: ModelProps) {
       <instancedMesh key={aisle.pucks.length} ref={puckRef} args={[undefined, undefined, aisle.pucks.length]} material={puckMat} raycast={() => null}>
         <cylinderGeometry args={[0.045, 0.05, 0.02, 12]} />
       </instancedMesh>
-      {spill && inScene && kilnOn && <rectAreaLight ref={spillRef} position={[0, S.centerY, cz - S.r + 0.25]} rotation={[0, Math.PI, 0]} width={width * 0.9} height={height * 0.9} intensity={0} />}
+      {spill && inScene && kilnOn && (
+        // never culled with the theatre's zone: a light that comes and goes recompiles every lit material
+        <Unculled>
+          <rectAreaLight ref={spillRef} position={[0, S.centerY, cz - S.r + 0.25]} rotation={[0, Math.PI, 0]} width={width * 0.9} height={height * 0.9} intensity={0} />
+        </Unculled>
+      )}
     </group>
   )
 }

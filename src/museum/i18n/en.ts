@@ -72,6 +72,7 @@ export const en = {
   'hud.graphics': 'Graphics',
   'hud.languageTip': 'Language',
   'hud.applyingGraphics': 'Applying graphics settings…',
+  'hud.preparingMuseum': 'Preparing the museum…',
 
   // ── Quality ─────────────────────────────────────────────────────
   'quality.auto': 'Auto',

@@ -26,6 +26,7 @@ import { registerItem } from '../interaction/registry'
 import { useMuseum } from '../state/store'
 import { visitor } from '../state/visitor'
 import { ErrorBoundary } from '../utils/ErrorBoundary'
+import { Unculled } from '../navigation/zoneCulling'
 import { VR_MODE } from '../utils/vr'
 import { inverseDistanceGain, isAudioUnsupported, onAudioUnlock, onUserGesture, setVideoAudibility } from './audioEngine'
 import { curveRadius, DEFAULT_ASPECT, MASK, screenDepth, screenPlacement } from './screenMath'
@@ -793,8 +794,13 @@ function ScreenSpill({ m, w, h, z, active }: { m: Media; w: number; h: number; z
     const mx = Math.max(c.r, c.g, c.b)
     if (mx > 1e-4) l.color.setRGB(0.5 + (0.5 * c.r) / mx, 0.5 + (0.5 * c.g) / mx, 0.5 + (0.5 * c.b) / mx)
   })
-  // Emits along local -z → turn to face the room.
-  return <rectAreaLight ref={light} position={[0, 0, z]} rotation={[0, Math.PI, 0]} width={w * 0.92} height={h * 0.92} intensity={0} />
+  // Emits along local -z → turn to face the room. Never culled with the screen's zone (Unculled): a light that comes
+  // and goes recompiles every lit material in view; it is dark whenever its picture is not playing.
+  return (
+    <Unculled>
+      <rectAreaLight ref={light} position={[0, 0, z]} rotation={[0, Math.PI, 0]} width={w * 0.92} height={h * 0.92} intensity={0} />
+    </Unculled>
+  )
 }
 
 /** Error-contained screen: any failure renders nothing rather than breaking the scene. */

@@ -171,8 +171,11 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
     smaa: true,
     floorReflections: false,
     tableSpots: true,
-    spotPool: 10,
-    areaLights: true,
+    // integrated GPUs (Medium is their tier): every lit shader carries each real light, and ANGLE on D3D11
+    // compiles a shadowed, area-lit program ~4x slower: six spots, no area lights (the hemisphere fill rises
+    // instead, as on Low), shadows from the sun only (SpotPool SPOT_SHADOWS)
+    spotPool: 6,
+    areaLights: false,
     textureAnisotropy: 4,
     textureSize: 1024,
     antialias: true,
@@ -190,7 +193,9 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
       rainDrops: 600,
       outdoorRain: true,
       poolMirror: false,
-      waterMirrorPx: 512,
+      // the analytic reflection, as on Low: a rendered mirror drew the scene a second time every frame and
+      // built a second program for every material it caught, compiled on the spot the first time a room appeared in it
+      waterMirrorPx: 0,
       caustics: true,
       smoke: 12,
       sparks: 0,
@@ -340,6 +345,13 @@ export const QUALITY_ORDER: QualityTier[] = ['low', 'medium', 'high', 'ultra']
 /** Pick a starting tier for "auto" from coarse device signals. */
 export function detectInitialTier(): QualityTier {
   if (typeof window === 'undefined') return 'high'
+  const detected = detectDeviceTier()
+  // a device that could not hold its frame rate on an earlier visit starts where it was told to (App.tsx)
+  const remembered = rememberedAutoTier()
+  return remembered && QUALITY_ORDER.indexOf(remembered) < QUALITY_ORDER.indexOf(detected) ? remembered : detected
+}
+
+function detectDeviceTier(): QualityTier {
   const coarse = window.matchMedia?.('(pointer: coarse)').matches
   const small = Math.min(window.screen.width, window.screen.height) < 820
   const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory
@@ -350,6 +362,26 @@ export function detectInitialTier(): QualityTier {
   if (cls === 'integrated') return 'medium'
   if (cls === 'flagship') return 'ultra'
   return 'high'
+}
+
+const AUTO_TIER_KEY = 'museum.autoTier'
+
+/** "Auto" never changes tier during a visit (App.tsx): a device that fell short starts the next one at `t`. */
+export function rememberAutoTier(t: QualityTier) {
+  try {
+    localStorage.setItem(AUTO_TIER_KEY, t)
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function rememberedAutoTier(): QualityTier | null {
+  try {
+    const t = localStorage.getItem(AUTO_TIER_KEY)
+    return t && (QUALITY_ORDER as readonly string[]).includes(t) ? (t as QualityTier) : null
+  } catch {
+    return null
+  }
 }
 
 export type GpuClass = 'integrated' | 'discrete' | 'flagship' | 'unknown'

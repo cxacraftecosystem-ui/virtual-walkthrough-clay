@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useProgress } from '@react-three/drei'
 import { useMuseum } from '../state/store'
+import { usePrecompileProgress } from '../effects/Precompile'
 import { EXHIBITION_TITLE } from '../config/infographics'
 import { ExhibitionPicker } from './ExhibitionPicker'
 import { requestAmbientStart } from './audio'
@@ -17,7 +18,9 @@ import './entry.css'
 /** Delay before the tour starts walking, so the entry fade has cleared. */
 const TOUR_DELAY_MS = 1300
 
-const SAFETY_TIMEOUT_MS = 40000
+// the door opens without the first view's shaders only after this (a GPU that never finishes): the bar shows their
+// progress meanwhile (effects/Precompile.tsx), and a visitor who enters early sees it as a percentage
+const SAFETY_TIMEOUT_MS = 120000
 /** If no loader ever reports (fully procedural scene), declare ready after this. */
 const IDLE_GRACE_MS = 1600
 const LEAVE_MS = 1150
@@ -144,7 +147,12 @@ export function EntryScreen() {
         let target: number
         if (s.phase !== 'loading') target = 100
         else if (!s.assetsDone) target = s.total === 0 ? Math.min(40, v + dt * 6) : (s.progress / 100) * ASSET_SHARE
-        else target = Math.min(97, Math.max(ASSET_SHARE, v) + dt * 2.2)
+        else {
+          // the first view's shaders: their first draws are counted (effects/Precompile.tsx); while they are
+          // still compiling in parallel (nothing counted yet), a slow creep
+          const p = usePrecompileProgress.getState()
+          target = p.total > 0 ? ASSET_SHARE + (97 - ASSET_SHARE) * (p.done / p.total) : Math.min(ASSET_SHARE + 12, Math.max(ASSET_SHARE, v) + dt * 0.8)
+        }
         const next = v + (target - v) * Math.min(1, dt * 6)
         return Math.abs(target - next) < 0.1 ? target : next
       })

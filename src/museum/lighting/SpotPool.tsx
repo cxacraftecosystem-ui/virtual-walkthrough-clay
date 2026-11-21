@@ -60,8 +60,8 @@ const tinted = new THREE.Color()
 /** What each slot lights now: its target and its weight (0 … 1), read by the AccentField. */
 export const poolLit: { x: number; y: number; z: number; w: number; e: number }[] = []
 
-/** Shadow-casting slots per tier (GRAND §10). */
-export const SPOT_SHADOWS = { low: 0, medium: 2, high: 4, ultra: 6 } as const
+/** Shadow-casting slots per tier (GRAND §10); none on Medium, where the sun's shadows carry the scene (config/quality.ts). */
+export const SPOT_SHADOWS = { low: 0, medium: 0, high: 4, ultra: 6 } as const
 
 /**
  * Spot shadow maps a fragment shader can afford: every shadowed spot takes a texture unit in every

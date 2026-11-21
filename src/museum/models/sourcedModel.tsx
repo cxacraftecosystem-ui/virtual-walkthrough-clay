@@ -20,13 +20,14 @@
  * instanced mesh per part (`SourcedBatches`); their own objects then draw nothing.
  */
 import { useFrame, useThree } from '@react-three/fiber'
-import { Suspense, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import * as THREE from 'three'
 import { ZONE_VISIBILITY, zoneAt, type ZoneId } from '../config/layout'
 import { SCENE_OBJECTS, type SceneObjectConfig } from '../config/objects'
 import { SOURCED_REGISTRY, type SourcedEntry } from '../config/sourcedRegistry.generated'
 import type { QualityTier } from '../config/quality'
 import { sourcedFinishMaterial } from '../materials/sourcedFinish'
+import { injectAtmosphereTree } from '../lighting/atmosphere/inject'
 import { ZoneGroup } from '../navigation/zoneCulling'
 import { perchZone } from '../navigation/perch'
 import { useMuseum } from '../state/store'
@@ -53,8 +54,8 @@ export function sourcedFootprint(e: SourcedEntry, height = sourcedHeight(e)): [n
   return [(e.bbox[3] - e.bbox[0]) * s, (e.bbox[5] - e.bbox[2]) * s]
 }
 
-/** LOD0 radius per tier (GRAND §10); Low draws LOD1 only. */
-const LOD0_RADIUS: Record<QualityTier, number> = { low: 0, medium: 8, high: 14, ultra: 20 }
+/** LOD0 radius per tier (GRAND §10); Low draws LOD1 only. Medium 5 m: the Wine Hall's sixty scans at 8 m drew 2.4 M triangles. */
+const LOD0_RADIUS: Record<QualityTier, number> = { low: 0, medium: 5, high: 14, ultra: 20 }
 
 /* ------------------------------------------------------------------ */
 /* Zone streaming                                                      */
@@ -131,6 +132,101 @@ export function SourcedStreamer() {
 /** For tests and shots: load everything now. */
 export function streamAllSourced() {
   wantAll()
+}
+
+/* ------------------------------------------------------------------ */
+/* Load queue: a room's scans arrive one or two at a time               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A model's file is parsed (meshopt), its textures uploaded and its programs compiled on the main thread: when a
+ * room's forty scans (the Wine Hall) or, nine seconds after Enter, every remaining zone's started at once, the
+ * frame stopped for seconds. Loads take a ticket: at most MAX_LOADING at a time, the nearest to the visitor
+ * first; each gives its ticket back once it is compiled and shown (`Shown`), or after TICKET_MAX_MS.
+ */
+const MAX_LOADING = 2
+const TICKET_MAX_MS = 15000
+const waiting = new Map<string, { x: number; z: number; grant: () => void }>()
+const loading = new Map<string, number>()
+/** Keys loaded once already: the file is in the cache, a remount needs no ticket. */
+const loadedKeys = new Set<string>()
+
+function pump() {
+  const now = performance.now()
+  for (const [k, t] of loading) if (now - t > TICKET_MAX_MS) loading.delete(k)
+  while (loading.size < MAX_LOADING && waiting.size) {
+    let best = ''
+    let bd = Infinity
+    for (const [k, w] of waiting) {
+      const d = Math.hypot(w.x - visitor.x, w.z - visitor.z)
+      if (d < bd) {
+        bd = d
+        best = k
+      }
+    }
+    const w = waiting.get(best)!
+    waiting.delete(best)
+    loading.set(best, now)
+    w.grant()
+  }
+}
+
+function giveBack(key: string) {
+  loadedKeys.add(key)
+  if (loading.delete(key)) pump()
+}
+
+/** Whether the load named `key` may start (always once loaded, or when `queued` is false). */
+function useLoadTicket(key: string, position: [number, number, number], active: boolean, queued: boolean): boolean {
+  const [granted, setGranted] = useState(() => !queued || loadedKeys.has(key))
+  useEffect(() => {
+    if (!active || granted || !queued) return
+    waiting.set(key, { x: position[0], z: position[2], grant: () => setGranted(true) })
+    pump()
+    const retry = setInterval(pump, 1000)
+    return () => {
+      clearInterval(retry)
+      waiting.delete(key)
+    }
+  }, [key, active, granted, queued, position])
+  // unmounted while loading: the ticket goes back
+  useEffect(() => () => giveBack(key), [key])
+  return granted || !queued
+}
+
+/**
+ * Shows its children only once their programs are compiled (KHR_parallel_shader_compile, off the main thread), the
+ * shared light engine patched in first (lighting/atmosphere/inject.ts): a streamed model never compiles on its first
+ * draw. Then it hands its load ticket back.
+ */
+function Shown({ ticket, children }: { ticket: string; children: ReactNode }) {
+  const ref = useRef<THREE.Group>(null)
+  const gl = useThree((s) => s.gl)
+  const scene = useThree((s) => s.scene)
+  const camera = useThree((s) => s.camera)
+  useLayoutEffect(() => {
+    const g = ref.current
+    if (!g) return
+    let live = true
+    const done = () => {
+      if (!live) return
+      g.visible = true
+      giveBack(ticket)
+    }
+    try {
+      injectAtmosphereTree(g, gl)
+      // compileAsync walks visible objects, synchronously, before its promise: hidden again right after
+      const p = gl.compileAsync(g, camera, scene)
+      g.visible = false
+      p.then(done, done)
+    } catch {
+      done()
+    }
+    return () => {
+      live = false
+    }
+  }, [gl, scene, camera, ticket])
+  return <group ref={ref}>{children}</group>
 }
 
 /* ------------------------------------------------------------------ */
@@ -216,26 +312,43 @@ function SourcedResolved({ config, entry, inScene }: { config: SceneObjectConfig
   const lodOn = config.props?.lod !== false
   const streamed = useStreamed(config.zone as ZoneId, inScene)
   const near = useNear(config.position, inScene && lodOn ? LOD0_RADIUS[tier] : Infinity)
+  // in the museum each file waits its turn (the load queue above); the inspection viewer loads at once
+  const k1 = `${entry.lod1}|${config.id}`
+  const k0 = `${entry.url}|${config.id}`
+  const go1 = useLoadTicket(k1, config.position, streamed, inScene)
+  const go0 = useLoadTicket(k0, config.position, streamed && near, inScene)
   const fallback = <Silhouette entry={entry} height={height} />
-  if (!streamed) return fallback
-  const far = <GLTFModel url={entry.lod1} height={height} material={material} />
-  if (!near) return <Loaded key="lod1" fallback={fallback}>{far}</Loaded>
+  if (!streamed || !go1) return fallback
+  const far = (
+    <Shown ticket={k1}>
+      <GLTFModel url={entry.lod1} height={height} material={material} />
+    </Shown>
+  )
+  if (!near || !go0) return <Loaded key="lod1" fallback={fallback} ticket={k1}>{far}</Loaded>
   // LOD0 loads behind LOD1 (which is small), so a swap never flashes the silhouette
   return (
-    <Loaded key="lod0" fallback={fallback}>
+    <Loaded key="lod0" fallback={fallback} ticket={k0}>
       <Suspense fallback={far}>
-        <GLTFModel url={entry.url} height={height} material={material} />
+        <Shown ticket={k0}>
+          <GLTFModel url={entry.url} height={height} material={material} />
+        </Shown>
       </Suspense>
     </Loaded>
   )
 }
 
-function Loaded({ fallback, children }: { fallback: ReactNode; children: ReactNode }) {
+function Loaded({ fallback, children, ticket }: { fallback: ReactNode; children: ReactNode; ticket: string }) {
   return (
-    <ErrorBoundary fallback={fallback}>
+    // a file that fails gives its load ticket back too
+    <ErrorBoundary fallback={<GiveBack ticket={ticket}>{fallback}</GiveBack>}>
       <Suspense fallback={fallback}>{children}</Suspense>
     </ErrorBoundary>
   )
+}
+
+function GiveBack({ ticket, children }: { ticket: string; children: ReactNode }) {
+  useEffect(() => giveBack(ticket), [ticket])
+  return <>{children}</>
 }
 
 /** Within `radius` of the camera (checked a few times a second, with 1 m of hysteresis). */

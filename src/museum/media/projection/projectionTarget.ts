@@ -42,9 +42,24 @@ export class ProjectionTarget {
     projectionTargets.add(this)
   }
 
-  /** Build the shader's program ahead of its first draw (the room may not be seen for minutes). */
-  compile(gl: THREE.WebGLRenderer) {
-    return gl.compileAsync(this.scene, this.camera)
+  /**
+   * Build the shader's program ahead of its first draw (the room may not be seen for minutes), for the target it
+   * draws into: a program's output (colour space, tone mapping) follows the target bound when it is built, so
+   * compiled for the canvas, the real one was built on the first draw instead, synchronously (the Kiln Film's:
+   * 13 s on Direct3D, the first time the theatre came into view). Then one draw, which finishes it.
+   */
+  async compile(gl: THREE.WebGLRenderer) {
+    const prev = gl.getRenderTarget()
+    gl.setRenderTarget(this.target)
+    let p: Promise<unknown>
+    try {
+      p = gl.compileAsync(this.scene, this.camera)
+    } finally {
+      gl.setRenderTarget(prev)
+    }
+    await p
+    this.acc = Infinity
+    this.tick(gl, 0, 1, true)
   }
 
   get texture() {

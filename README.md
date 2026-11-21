@@ -159,12 +159,14 @@ flowchart TD
 | Graphics tier | Starts on | Shadows | Post-processing | Spotlights | Extras |
 |---|---|---|---|---:|---|
 | Low | small touch screens | · | · | 6 | 512 px textures |
-| Medium | tablets, 4 GB devices, integrated GPUs | 2048 px, soft | native MSAA, no composer | 10 | |
+| Medium | tablets, 4 GB devices, integrated GPUs | 2048 px, soft, the sun only | native MSAA, no composer | 6 | no area lights, analytic water |
 | High | discrete GPUs | 4096 px, soft | AO, bloom, SMAA | 12 | mirrored lotus pool |
 | Ultra | flagship GPUs | 4096 px, soft | high AO, bloom, SMAA | 14 | mirrored pool, floor reflections, 2048 px textures |
 
-The starting tier comes from `detectInitialTier()`, and the pavilion steps down a tier when it cannot hold about
-32 fps. On Low below about 30 fps the costly extras switch off too. Visitors can change tier from the HUD.
+The starting tier comes from `detectInitialTier()`. It never changes during a visit, since a change rebuilds the
+canvas and recompiles every shader: below about 32 fps the resolution drops and the costly extras switch off, and
+the next visit starts a tier lower. Visitors can change tier from the HUD. The door opens once the shaders seen
+from the forecourt are ready; the rest of the museum is prepared in the background (`effects/Precompile.tsx`).
 
 ## <img src="docs/readme-kit/assets/icons/layers.svg" width="32" align="top" alt="">&nbsp; Built with
 
