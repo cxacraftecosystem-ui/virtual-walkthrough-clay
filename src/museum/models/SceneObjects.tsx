@@ -122,7 +122,8 @@ export function ObjectModel({ config }: { config: SceneObjectConfig }) {
     <>
       <ErrorBoundary key={config.model} fallback={fallback}>
         <Suspense fallback={fallback}>
-          <GLTFModel url={config.model} scale={config.modelScale} height={config.height} />
+          {/* in the museum each model has a key light of its own (the 3D viewer lights its own stage) */}
+          <GLTFModel url={config.model} scale={config.modelScale} height={config.height} keyLight={inScene} />
         </Suspense>
       </ErrorBoundary>
       {stand}

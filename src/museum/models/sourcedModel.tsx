@@ -317,11 +317,13 @@ function SourcedResolved({ config, entry, inScene }: { config: SceneObjectConfig
   const k0 = `${entry.url}|${config.id}`
   const go1 = useLoadTicket(k1, config.position, streamed, inScene)
   const go0 = useLoadTicket(k0, config.position, streamed && near, inScene)
+  // the pieces on show (labelled) each get a key light of their own; scenery (heads, tools, trees) does not
+  const keyed = inScene && !!config.interactive
   const fallback = <Silhouette entry={entry} height={height} />
   if (!streamed || !go1) return fallback
   const far = (
     <Shown ticket={k1}>
-      <GLTFModel url={entry.lod1} height={height} material={material} />
+      <GLTFModel url={entry.lod1} height={height} material={material} keyLight={keyed} />
     </Shown>
   )
   if (!near || !go0) return <Loaded key="lod1" fallback={fallback} ticket={k1}>{far}</Loaded>
@@ -330,7 +332,7 @@ function SourcedResolved({ config, entry, inScene }: { config: SceneObjectConfig
     <Loaded key="lod0" fallback={fallback} ticket={k0}>
       <Suspense fallback={far}>
         <Shown ticket={k0}>
-          <GLTFModel url={entry.url} height={height} material={material} />
+          <GLTFModel url={entry.url} height={height} material={material} keyLight={keyed} />
         </Shown>
       </Suspense>
     </Loaded>

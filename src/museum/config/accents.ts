@@ -48,7 +48,7 @@ export interface Accent {
 }
 
 /** AccentField cones per tier (GRAND §10). */
-export const ACCENT_CAPS: Record<QualityTier, number> = { low: 8, medium: 12, high: 16, ultra: 24 }
+export const ACCENT_CAPS: Record<QualityTier, number> = { low: 8, medium: 16, high: 16, ultra: 24 }
 export const ACCENT_MAX = 24
 
 /** Beam limits of the brief (deg). */
@@ -69,8 +69,8 @@ const COOL_KEY = new Set<string>(['kumartuli-figure', 'majuli-mask'])
 const DARK_WARE_GAIN: Record<string, number> = { 'ring-c': 3 }
 const wareGain = (zone: string) => DARK_WARE_GAIN[zone] ?? 1
 
-/** The light on the pieces themselves (podiums, plinths, the Herd, the Wine Hall), raised a third so they read clearly. */
-const PIECE_GAIN = 1.35
+/** The light on the pieces themselves (podiums, plinths, the Herd, the Wine Hall): four times the first design's, so they read clearly. */
+const PIECE_GAIN = 4.05
 
 export { SCONCE }
 

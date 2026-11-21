@@ -39,6 +39,12 @@ const SAME_TARGET = 0.45
 const BEHIND_COS = Math.cos(80 * DEG)
 const BEHIND_NEAR = 2.5
 const BEHIND_M = 5
+/** A lit cone's head start (m) over a newcomer: it gives its place only to a clearly better piece. */
+const HOLD_M = 3
+const smoothstep = (e0: number, e1: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)))
+  return t * t * (3 - 2 * t)
+}
 /** An accent that lights all the way to the floor. */
 const NO_CUT = -1e4
 
@@ -109,6 +115,7 @@ export function AccentField() {
       // the visitor's heading (yaw 0 faces −z, positive turns west)
       const fx = -Math.sin(visitor.yaw)
       const fz = -Math.cos(visitor.yaw)
+      const heldNow = new Set(slots.map((s) => s.p).filter((p): p is Prepared => !!p))
       const ranked = all
         .filter((p) => seen.has(p.a.zone))
         .map((p) => {
@@ -118,8 +125,12 @@ export function AccentField() {
           // the room one stands in comes first, then what is in front of the visitor (on the low
           // tiers' few slots, the pieces behind would otherwise take the cones from the view);
           // the most visible pieces win at equal distance
-          const behind = d > BEHIND_NEAR && (dx * fx + dz * fz) / d < BEHIND_COS ? BEHIND_M : 0
-          return [p, (d + (p.a.zone === here ? 0 : 6) + behind) / Math.sqrt(p.a.weight)] as const
+          // (a smooth penalty, not a step at 80°, and a cone already lit holds its place unless a clearly better
+          // piece comes up: with a step and no hold, turning the head swapped cones every quarter second and the
+          // pieces at the edge of the view pulsed, dimming and brightening)
+          const behind = d > BEHIND_NEAR ? BEHIND_M * smoothstep(BEHIND_COS + 0.25, BEHIND_COS - 0.25, (dx * fx + dz * fz) / d) : 0
+          const hold = heldNow.has(p) ? HOLD_M : 0
+          return [p, (d + (p.a.zone === here ? 0 : 6) + behind - hold) / Math.sqrt(p.a.weight)] as const
         })
         .sort((a, b) => a[1] - b[1])
       r.want = new Set(ranked.slice(0, slots.length).map(([p]) => p))

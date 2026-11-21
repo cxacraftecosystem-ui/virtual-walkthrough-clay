@@ -15,8 +15,9 @@ import { BALCONY_RAIL_Y, isSconceMount, mountForPodium, RAILS, railAbove } from 
 import { COLLIDERS, pointDistance } from '../../src/museum/navigation/collision'
 
 describe('accent field', () => {
-  it('caps the cones per tier at 8 / 12 / 16 / 24', () => {
-    assert.deepEqual(ACCENT_CAPS, { low: 8, medium: 12, high: 16, ultra: 24 })
+  // Medium takes 16 (2026-11): with 12 the cones changed hands between pieces as the visitor turned
+  it('caps the cones per tier at 8 / 16 / 16 / 24', () => {
+    assert.deepEqual(ACCENT_CAPS, { low: 8, medium: 16, high: 16, ultra: 24 })
     assert.equal(ACCENT_MAX, 24)
   })
 

@@ -171,6 +171,11 @@ uniform vec4 uAtmosAccentDir[ATMOS_ACCENTS];
 uniform vec4 uAtmosAccentCol[ATMOS_ACCENTS];
 uniform int uAtmosAccentN;
 #endif
+#ifdef USE_ATMOS_KEY
+uniform vec4 uAtmosKeyPos;
+uniform vec4 uAtmosKeyDir;
+uniform vec4 uAtmosKeyCol;
+#endif
 uniform vec4 uAtmosWet;
 
 // ring sector of the drum (A, B, C side): between its two notch directions (a span under 180°,
@@ -403,6 +408,26 @@ const POST = /* glsl */ `
       atmosSpecDir += l * dot(E, vec3(0.3333));
     }
     #endif
+    // 7. the piece's own key (USE_ATMOS_KEY): one cone that lights only this material's model, aimed at it from
+    // above and in front (models/GLTFModel.tsx keyLight) — every model lit, whatever the accent field's slots hold
+    #ifdef USE_ATMOS_KEY
+    {
+      vec3 d = uAtmosKeyPos.xyz - atmosP;
+      float d2 = dot(d, d);
+      vec3 l = d * inversesqrt(max(d2, 1e-4));
+      float cd = -dot(l, uAtmosKeyDir.xyz);
+      float nl = dot(atmosN, l);
+      if (d2 < uAtmosKeyCol.w * uAtmosKeyCol.w && cd > uAtmosKeyDir.w && nl > 0.0) {
+        float win = clamp(1.0 - d2 * d2 / (uAtmosKeyCol.w * uAtmosKeyCol.w * uAtmosKeyCol.w * uAtmosKeyCol.w), 0.0, 1.0);
+        vec3 E = uAtmosKeyCol.rgb * (smoothstep(uAtmosKeyDir.w, 1.0 - (1.0 - uAtmosKeyDir.w) * 0.3, cd) * win * win / max(d2, 0.04));
+        atmosIrr += E * nl;
+        #if ATMOS_ACCENTS > 0
+        atmosSpecCol += E * nl;
+        atmosSpecDir += l * dot(E, vec3(0.3333));
+        #endif
+      }
+    }
+    #endif
     reflectedLight.directDiffuse += atmosIrr * BRDF_Lambert(material.diffuseColor);
     #if ATMOS_ACCENTS > 0 && defined(STANDARD)
     if (dot(atmosSpecDir, atmosSpecDir) > 1e-8) {
@@ -480,7 +505,19 @@ export interface AtmosFlags {
   skip?: boolean
   /** Also take the cove wash (the architecture's wall, ceiling and floor finishes). */
   coves?: boolean
+  /** A key cone of its own (`atmosKey`): for a material only one model draws with (models/GLTFModel.tsx). */
+  key?: boolean
 }
+
+/** A keyed material's own cone: position (w unused), direction (w = cos of the half-angle), colour × intensity (w = range). */
+export interface AtmosKey {
+  pos: { value: THREE.Vector4 }
+  dir: { value: THREE.Vector4 }
+  col: { value: THREE.Vector4 }
+}
+const keys = new WeakMap<THREE.Material, AtmosKey>()
+/** The key cone of a material opted in with `key` (undefined otherwise). */
+export const atmosKey = (mat: THREE.Material) => keys.get(mat)
 
 /**
  * Opt a lit material into the atmosphere terms. Call before it first compiles; safe to call
@@ -494,15 +531,18 @@ export function injectAtmosphere(mat: THREE.Material, flags: AtmosFlags = {}): b
   if (opted.has(mat) || skipped.has(mat) || !isLit(mat)) return false
   if (!patchAtmosphereChunks()) return false
   opted.add(mat)
-  mat.defines = { ...(mat.defines ?? {}), USE_ATMOS: '', ...(flags.coves ? { USE_ATMOS_COVE: '' } : {}) }
+  const key: AtmosKey | undefined = flags.key ? { pos: { value: new THREE.Vector4() }, dir: { value: new THREE.Vector4(0, -1, 0, 1) }, col: { value: new THREE.Vector4() } } : undefined
+  if (key) keys.set(mat, key)
+  mat.defines = { ...(mat.defines ?? {}), USE_ATMOS: '', ...(flags.coves ? { USE_ATMOS_COVE: '' } : {}), ...(key ? { USE_ATMOS_KEY: '' } : {}) }
   const prev = mat.onBeforeCompile
   mat.onBeforeCompile = (shader, renderer) => {
     prev?.call(mat, shader, renderer)
     Object.assign(shader.uniforms, ATMOS)
+    if (key) Object.assign(shader.uniforms, { uAtmosKeyPos: key.pos, uAtmosKeyDir: key.dir, uAtmosKeyCol: key.col })
     shader.fragmentShader = `#define ATMOS_ACCENTS ${accentSlots}\n${shader.fragmentShader}`
   }
   const prevKey = mat.customProgramCacheKey.bind(mat)
-  mat.customProgramCacheKey = () => `${prevKey()}|atmos${flags.coves ? 'C' : ''}${accentSlots}`
+  mat.customProgramCacheKey = () => `${prevKey()}|atmos${flags.coves ? 'C' : ''}${key ? 'K' : ''}${accentSlots}`
   mat.needsUpdate = true
   return true
 }

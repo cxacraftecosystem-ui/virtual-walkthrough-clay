@@ -15,8 +15,10 @@
  *   `useMergedModel` hands the merged parts to the instance batcher (models/sourcedModel.tsx).
  */
 import { useGLTF } from '@react-three/drei'
-import { useMemo } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { atmosKey, injectAtmosphere } from '../lighting/atmosphere/inject'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 export interface MergedModel {
@@ -153,6 +155,50 @@ export interface GLTFModelProps {
   /** One material for every part (a sourced model's clay finish, materials/sourcedFinish.ts). */
   material?: THREE.Material | null
   castShadow?: boolean
+  /**
+   * A key light of its own (in the museum): the parts draw with their own copies of the materials, each lit by
+   * one cone aimed at this placement from above and in front (lighting/atmosphere/inject.ts USE_ATMOS_KEY), so
+   * every model is lit whatever the room's shared accent cones are on.
+   */
+  keyLight?: boolean
+}
+
+/** The key's irradiance at the model's centre (the atmosphere's units; an accent cone gives a piece about 12). */
+const KEY_E = 9
+/** Warm white, about 3600 K. */
+const KEY_COLOR = new THREE.Color('#fff0dc')
+const _c = new THREE.Vector3()
+const _size = new THREE.Vector3()
+const _front = new THREE.Vector3()
+const _pos = new THREE.Vector3()
+const _dir = new THREE.Vector3()
+const _box = new THREE.Box3()
+
+/** Aim a placement's key from its world bounds: above and in front of it (its +z), the cone just covering it. */
+function aimKey(g: THREE.Object3D, mats: THREE.Material[]) {
+  _box.setFromObject(g)
+  if (_box.isEmpty()) return
+  _box.getCenter(_c)
+  _box.getSize(_size)
+  const H = Math.max(0.05, _size.y)
+  const R = Math.max(_size.x, _size.z) / 2
+  _front.set(0, 0, 1).transformDirection(g.matrixWorld)
+  _front.y = 0
+  if (_front.lengthSq() < 1e-6) _front.set(0, 0, 1)
+  _front.normalize()
+  _pos.copy(_c).addScaledVector(_front, R + 0.6 + 0.5 * H)
+  _pos.y += 0.7 * H + 1.0
+  const d = _pos.distanceTo(_c)
+  const half = Math.min(Math.atan((Math.max(H, 2 * R) * 0.62) / d) * 1.2, 0.75)
+  _dir.copy(_c).sub(_pos).normalize()
+  const I = KEY_E * d * d
+  for (const m of mats) {
+    const k = atmosKey(m)
+    if (!k) continue
+    k.pos.value.set(_pos.x, _pos.y, _pos.z, 0)
+    k.dir.value.set(_dir.x, _dir.y, _dir.z, Math.cos(half))
+    k.col.value.set(KEY_COLOR.r * I, KEY_COLOR.g * I, KEY_COLOR.b * I, d * 2.5)
+  }
 }
 
 /** The merged parts and bounds of a loaded GLB (cached per URL): for instancing (models/sourcedModel.tsx). */
@@ -162,7 +208,7 @@ export function useMergedModel(url: string): MergedModel {
   return useMemo(() => mergeScene(src, scene), [src, scene])
 }
 
-export function GLTFModel({ url, scale, height, material, castShadow = true }: GLTFModelProps) {
+export function GLTFModel({ url, scale, height, material, castShadow = true, keyLight = false }: GLTFModelProps) {
   // Draco + meshopt decoders on: admin "3D scan import" output is EXT_meshopt_compression +
   // KHR_mesh_quantization + EXT_texture_webp (all handled by three-stdlib's GLTFLoader).
   const src = resolveModelUrl(url)
@@ -174,10 +220,38 @@ export function GLTFModel({ url, scale, height, material, castShadow = true }: G
     const s = scale ?? (height && size.y > 1e-4 ? height / size.y : 1)
     return { s, offset: [-c.x * s, -model.box.min.y * s, -c.z * s] as [number, number, number] }
   }, [model, scale, height])
+  // a keyed placement draws with its own copies (textures and programs shared): its key is its own
+  const keyed = useMemo(() => {
+    if (!keyLight) return null
+    return model.parts.map((p) => {
+      const m = (material ?? p.material).clone()
+      injectAtmosphere(m, { key: true })
+      return m
+    })
+  }, [keyLight, model, material])
+  useEffect(() => () => keyed?.forEach((m) => m.dispose()), [keyed])
+  const group = useRef<THREE.Group>(null)
+  const aimed = useRef<THREE.Matrix4 | null>(null)
+  // aimed before the first frame: a fresh placement (a scan swapping detail levels) never draws one frame unlit
+  useLayoutEffect(() => {
+    const g = group.current
+    if (!g || !keyed) return
+    g.updateWorldMatrix(true, true)
+    aimKey(g, keyed)
+    aimed.current = g.matrixWorld.clone()
+  }, [keyed])
+  useFrame(() => {
+    const g = group.current
+    if (!g || !keyed) return
+    // aimed once its place is known, and again only if it moves (a curator's edit)
+    if (aimed.current?.equals(g.matrixWorld)) return
+    aimKey(g, keyed)
+    aimed.current = g.matrixWorld.clone()
+  })
   return (
-    <group position={fit.offset} scale={fit.s}>
+    <group ref={group} position={fit.offset} scale={fit.s}>
       {model.parts.map((p, i) => (
-        <mesh key={i} geometry={p.geometry} material={material ?? p.material} castShadow={castShadow} receiveShadow />
+        <mesh key={i} geometry={p.geometry} material={keyed ? keyed[i] : (material ?? p.material)} castShadow={castShadow} receiveShadow />
       ))}
     </group>
   )

@@ -21,7 +21,7 @@ import { SCENE_OBJECTS } from '../config/objects'
 import { QUALITY_PRESETS, withDevOverrides } from '../config/quality'
 import { StaticMerge } from '../effects/StaticMerge'
 import { Benches } from '../furniture/Bench'
-import { injectAtmosphere } from '../lighting/atmosphere/inject'
+import { atmosKey, injectAtmosphere } from '../lighting/atmosphere/inject'
 import { ambience } from '../lighting/timeOfDayState'
 import { coverAngle, TrackRail, TrackSpot } from '../lighting/TrackLight'
 import { mountForPodium, RAILS } from '../lighting/tracks'
@@ -53,6 +53,9 @@ export const PODIUM_HOOD = { height: PODIUM_HOODS.height, margin: PODIUM_HOODS.m
 /** The brass label rail on each podium's court face: its top height and size. */
 export const LABEL_RAIL = { top: 0.95, width: 0.26, depth: 0.075, thick: 0.022 }
 
+/** A podium column's own key: its irradiance at mid-height (the atmosphere's units). */
+const PODIUM_KEY_E = 3
+
 /** Every podium of the row: a red lacquered column on a recessed shadow plinth, a brass collar at its head and a brass label rail on its court face. */
 function PodiumRow() {
   const m = useMaterials()
@@ -66,6 +69,33 @@ function PodiumRow() {
     return c
   }, [m])
   useEffect(() => () => charcoal.dispose(), [charcoal])
+  // each column lit by a key of its own from the court side (lighting/atmosphere/inject.ts USE_ATMOS_KEY): the
+  // sconce lights only the piece on top, and the columns read as dark posts under it
+  const bodies = useMemo(
+    () =>
+      PODIUM_SLOTS.map((p) => {
+        const mat = ((p.zone === 'ring-c' ? charcoal : m.redLacquer) as THREE.MeshStandardMaterial).clone()
+        injectAtmosphere(mat, { coves: true, key: true })
+        const k = atmosKey(mat)
+        if (k) {
+          const toCourt = new THREE.Vector3(-p.x, 0, -p.z).normalize()
+          const target = new THREE.Vector3(p.x, PODIUM.height * 0.5, p.z)
+          const pos = target.clone().addScaledVector(toCourt, 2.2)
+          pos.y = PODIUM.height + 1.4
+          const d = pos.distanceTo(target)
+          const half = Math.atan((PODIUM.height * 0.75) / d) * 1.2
+          const dir = target.clone().sub(pos).normalize()
+          // the charcoal columns of C take three times the light, as C's black ware does (config/accents.ts)
+          const I = PODIUM_KEY_E * d * d * (p.zone === 'ring-c' ? 3 : 1)
+          k.pos.value.set(pos.x, pos.y, pos.z, 0)
+          k.dir.value.set(dir.x, dir.y, dir.z, Math.cos(half))
+          k.col.value.set(I, 0.93 * I, 0.84 * I, d * 2.5)
+        }
+        return mat
+      }),
+    [m, charcoal],
+  )
+  useEffect(() => () => bodies.forEach((b) => b.dispose()), [bodies])
   const geo = useMemo(() => {
     const s = PODIUM.size
     const gap = 0.03
@@ -84,7 +114,7 @@ function PodiumRow() {
   useEffect(() => () => Object.values(geo).forEach((g) => g.dispose()), [geo])
   return (
     <group name="podiums">
-      {PODIUM_SLOTS.map((p) => {
+      {PODIUM_SLOTS.map((p, i) => {
         // the court face looks at the drum's centre; place the rail on it, whatever the slot's own rotation
         const a = Math.atan2(p.z, p.x)
         const off = PODIUM.size / 2 + LABEL_RAIL.depth / 2 - 0.01
@@ -92,7 +122,7 @@ function PodiumRow() {
           <group key={p.id}>
             <group position={[p.x, 0, p.z]} rotation={[0, p.rotationY, 0]}>
               <mesh geometry={geo.base} material={m.shadowGap} position={[0, 0.015, 0]} receiveShadow />
-              <mesh geometry={geo.body} material={p.zone === 'ring-c' ? charcoal : m.redLacquer} position={[0, 0.03 + (PODIUM.height - 0.03) / 2, 0]} castShadow receiveShadow />
+              <mesh geometry={geo.body} material={bodies[i]} position={[0, 0.03 + (PODIUM.height - 0.03) / 2, 0]} castShadow receiveShadow />
               <mesh geometry={geo.collar} material={m.brass} position={[0, PODIUM.height - 0.009, 0]} />
             </group>
             <mesh geometry={geo.rail} material={m.brass} position={[p.x - Math.cos(a) * off, LABEL_RAIL.top - LABEL_RAIL.thick, p.z - Math.sin(a) * off]} rotation={[0, -a - Math.PI / 2, 0]} castShadow />

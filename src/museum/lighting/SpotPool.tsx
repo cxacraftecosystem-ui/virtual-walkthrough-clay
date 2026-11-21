@@ -84,9 +84,14 @@ function score(req: SpotRequest) {
   const fx = -Math.sin(visitor.yaw)
   const fz = -Math.cos(visitor.yaw)
   // thresholds at the grand plan's scale (×2.04 the pavilion's)
-  const behind = d > 3.1 && (dx * fx + dz * fz) / d < -0.2
-  return d + (blocked ? 82 : 0) + (behind ? 12 : 0)
+  // a smooth penalty for what is behind, not a step (turning the head flipped fixtures across it every 0.2 s)
+  const cos = d > 3.1 ? (dx * fx + dz * fz) / d : 1
+  const t = Math.min(1, Math.max(0, (0.05 - cos) / 0.5))
+  return d + (blocked ? 82 : 0) + 12 * t * t * (3 - 2 * t)
 }
+
+/** A lit slot's head start (m) over a newcomer: it gives its fixture up only for a clearly better one. */
+const HOLD_M = 4
 
 export function SpotPool({ size, shadows = 0 }: { size: number; shadows?: number }) {
   const slots = useMemo<Slot[]>(
@@ -116,9 +121,11 @@ export function SpotPool({ size, shadows = 0 }: { size: number; shadows?: number
     if (timer.current > 0.2) {
       timer.current = 0
       // Switched-off requests (e.g. courtyard lanterns by day) never take a slot.
+      // fixtures already lit hold their slots unless a clearly better one comes up (no swapping back and forth)
+      const lit = new Set(slots.map((s) => s.id).filter((x): x is string => x !== null))
       const ranked = [...spotRequests.entries()]
         .filter(([, r]) => r.intensity > 0)
-        .map(([id, r]) => [id, score(r)] as const)
+        .map(([id, r]) => [id, score(r) - (lit.has(id) ? HOLD_M : 0)] as const)
         .sort((a, b) => a[1] - b[1])
       desired.current = new Set(ranked.slice(0, size).map(([id]) => id))
     }

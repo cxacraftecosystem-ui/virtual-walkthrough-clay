@@ -166,13 +166,14 @@ export const ZONE_LIGHT: Record<string, ZoneLight> = {
   /** Ambulatory and H: 3000 K, 0 EV. */
   'entry-e': { ...room(3000, 0.45, ev(0), '#3a2a24', '#ffe8d0', 1.06), nightFloor: 0.15 },
   /** A: 3000 K on the red lacquer ground, −0.1 EV (p02): the red ground stays dark by its own colour. */
-  'ring-a': { ...room(3000, 0.34, ev(-0.1), '#3a1c18', '#ffe4c8', 1.1), nightFloor: 0.26 },
+  // (fills raised 2026-11: the podiums and the pieces' unlit sides read; the accent cones on the pieces tripled, config/accents.ts)
+  'ring-a': { ...room(3000, 0.55, ev(-0.1), '#3a1c18', '#ffe4c8', 1.1), nightFloor: 0.26 },
   /** B: 4000 K neutral, for the white niche wall of plaques (p08r). */
-  'ring-b': { ...room(4000, 0.6, ev(0), '#34302e', '#fbf6f0', 1.08), nightFloor: 0.24 },
+  'ring-b': { ...room(4000, 0.8, ev(0), '#34302e', '#fbf6f0', 1.08), nightFloor: 0.24 },
   /** C: 4300 K cool, −0.35 EV: black ware under one cool beam, on a charcoal wall that still reads. */
-  'ring-c': { ...room(4300, 0.5, ev(-0.35), '#24262e', '#f2f2f2', 1.1), nightFloor: 0.34 },
+  'ring-c': { ...room(4300, 0.75, ev(-0.15), '#24262e', '#f2f2f2', 1.1), nightFloor: 0.34 },
   /** The Wine Hall ("Clay Elsewhere", p08l "warm white to neutral"): 3000 K, −0.4 EV — mauve wine walls, honey timber, spot-lit plinths; never an orange cave. */
-  'hallway-d': { ...room(3600, 0.3, ev(-0.3), '#251c28', '#fff4ea', 1.1), nightFloor: 0.15 },
+  'hallway-d': { ...room(3600, 0.38, ev(-0.3), '#251c28', '#fff4ea', 1.1), nightFloor: 0.15 },
   /** The court under the dome: daylight 5000–5600 K, +0.2 EV. */
   inner: { ...room(5300, 0.5, ev(0.2), '#36302e', '#fff8ee', 1.06), nightFloor: 0.24 },
   'parikrama-west': { ...room(5400, 1.05, ev(0), '#403632', '#fff4e6'), nightFloor: 0.22 },
