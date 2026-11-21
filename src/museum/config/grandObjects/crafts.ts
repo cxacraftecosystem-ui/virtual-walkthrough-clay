@@ -183,8 +183,11 @@ function bracket(id: string, position: Vec3, rotationDeg: number, w: number, d: 
 /* Sourced models                                                      */
 /* ------------------------------------------------------------------ */
 
-/** A sourced model by slug: model, height, credit from the registry; `h` overrides the height. */
-function sourced(id: string, slug: string, position: Vec3, rotationDeg: number, zone: ZoneId, o: { h?: number; finish?: string; title?: Lang3; text?: Lang3; interactive?: boolean; footprint?: [number, number]; alt?: Lang3 } = {}): SceneObjectConfig {
+/**
+ * A sourced model by slug: model, height, credit from the registry; `h` overrides the height. `of` marks a scan of
+ * a tradition's own work (a deep dive's, named in its gallery): it is labelled as that tradition's, with its scan's credit.
+ */
+function sourced(id: string, slug: string, position: Vec3, rotationDeg: number, zone: ZoneId, o: { h?: number; finish?: string; title?: Lang3; text?: Lang3; interactive?: boolean; footprint?: [number, number]; alt?: Lang3; of?: CraftSlug } = {}): SceneObjectConfig {
   const e = SOURCED_REGISTRY[slug]
   const h = o.h ?? (e ? e.bbox[4] - e.bbox[1] : 0.3)
   const credit = e ? { author: e.credit.author, source: e.credit.source, license: e.credit.license, title: e.credit.title, licenseUrl: e.credit.licenseUrl } : undefined
@@ -197,7 +200,7 @@ function sourced(id: string, slug: string, position: Vec3, rotationDeg: number, 
     rotationDeg,
     height: h,
     footprint: o.footprint,
-    props: { slug, finish: o.finish ?? e?.finish ?? 'asis', lod: true },
+    props: { slug, finish: o.finish ?? e?.finish ?? 'asis', lod: true, ...(o.of ? { of: o.of } : {}) },
     interactive: o.interactive ?? !!o.text,
     inspectable: !!o.text && h < 1.5,
     description: o.text?.[0],
@@ -487,6 +490,23 @@ const BLACK_WARE: { word: Word; form: string; h: number; r: number; a: number }[
   { word: 'blackBowl', form: 'lidded', h: 0.16, r: 0.86, a: 315 },
   { word: 'cookingPot', form: 'handi', h: 0.22, r: 0.58, a: 200 },
 ]
+/** A real Longpi teapot, scanned (Sketchfab, CC BY 4.0), in the place of the island's first kettle study. */
+const LONGPI_TEAPOT = {
+  replaces: 0,
+  id: 'longpi-teapot-scan',
+  slug: 'sf-longpi-teapot',
+  title: ['Teapot, Longpi', 'चायदानी, लोंगपी', 'চায়ের কেটলি, লংপি'] as Lang3,
+  text: [
+    'Longpi pottery from Ukhrul, Manipur: a teapot of black serpentine rock and clay, shaped by hand without a wheel, polished with leaves after firing, with a cane-wrapped handle. Shown from a 3D scan by Sparsh Batra.',
+    'मणिपुर के उखरुल के लोंगपी मृद्भांड: काली सर्पेन्टाइन चट्टान और मिट्टी की चायदानी, बिना चाक के हाथ से गढ़ी, पकाने के बाद पत्तियों से चमकाई, बेंत से लिपटे हत्थे वाली। स्पर्श बत्रा के 3D स्कैन से।',
+    'মণিপুরের উখরুলের লংপি মৃৎপাত্র: কালো সার্পেন্টাইন পাথর আর মাটির চায়ের কেটলি, চাক ছাড়াই হাতে গড়া, পোড়ানোর পরে পাতা দিয়ে ঘষে চকচকে, বেত জড়ানো হাতল। স্পর্শ বাত্রার 3D স্ক্যান থেকে।',
+  ] as Lang3,
+  alt: [
+    'A round black clay teapot with a lid and a short spout, a tall cane handle arching over it.',
+    'ढक्कन और छोटी टोंटी वाली गोल काली मिट्टी की चायदानी, ऊपर बेंत का ऊँचा मेहराबदार हत्था।',
+    'ঢাকনা আর ছোট নলওয়ালা গোল কালো মাটির চায়ের কেটলি, ওপরে বেতের উঁচু বাঁকা হাতল।',
+  ] as Lang3,
+}
 const BLACK_ISLAND: SceneObjectConfig[] = [
   {
     id: 'black-ware-island',
@@ -502,7 +522,10 @@ const BLACK_ISLAND: SceneObjectConfig[] = [
     i18n: { hi: { title: 'काले मृद्भांडों की मेज़' }, bn: { title: 'কালো মৃৎপাত্রের টেবিল' } },
   },
   ...BLACK_WARE.map((w, i) =>
-    piece({
+    // the inner ring's first kettle is a real one: a Longpi teapot, from a 3D scan (the rest stay studies)
+    i === LONGPI_TEAPOT.replaces
+      ? sourced(LONGPI_TEAPOT.id, LONGPI_TEAPOT.slug, islandAt(w.r, w.a + ISLAND_A), w.a * 1.7, 'ring-c', { title: LONGPI_TEAPOT.title, text: LONGPI_TEAPOT.text, alt: LONGPI_TEAPOT.alt, of: 'longpi' })
+      : piece({
       id: `craft-longpi-island-${i + 1}`,
       title: W[w.word],
       craft: 'longpi',
@@ -686,8 +709,8 @@ const E = (slug: string, title: Lang3, text: Lang3): Elsewhere => ({ slug, title
 const SCAN: Lang3 = [' Shown from a 3D scan.', ' 3D स्कैन से।', ' 3D স্ক্যান থেকে।']
 const scan = (t: Lang3): Lang3 => [t[0] + SCAN[0], t[1] + SCAN[1], t[2] + SCAN[2]]
 
-/** The six sets in walking order (W1 by the D arch → W6 by the E-west arch). */
-const WINE_SETS: Elsewhere[][] = [
+/** The hall's first scans, as first grouped (their plinths and treads: HALL below). */
+const FIRST_SETS: Elsewhere[][] = [
   [
     E('wc-kaen-doki-jomon-flame-pot', ['Flame-rimmed Pot, Jōmon Japan', 'ज्वाला-किनारी घड़ा, जोमोन जापान', 'শিখা-কানার পাত্র, জোমোন জাপান'], scan([
       'Clay elsewhere. A pot of the middle Jōmon period, about 5,000 years old, from Umataka, Nagaoka, Japan: built up in coils, its rim rising in thick loops of clay like flames. In a plain clay finish.',
@@ -813,64 +836,374 @@ const RELIEF_END: Elsewhere = E('si-gathering-of-buddhas', ['Gathering of Buddha
   'পাথরে: বুদ্ধ ও বোধিসত্ত্বদের সমাবেশের খোদাই করা রিলিফ (ন্যাশনাল মিউজিয়াম অফ এশিয়ান আর্ট, স্মিথসোনিয়ান), কক্ষের শেষ প্রান্তে।',
 ]))
 
+/** Clay Elsewhere's second set (2026): scans from Cleveland, the Hunt Museum, the Smithsonian and Sketchfab. */
+const SECOND_SET: Elsewhere[] = [
+  // East Asia
+  E('cma-jomon-deep-vessel', ['Deep Vessel, Jōmon Japan', 'गहरा पात्र, जोमोन जापान', 'গভীর পাত্র, জোমোন জাপান'], scan([
+    'Clay elsewhere. A deep vessel built up in coils, with impressed and carved decoration; Jōmon period Japan, about 2500 BCE (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। कुंडलियों से गढ़ा गहरा पात्र, दबाकर और खुरचकर बनी सजावट के साथ; जोमोन काल, जापान, लगभग 2500 ईसा पूर्व (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। কুণ্ডলী জুড়ে গড়া গভীর পাত্র, চাপ দিয়ে আর খোদাই করে নকশা; জোমোন যুগ, জাপান, আনুমানিক খ্রিস্টপূর্ব ২৫০০ (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('cma-vietnamese-covered-jar', ['Covered Jar, Vietnam', 'ढक्कनदार मर्तबान, वियतनाम', 'ঢাকনাওয়ালা বয়াম, ভিয়েতনাম'], scan([
+    'Clay elsewhere. A covered stoneware jar painted in blue under the glaze; Vietnam, 16th–17th century (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। ग्लेज़ के नीचे नीले रंग से चित्रित स्टोनवेयर का ढक्कनदार मर्तबान; वियतनाम, 16वीं–17वीं सदी (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। গ্লেজের নিচে নীল রঙে আঁকা স্টোনওয়্যারের ঢাকনাওয়ালা বয়াম; ভিয়েতনাম, ষোড়শ–সপ্তদশ শতক (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('hm-crackleware-jar', ['Crackle-glazed Jar, China or Korea', 'दरारदार ग्लेज़ का मर्तबान, चीन या कोरिया', 'ফাটল-গ্লেজের বয়াম, চীন বা কোরিয়া'], scan([
+    'Clay elsewhere. A small jar under a green glaze crazed all over with fine cracks, made in China or Korea in the 19th century (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। बारीक दरारों से भरे हरे ग्लेज़ वाला छोटा मर्तबान, 19वीं सदी में चीन या कोरिया में बना (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। সূক্ষ্ম ফাটলে ভরা সবুজ গ্লেজের ছোট বয়াম, উনিশ শতকে চীন বা কোরিয়ায় তৈরি (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('hm-japanese-coiled-tea-bowl', ['Coil-built Tea Bowl, Japan', 'कुंडलियों से बना चाय का कटोरा, जापान', 'কুণ্ডলীতে গড়া চায়ের বাটি, জাপান'], scan([
+    'Clay elsewhere. A Japanese tea-ceremony bowl, its coils of clay left showing, once broken and repaired; probably 17th century (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। जापानी चाय-समारोह का कटोरा, मिट्टी की कुंडलियाँ दिखती छोड़ी गईं, कभी टूटा और जोड़ा गया; संभवतः 17वीं सदी (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। জাপানি চা-অনুষ্ঠানের বাটি, মাটির কুণ্ডলীগুলি দেখা যায়, একবার ভেঙে জোড়া লাগানো; সম্ভবত সপ্তদশ শতক (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('hm-ceramic-kundika', ['Kundika, Tang China', 'कुंडिका, तांग चीन', 'কুণ্ডিকা, তাং চীন'], scan([
+    'Clay elsewhere. A white-glazed kundika, the Buddhist ritual water ewer, a form that began in India; made in China under the Tang dynasty, 618–907 (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। सफ़ेद ग्लेज़ वाली कुंडिका, बौद्ध अनुष्ठान की जल-झारी, जिसका रूप भारत में जन्मा; चीन में तांग राजवंश के समय बनी, 618–907 (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। সাদা গ্লেজের কুণ্ডিকা, বৌদ্ধ আচারের জলের ঝারি, যার গড়ন ভারতে জন্মেছিল; চীনে তাং রাজবংশের আমলে তৈরি, ৬১৮–৯০৭ (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('hm-si-satchanalai-lidded-jar', ['Lidded Jar, Si Satchanalai, Thailand', 'ढक्कनदार मर्तबान, सी सत्चनालाई, थाईलैंड', 'ঢাকনাওয়ালা বয়াম, সি সাচানালাই, থাইল্যান্ড'], scan([
+    'Clay elsewhere. A pear-shaped stoneware jar with a stepped lid, painted under the glaze, from the kilns of Si Satchanalai in Thailand; possibly 14th–16th century (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। सीढ़ीदार ढक्कन वाला नाशपाती-आकार का स्टोनवेयर मर्तबान, ग्लेज़ के नीचे चित्रित, थाईलैंड के सी सत्चनालाई के भट्ठों से; संभवतः 14वीं–16वीं सदी (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। ধাপকাটা ঢাকনার নাশপাতি-গড়ন স্টোনওয়্যার বয়াম, গ্লেজের নিচে আঁকা, থাইল্যান্ডের সি সাচানালাইয়ের ভাটি থেকে; সম্ভবত চতুর্দশ–ষোড়শ শতক (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  // glazes of America and Europe
+  E('si-jar-made-by-dave', ['Storage Jar by Dave, South Carolina', 'डेव का बनाया मर्तबान, दक्षिण कैरोलिना', 'ডেভের তৈরি বয়াম, দক্ষিণ ক্যারোলিনা'], scan([
+    'Clay elsewhere. A great stoneware storage jar in an alkaline glaze, signed and dated 3 May 1862 by David Drake, “Dave”, an enslaved potter at Edgefield, South Carolina, who wrote a two-line poem on it (National Museum of American History).',
+    'मिट्टी, कहीं और। क्षारीय ग्लेज़ वाला बड़ा स्टोनवेयर भंडारण मर्तबान, जिस पर 3 मई 1862 को डेविड ड्रेक, “डेव”, ने हस्ताक्षर और तारीख़ डाली; वे दक्षिण कैरोलिना के एजफ़ील्ड में ग़ुलाम बनाए गए कुम्हार थे, जिन्होंने इस पर दो पंक्तियों की कविता लिखी।',
+    'মাটি, অন্যত্র। ক্ষারীয় গ্লেজের বড় স্টোনওয়্যার সংরক্ষণের বয়াম, যাতে ৩ মে ১৮৬২ তারিখে সই আর তারিখ দিয়েছিলেন ডেভিড ড্রেক, “ডেভ”, দক্ষিণ ক্যারোলিনার এজফিল্ডের এক দাসত্বে বাঁধা কুমোর, যিনি এর গায়ে দু-লাইনের কবিতা লিখেছিলেন।',
+  ])),
+  E('hm-green-glaze-lugged-jar', ['Green-glazed Jar with Lugs', 'कुंडों वाला हरे ग्लेज़ का मर्तबान', 'কান-লাগানো সবুজ গ্লেজের বয়াম'], scan([
+    'Clay elsewhere. A pot-bellied jar under a green glaze, with two pierced lugs on the shoulder for a cord; 15th century (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। हरे ग्लेज़ वाला तुंदिल मर्तबान, कंधे पर डोरी के लिए दो छेददार कुंडे; 15वीं सदी (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। সবুজ গ্লেজের ভুঁড়িওয়ালা বয়াম, কাঁধে দড়ির জন্য দুটি ফুটো কান; পঞ্চদশ শতক (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('hm-earthenware-pot-blue-speckle', ['Jar with Blue Speckles', 'नीली चित्तियों वाला मर्तबान', 'নীল ছিটের বয়াম'], scan([
+    'Clay elsewhere. An earthenware jar under an off-white glaze speckled with blue; 17th or 18th century (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। नीली चित्तियों वाले हल्के सफ़ेद ग्लेज़ का मिट्टी का मर्तबान; 17वीं या 18वीं सदी (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। নীল ছিটে ভরা হালকা সাদা গ্লেজের মাটির বয়াম; সপ্তদশ বা অষ্টাদশ শতক (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('cma-nasca-painted-vase', ['Painted Vase, Nasca, Peru', 'चित्रित पात्र, नास्का, पेरू', 'রং করা পাত্র, নাসকা, পেরু'], scan([
+    'Clay elsewhere. A vase painted in coloured slips with warriors and trophy heads, from the Nasca culture of Peru’s south coast, about 450–600 (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। रंगीन स्लिप से योद्धाओं और ट्रॉफ़ी-सिरों के चित्रों वाला पात्र, पेरू के दक्षिणी तट की नास्का संस्कृति से, लगभग 450–600 (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। রঙিন স্লিপে যোদ্ধা আর ট্রফি-মুণ্ড আঁকা পাত্র, পেরুর দক্ষিণ উপকূলের নাসকা সংস্কৃতি থেকে, আনুমানিক ৪৫০–৬০০ (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('hm-green-glazed-pot', ['Small Green-glazed Pot', 'हरे ग्लेज़ की छोटी हाँडी', 'সবুজ গ্লেজের ছোট পাত্র'], scan([
+    'Clay elsewhere. A small earthenware pot, its upper half in a mottled green glaze so dark it reads almost black; 15th century (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। मिट्टी की छोटी हाँडी, ऊपरी आधा हिस्सा इतने गहरे चितकबरे हरे ग्लेज़ में कि लगभग काला दिखता है; 15वीं सदी (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। মাটির ছোট পাত্র, ওপরের অর্ধেক এমন গাঢ় ছোপ-ছোপ সবুজ গ্লেজে যে প্রায় কালো দেখায়; পঞ্চদশ শতক (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('hm-pottery-mug', ['Tall Mug', 'ऊँचा मग', 'লম্বা মগ'], scan([
+    'Clay elsewhere. A tall, waisted brown pottery mug with one handle, 17th century or earlier; the record does not say where it was made (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। एक हत्थे वाला ऊँचा, बीच से पतला भूरा मिट्टी का मग, 17वीं सदी या उससे पहले का; अभिलेख में नहीं लिखा कि यह कहाँ बना (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। এক হাতলের লম্বা, মাঝখানে সরু বাদামি মাটির মগ, সপ্তদশ শতক বা তারও আগের; নথিতে লেখা নেই কোথায় তৈরি (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  // the ancient Mediterranean
+  E('cma-etruscan-maiden-antefix', ['Antefix: a Young Woman’s Head, Etruscan', 'एंटेफ़िक्स: युवती का सिर, एट्रस्कन', 'অ্যান্টিফিক্স: তরুণীর মুখ, এট্রুস্কান'], scan([
+    'Clay elsewhere. An antefix, the painted terracotta tile that closed the end of a row of roof tiles, in the form of a young woman’s head; Etruscan, late 500s–early 400s BCE (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। एंटेफ़िक्स, छत के खपरैलों की कतार का सिरा ढकने वाली रंगी हुई टेराकोटा टाइल, युवती के सिर के रूप में; एट्रस्कन, ईसा पूर्व छठी सदी का अंत–पाँचवीं का आरंभ (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। অ্যান্টিফিক্স, ছাদের টালির সারির মুখ ঢাকার রং করা টেরাকোটা টালি, তরুণীর মুখের আকারে; এট্রুস্কান, খ্রিস্টপূর্ব ষষ্ঠ শতকের শেষ–পঞ্চম শতকের শুরু (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('cma-selinus-terracotta-mask', ['Small Terracotta Mask, Selinus', 'छोटा टेराकोटा मुखौटा, सेलिनुस', 'ছোট টেরাকোটা মুখোশ, সেলিনুস'], scan([
+    'Clay elsewhere. A small terracotta mask from Selinus, a Greek city in Sicily, about 550 BCE (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। सिसिली के यूनानी नगर सेलिनुस से छोटा टेराकोटा मुखौटा, लगभग 550 ईसा पूर्व (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। সিসিলির গ্রিক নগর সেলিনুস থেকে ছোট টেরাকোটা মুখোশ, আনুমানিক খ্রিস্টপূর্ব ৫৫০ (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('sf-cosa-scroll-plaque', ['Terracotta Plaque with Scrolls, Cosa', 'बेलों वाली टेराकोटा पट्टिका, कोसा', 'লতানো নকশার টেরাকোটা ফলক, কোসা'], scan([
+    'Clay elsewhere. A fragment of a Roman terracotta plaque with scrolls in relief, excavated at Cosa in Italy (Cosa Excavations, C19.125). In a terracotta finish.',
+    'मिट्टी, कहीं और। उभरी बेलों वाली रोमन टेराकोटा पट्टिका का टुकड़ा, इटली के कोसा में खुदाई से मिला। टेराकोटा सतह में।',
+    'মাটি, অন্যত্র। উঁচু লতানো নকশার রোমান টেরাকোটা ফলকের টুকরো, ইতালির কোসায় খননে পাওয়া। টেরাকোটা রঙে।',
+  ])),
+  E('sf-cosa-campana-plaque', ['Campana Plaque, Cosa', 'कैंपाना पट्टिका, कोसा', 'ক্যাম্পানা ফলক, কোসা'], scan([
+    'Clay elsewhere. A fragment of a Roman “Campana” plaque, a moulded terracotta wall panel: a striding leg and a lion’s skin survive, perhaps of Hercules (Cosa Excavations, C17.126). In a terracotta finish.',
+    'मिट्टी, कहीं और। रोमन “कैंपाना” पट्टिका, साँचे में ढली टेराकोटा दीवार-पट्टी, का टुकड़ा: डग भरता एक पैर और सिंह की खाल बची है, शायद हरक्यूलिस की। टेराकोटा सतह में।',
+    'মাটি, অন্যত্র। রোমান “ক্যাম্পানা” ফলক, ছাঁচে ঢালা টেরাকোটার দেওয়াল-ফলক, তার টুকরো: পা ফেলে চলা একটি পা আর সিংহের চামড়া টিকে আছে, হয়তো হারকিউলিসের। টেরাকোটা রঙে।',
+  ])),
+  // great jars
+  E('cma-shigaraki-ash-glazed-storage-jar', ['Storage Jar, Shigaraki', 'भंडारण मर्तबान, शिगाराकी', 'সংরক্ষণের বয়াম, শিগারাকি'], scan([
+    'Clay elsewhere. A stoneware storage jar from the kilns of Shigaraki, Japan, late 1300s–1400s; its glaze is wood ash that fell on it in the kiln and melted (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। जापान के शिगाराकी के भट्ठों से स्टोनवेयर भंडारण मर्तबान, 14वीं सदी का अंत–15वीं सदी; इसका ग्लेज़ भट्ठे में इस पर गिरकर पिघली लकड़ी की राख है (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। জাপানের শিগারাকির ভাটি থেকে স্টোনওয়্যার সংরক্ষণের বয়াম, চতুর্দশ শতকের শেষ–পঞ্চদশ শতক; এর গ্লেজ হল ভাটিতে এর গায়ে পড়ে গলে যাওয়া কাঠের ছাই (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('cma-tamba-storage-jar', ['Storage Jar, Tamba', 'भंडारण मर्तबान, तांबा', 'সংরক্ষণের বয়াম, তাম্বা'], scan([
+    'Clay elsewhere. A stoneware storage jar from Tamba, Japan, 15th century, under a natural glaze of kiln ash (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। जापान के तांबा से स्टोनवेयर भंडारण मर्तबान, 15वीं सदी, भट्ठे की राख के प्राकृतिक ग्लेज़ के साथ (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। জাপানের তাম্বা থেকে স্টোনওয়্যার সংরক্ষণের বয়াম, পঞ্চদশ শতক, ভাটির ছাইয়ের প্রাকৃতিক গ্লেজে (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('cma-echizen-storage-jar', ['Storage Jar, Echizen', 'भंडारण मर्तबान, एचिज़ेन', 'সংরক্ষণের বয়াম, এচিজেন'], scan([
+    'Clay elsewhere. A stoneware storage jar from Echizen, Japan, 15th century, under a natural glaze of kiln ash (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। जापान के एचिज़ेन से स्टोनवेयर भंडारण मर्तबान, 15वीं सदी, भट्ठे की राख के प्राकृतिक ग्लेज़ के साथ (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। জাপানের এচিজেন থেকে স্টোনওয়্যার সংরক্ষণের বয়াম, পঞ্চদশ শতক, ভাটির ছাইয়ের প্রাকৃতিক গ্লেজে (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('hm-medieval-storage-jar', ['Medieval Storage Jar', 'मध्यकालीन भंडारण मर्तबान', 'মধ্যযুগের সংরক্ষণের বয়াম'], scan([
+    'Clay elsewhere. A grey pottery storage jar of medieval Europe, 15th century, with a row of stamped discs below the rim (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। मध्यकालीन यूरोप का धूसर मिट्टी का भंडारण मर्तबान, 15वीं सदी, किनारे के नीचे ठप्पे से बनी चकतियों की कतार के साथ (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। মধ্যযুগের ইউরোপের ধূসর মাটির সংরক্ষণের বয়াম, পঞ্চদশ শতক, কানার নিচে ছাপ-দেওয়া চাকতির সারি (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('cma-nupe-water-transport-jar', ['Water Jar, Nupe, Nigeria', 'पानी का घड़ा, नूपे, नाइजीरिया', 'জলের কলসি, নুপে, নাইজেরিয়া'], scan([
+    'Clay elsewhere. A burnished terracotta jar for carrying water, pressed with shells, made in the 1900s by a woman potter of the Nupe tradition in Nigeria whose name was not recorded (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। पानी ढोने का घिसकर चमकाया टेराकोटा घड़ा, सीपियों से दबाकर सजाया, 20वीं सदी में नाइजीरिया की नूपे परंपरा की एक कुम्हारिन ने बनाया, जिनका नाम दर्ज नहीं हुआ (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। জল বওয়ার ঘষে-মাজা টেরাকোটা কলসি, ঝিনুক চেপে নকশা, বিশ শতকে নাইজেরিয়ার নুপে ধারার এক মহিলা কুমোরের গড়া, যাঁর নাম লেখা হয়নি (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  // horses and riders, and the Near East
+  E('sf-haniwa-horse', ['Haniwa Horse, Japan', 'हानिवा घोड़ा, जापान', 'হানিওয়া ঘোড়া, জাপান'], scan([
+    'Clay elsewhere. A haniwa, a clay figure set on a burial mound, in the form of a horse in its harness, with bells on its rump; Kofun period Japan, from the Narizuka-Ishibashi site, Ōta, Gunma, 73 cm tall (Gunma Archaeological Research Center).',
+    'मिट्टी, कहीं और। हानिवा, समाधि-टीले पर रखी जाने वाली मिट्टी की आकृति, साज़ से सजे घोड़े के रूप में, पुट्ठे पर घंटियाँ; जापान का कोफ़ुन काल, गुनमा के ओता के नारिज़ुका-इशिबाशी स्थल से, 73 सेमी ऊँचा।',
+    'মাটি, অন্যত্র। হানিওয়া, সমাধি-ঢিবির ওপর বসানো মাটির মূর্তি, সাজ-পরা ঘোড়ার আকারে, পাছায় ঘণ্টা; জাপানের কোফুন যুগ, গুনমার ওতার নারিজুকা-ইশিবাশি স্থল থেকে, ৭৩ সেমি উঁচু।',
+  ])),
+  E('sf-ypm-apkallu-plaque', ['Plaque of a Fish-sage, Assyria', 'मछली-ऋषि की पट्टिका, असीरिया', 'মাছ-ঋষির ফলক, অ্যাসিরিয়া'], scan([
+    'Clay elsewhere. A Neo-Assyrian terracotta plaque of a fish-apkallu, a protective sage, holding a bucket, with traces of black paint (Yale Peabody Museum, Babylonian Collection).',
+    'मिट्टी, कहीं और। नव-असीरियाई टेराकोटा पट्टिका, जिसमें बाल्टी थामे मछली-अपकल्लु, एक रक्षक ऋषि, है; काले रंग के निशान बाक़ी (येल पीबॉडी म्यूज़ियम)।',
+    'মাটি, অন্যত্র। নব-অ্যাসিরীয় টেরাকোটা ফলক, বালতি হাতে মাছ-আপকাল্লু, এক রক্ষক ঋষি; কালো রঙের দাগ রয়ে গেছে (ইয়েল পিবডি মিউজিয়াম)।',
+  ])),
+  E('hm-raqqa-ware-bowl', ['Turquoise Bowl, Raqqa Style', 'फ़िरोज़ी कटोरा, रक़्क़ा शैली', 'ফিরোজা বাটি, রাক্কার ধাঁচ'], scan([
+    'Clay elsewhere. A conical bowl of fritware under a turquoise glaze, in the style of Raqqa in northern Syria, 13th century (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। फ़िरोज़ी ग्लेज़ वाला फ़्रिटवेयर का शंक्वाकार कटोरा, उत्तरी सीरिया के रक़्क़ा की शैली में, 13वीं सदी (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। ফিরোজা গ্লেজের ফ্রিটওয়্যারের শঙ্কু-আকার বাটি, উত্তর সিরিয়ার রাক্কার ধাঁচে, ত্রয়োদশ শতক (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('hm-syro-hittite-horse-rider', ['Horse and Rider, Syro-Hittite', 'घोड़ा और सवार, सीरो-हित्ती', 'ঘোড়া ও সওয়ার, সিরো-হিট্টাইট'], scan([
+    'Clay elsewhere. A clay horse and rider, the rider’s arms round the horse’s neck, from the Middle East, possibly 2nd millennium BCE (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। मिट्टी का घोड़ा और सवार, सवार की बाँहें घोड़े की गर्दन के गिर्द; मध्य-पूर्व से, संभवतः ईसा पूर्व दूसरी सहस्राब्दी (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। মাটির ঘোড়া ও সওয়ার, সওয়ারের দুই হাত ঘোড়ার গলা জড়িয়ে; মধ্যপ্রাচ্য থেকে, সম্ভবত খ্রিস্টপূর্ব দ্বিতীয় সহস্রাব্দ (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('sf-fitzwilliam-horse-rider', ['Horse and Rider, Deve Hüyük', 'घोड़ा और सवार, देवे ह्युयुक', 'ঘোড়া ও সওয়ার, দেভে হুয়ুক'], scan([
+    'Clay elsewhere. A clay horse and rider decorated in black, found at Deve Hüyük in Syria, of a Cypriot kind, Iron Age or Archaic (Fitzwilliam Museum, Cambridge, ANE.75.1913).',
+    'मिट्टी, कहीं और। काले रंग से सजा मिट्टी का घोड़ा और सवार, सीरिया के देवे ह्युयुक में मिला, साइप्रस की शैली का, लौह युग या आर्कैक काल (फ़िट्ज़विलियम म्यूज़ियम, कैम्ब्रिज)।',
+    'মাটি, অন্যত্র। কালো রঙে সাজানো মাটির ঘোড়া ও সওয়ার, সিরিয়ার দেভে হুয়ুকে পাওয়া, সাইপ্রাসের ধাঁচের, লৌহযুগ বা আর্কেইক কাল (ফিটজউইলিয়াম মিউজিয়াম, কেমব্রিজ)।',
+  ])),
+  E('sf-cypriot-horse', ['Horse from a Chariot Group, Cyprus', 'रथ-समूह का घोड़ा, साइप्रस', 'রথের দলের ঘোড়া, সাইপ্রাস'], scan([
+    'Clay elsewhere. A painted pottery horse, probably from a chariot group, Cyprus, about 600–500 BCE: such horses were left as offerings in sanctuaries (Egypt Centre, Swansea, W229a).',
+    'मिट्टी, कहीं और। रंगा हुआ मिट्टी का घोड़ा, शायद किसी रथ-समूह का, साइप्रस, लगभग 600–500 ईसा पूर्व: ऐसे घोड़े देवस्थानों में भेंट चढ़ाए जाते थे (इजिप्ट सेंटर, स्वॉनज़ी)।',
+    'মাটি, অন্যত্র। রং করা মাটির ঘোড়া, সম্ভবত কোনও রথের দলের, সাইপ্রাস, আনুমানিক খ্রিস্টপূর্ব ৬০০–৫০০: এমন ঘোড়া দেবস্থানে মানত হিসেবে রাখা হত (ইজিপ্ট সেন্টার, সোয়ানসি)।',
+  ])),
+  E('sf-msu-terracotta-horse', ['Terracotta Horse, Archaic Greece', 'टेराकोटा घोड़ा, आर्कैक यूनान', 'টেরাকোটা ঘোড়া, আর্কেইক গ্রিস'], scan([
+    'Clay elsewhere. A small terracotta horse of the Archaic period in Greece (MSU Broad Art Museum, 70.49).',
+    'मिट्टी, कहीं और। यूनान के आर्कैक काल का छोटा टेराकोटा घोड़ा (एमएसयू ब्रॉड आर्ट म्यूज़ियम)।',
+    'মাটি, অন্যত্র। গ্রিসের আর্কেইক যুগের ছোট টেরাকোটা ঘোড়া (এমএসইউ ব্রড আর্ট মিউজিয়াম)।',
+  ])),
+  // prehistoric Europe
+  E('hm-bronze-age-cinerary-urn', ['Cinerary Urn, Bronze Age Ireland', 'अस्थि-कलश, कांस्य युग का आयरलैंड', 'চিতাভস্মের কলস, ব্রোঞ্জ যুগের আয়ারল্যান্ড'], scan([
+    'Clay elsewhere. A hand-built pottery urn that held the ashes of the dead, Early Bronze Age Ireland; the white areas are the restorer’s plaster (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। हाथ से गढ़ा मिट्टी का कलश, जिसमें मृतकों की राख रखी जाती थी, आरंभिक कांस्य युग का आयरलैंड; सफ़ेद हिस्से मरम्मत का प्लास्टर हैं (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। হাতে গড়া মাটির কলস, যাতে মৃতের ছাই রাখা হত, আদি ব্রোঞ্জ যুগের আয়ারল্যান্ড; সাদা অংশগুলি মেরামতের প্লাস্টার (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('hm-replica-beaker-pit-fired', ['Beaker, a Modern Replica', 'बीकर, आज की प्रतिकृति', 'বীকার, আধুনিক প্রতিরূপ'], scan([
+    'Clay elsewhere. A modern replica of a Bell Beaker pot of Copper and Bronze Age Europe, its zigzags pressed in and filled with white, fired in an open pit (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। ताम्र और कांस्य युग के यूरोप के “बेल बीकर” पात्र की आज की प्रतिकृति, दबाकर बनाए और सफ़ेद से भरे ज़िगज़ैग के साथ, खुले गड्ढे में पकाई गई (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। তাম্র ও ব্রোঞ্জ যুগের ইউরোপের “বেল বীকার” পাত্রের আধুনিক প্রতিরূপ, চেপে করা আর সাদায় ভরা আঁকাবাঁকা নকশা, খোলা গর্তে পোড়ানো (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('hm-tripartite-bowl-food-vessel', ['Food Vessel, Bronze Age Ireland', 'खाद्य पात्र, कांस्य युग का आयरलैंड', 'খাদ্যপাত্র, ব্রোঞ্জ যুগের আয়ারল্যান্ড'], scan([
+    'Clay elsewhere. A hand-built “food vessel” of Early Bronze Age Ireland, its body in three zones pressed with a comb (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। आरंभिक कांस्य युग के आयरलैंड का हाथ से गढ़ा “खाद्य पात्र”, जिसका तन कंघी से दबाकर सजे तीन पट्टों में बँटा है (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। আদি ব্রোঞ্জ যুগের আয়ারল্যান্ডের হাতে গড়া “খাদ্যপাত্র”, চিরুনি চেপে সাজানো তিনটি পাড়ে ভাগ করা গা (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  E('hm-incised-groove-food-vessel', ['Grooved Food Vessel, Bronze Age Ireland', 'खाँचेदार खाद्य पात्र, कांस्य युग का आयरलैंड', 'খাঁজকাটা খাদ্যপাত্র, ব্রোঞ্জ যুগের আয়ারল্যান্ড'], scan([
+    'Clay elsewhere. A hand-built “food vessel” of Early Bronze Age Ireland, angular in profile, with bands of incised grooves (Hunt Museum, Limerick).',
+    'मिट्टी, कहीं और। आरंभिक कांस्य युग के आयरलैंड का हाथ से गढ़ा “खाद्य पात्र”, कोणदार बनावट, खुरचे खाँचों के पट्टों के साथ (हंट म्यूज़ियम, लिमरिक)।',
+    'মাটি, অন্যত্র। আদি ব্রোঞ্জ যুগের আয়ারল্যান্ডের হাতে গড়া “খাদ্যপাত্র”, কৌণিক গড়ন, খোদাই করা খাঁজের পাড় (হান্ট মিউজিয়াম, লিমেরিক)।',
+  ])),
+  // figures and faces
+  E('cma-puget-terracotta-bozzetto-sauli', ['Clay Model for a Marble Saint, Genoa', 'संगमरमर की संत-प्रतिमा का मिट्टी का नमूना, जेनोआ', 'মার্বেলের সন্ত-মূর্তির মাটির খসড়া, জেনোয়া'], scan([
+    'Clay elsewhere. A terracotta model by the sculptor Pierre Puget, made in Genoa in 1663–68 to work out his marble statue of the Blessed Alessandro Sauli (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। मूर्तिकार पियेर प्युजे का टेराकोटा नमूना, 1663–68 में जेनोआ में अपनी संगमरमर की प्रतिमा, धन्य अलेस्सांद्रो साउली, की रूपरेखा तय करने के लिए बनाया (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। ভাস্কর পিয়ের পুজের টেরাকোটা খসড়া, ১৬৬৩–৬৮ সালে জেনোয়ায় তাঁর মার্বেলের মূর্তি, ধন্য আলেসান্দ্রো সাউলি, গড়ার আগে রূপ ঠিক করতে বানানো (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('cma-bobo-ram-mask', ['Ram Mask, Burkina Faso', 'मेढ़े का मुखौटा, बुर्किना फ़ासो', 'ভেড়ার মুখোশ, বুরকিনা ফাসো'], scan([
+    'Carved in wood, not modelled in clay: a ram mask (bolo) by a Bobo blacksmith-carver of Burkina Faso, possibly early 1900s (Cleveland Museum of Art).',
+    'मिट्टी में गढ़ा नहीं, लकड़ी में तराशा: बुर्किना फ़ासो के एक बोबो लोहार-शिल्पी का बनाया मेढ़े का मुखौटा (बोलो), संभवतः 20वीं सदी का आरंभ (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটিতে গড়া নয়, কাঠে খোদাই: বুরকিনা ফাসোর এক বোবো কামার-শিল্পীর তৈরি ভেড়ার মুখোশ (বোলো), সম্ভবত বিশ শতকের গোড়া (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('cma-gigaku-mask-persian-boy', ['Gigaku Mask, Nara Japan', 'गिगाकु मुखौटा, नारा जापान', 'গিগাকু মুখোশ, নারা জাপান'], scan([
+    'Carved in wood, not modelled in clay: the mask of a young Persian boy for gigaku, a masked dance-drama of Nara-period Japan, 710–94, in lacquered and painted paulownia wood (Cleveland Museum of Art).',
+    'मिट्टी में गढ़ा नहीं, लकड़ी में तराशा: गिगाकु, नारा-काल जापान (710–94) के मुखौटा-नृत्यनाट्य, के लिए एक युवा फ़ारसी लड़के का मुखौटा, लाख चढ़ी और रँगी पॉलोनिया लकड़ी में (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটিতে গড়া নয়, কাঠে খোদাই: গিগাকু, নারা-যুগের জাপানের (৭১০–৯৪) মুখোশ-নৃত্যনাট্য, তার জন্য এক তরুণ পারসিক বালকের মুখোশ, গালা-লাগানো ও রং করা পাউলোনিয়া কাঠে (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('sf-sanni-mask', ['Sanni Mask, Sri Lanka', 'सन्नि मुखौटा, श्रीलंका', 'সান্নি মুখোশ, শ্রীলঙ্কা'], scan([
+    'Carved in wood, not modelled in clay: a mask of Kana Sanni Yakka, the demon held in southern Sri Lanka to cause blindness, worn in healing rites; 19th–20th century (Redpath Museum, Montreal).',
+    'मिट्टी में गढ़ा नहीं, लकड़ी में तराशा: काना सन्नि यक्का का मुखौटा, वह दानव जिसे दक्षिणी श्रीलंका में अंधेपन का कारण माना जाता है, चिकित्सा-अनुष्ठानों में पहना जाता है; 19वीं–20वीं सदी (रेडपाथ म्यूज़ियम, मॉन्ट्रियल)।',
+    'মাটিতে গড়া নয়, কাঠে খোদাই: কানা সান্নি যক্কার মুখোশ, দক্ষিণ শ্রীলঙ্কায় যে দানবকে অন্ধত্বের কারণ মনে করা হয়, আরোগ্যের আচারে পরা হয়; উনিশ–বিশ শতক (রেডপাথ মিউজিয়াম, মন্ট্রিয়ল)।',
+  ])),
+  // reliefs and shrines
+  E('cma-tang-terracotta-dancer-brick', ['Brick with a Dancer, Tang China', 'नर्तकी वाली ईंट, तांग चीन', 'নর্তকীর ইট, তাং চীন'], scan([
+    'Clay elsewhere. A moulded terracotta brick with a dancer in relief, from the Xiudingsi pagoda at Anyang, Henan, China; Tang dynasty, before 870 (Cleveland Museum of Art).',
+    'मिट्टी, कहीं और। उभरी नर्तकी वाली साँचे में ढली टेराकोटा ईंट, चीन के हनान प्रांत में आन्यांग के शियूदिंग्सी पगोडा से; तांग राजवंश, 870 से पहले (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্যত্র। উঁচু নর্তকী-মূর্তির ছাঁচে ঢালা টেরাকোটা ইট, চীনের হেনানের আনইয়াংয়ের শিউদিংসি প্যাগোডা থেকে; তাং রাজবংশ, ৮৭০-এর আগে (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('cma-gandhara-procession-relief', ['Procession, Gandhara', 'शोभायात्रा, गांधार', 'শোভাযাত্রা, গান্ধার'], scan([
+    'In stone, not clay: a procession carved in schist in Gandhara, in the Buner area of present-day Pakistan, 1st century CE (Cleveland Museum of Art).',
+    'मिट्टी नहीं, पत्थर में: गांधार में, आज के पाकिस्तान के बुनेर क्षेत्र में, शिस्ट पत्थर में तराशी शोभायात्रा, पहली सदी ईस्वी (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি নয়, পাথরে: গান্ধারে, আজকের পাকিস্তানের বুনের অঞ্চলে, শিস্ট পাথরে খোদাই শোভাযাত্রা, খ্রিস্টীয় প্রথম শতক (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('cma-gandhara-dancers-musicians-relief', ['Dancers and Musicians, Gandhara', 'नर्तक और वादक, गांधार', 'নর্তক ও বাদক, গান্ধার'], scan([
+    'In stone, not clay: dancers and musicians in Phrygian dress, carved in schist in Gandhara, in the Buner area of present-day Pakistan, 1st century CE (Cleveland Museum of Art).',
+    'मिट्टी नहीं, पत्थर में: फ़्रिजियाई पोशाक में नर्तक और वादक, गांधार में, आज के पाकिस्तान के बुनेर क्षेत्र में, शिस्ट पत्थर में तराशे, पहली सदी ईस्वी (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি নয়, পাথরে: ফ্রিজীয় পোশাকে নর্তক ও বাদক, গান্ধারে, আজকের পাকিস্তানের বুনের অঞ্চলে, শিস্ট পাথরে খোদাই, খ্রিস্টীয় প্রথম শতক (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('sf-gupta-relief-fragment', ['Terracotta Relief, Gupta India', 'टेराकोटा फलक, गुप्त काल का भारत', 'টেরাকোটা রিলিফ, গুপ্ত যুগের ভারত'], scan([
+    'Clay elsewhere in time: a fragment of a terracotta relief from Uttar Pradesh, made in the 5th century under the Guptas, with a gana, a semi-divine attendant, and a lion’s head (Indiana University Art Museum; scan by cachgill).',
+    'मिट्टी, दूसरे समय में: उत्तर प्रदेश से टेराकोटा फलक का टुकड़ा, 5वीं सदी में गुप्तों के समय बना, जिसमें एक गण, अर्ध-दिव्य अनुचर, और सिंह का सिर है (इंडियाना यूनिवर्सिटी आर्ट म्यूज़ियम)।',
+    'মাটি, অন্য কালে: উত্তরপ্রদেশ থেকে টেরাকোটা রিলিফের টুকরো, পঞ্চম শতকে গুপ্তদের আমলে তৈরি, তাতে এক গণ, অর্ধ-দৈব অনুচর, আর সিংহের মাথা (ইন্ডিয়ানা ইউনিভার্সিটি আর্ট মিউজিয়াম)।',
+  ])),
+  E('cma-pala-kaolin-khasarpana', ['Lokeshvara in White Clay, Bihar', 'लोकेश्वर, सफ़ेद मिट्टी में, बिहार', 'লোকেশ্বর, সাদা মাটিতে, বিহার'], scan([
+    'Clay elsewhere in time: Lokeshvara the Sky Flyer (Khasarpana), the Bodhisattva of Compassion, a small image in fired kaolin, white clay, with traces of paint; Bihar, Pala dynasty, late 11th century (Cleveland Museum of Art).',
+    'मिट्टी, दूसरे समय में: आकाशगामी लोकेश्वर (खसर्पण), करुणा के बोधिसत्व, पकी हुई केओलिन, सफ़ेद मिट्टी, की छोटी मूर्ति, रंग के निशानों के साथ; बिहार, पाल राजवंश, 11वीं सदी का अंत (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্য কালে: আকাশচারী লোকেশ্বর (খসর্পণ), করুণার বোধিসত্ত্ব, পোড়া কেওলিন, সাদা মাটির, ছোট মূর্তি, রঙের দাগসহ; বিহার, পাল রাজবংশ, একাদশ শতকের শেষ (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  E('cma-pala-kaolin-portable-temple', ['Portable Shrine in White Clay, Bihar', 'सफ़ेद मिट्टी का सुवाह्य मंदिर, बिहार', 'সাদা মাটির বহনযোগ্য মন্দির, বিহার'], scan([
+    'Clay elsewhere in time: a portable Buddhist shrine modelled in kaolin, white clay, with traces of paint; Bihar, 10th century (Cleveland Museum of Art).',
+    'मिट्टी, दूसरे समय में: केओलिन, सफ़ेद मिट्टी, में गढ़ा बौद्ध सुवाह्य मंदिर, रंग के निशानों के साथ; बिहार, 10वीं सदी (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি, অন্য কালে: কেওলিন, সাদা মাটিতে, গড়া বৌদ্ধ বহনযোগ্য মন্দির, রঙের দাগসহ; বিহার, দশম শতক (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+  // on its own plinth by the E-west arch
+  E('cma-ravana-shaking-kailasa-relief', ['Ravana Shaking Mount Kailasa, in Stone', 'कैलास हिलाता रावण, पत्थर में', 'কৈলাস নাড়ানো রাবণ, পাথরে'], scan([
+    'From clay to stone: Ravana shaking Mount Kailasa, where Shiva and Parvati sit, carved in sandstone in Madhya Pradesh, central India, 8th century (Cleveland Museum of Art).',
+    'मिट्टी से पत्थर तक: कैलास पर्वत को हिलाता रावण, जिस पर शिव और पार्वती विराजमान हैं, मध्य प्रदेश, मध्य भारत में बलुआ पत्थर में तराशा, 8वीं सदी (क्लीवलैंड म्यूज़ियम ऑफ़ आर्ट)।',
+    'মাটি থেকে পাথরে: কৈলাস পর্বত নাড়াচ্ছেন রাবণ, যার ওপর শিব ও পার্বতী বসে, মধ্যপ্রদেশ, মধ্য ভারতে বেলেপাথরে খোদাই, অষ্টম শতক (ক্লিভল্যান্ড মিউজিয়াম অফ আর্ট)।',
+  ])),
+]
+
+/** Every scan of the hall, by slug. */
+const SCANS = new Map([...FIRST_SETS.flat(), ...SECOND_SET].map((e) => [e.slug, e]))
+
+/**
+ * Where each scan stands, in walking order from the D arch (wine-plinth-6) to the E-west arch: the plinth's
+ * front tread and, on the stepped plinths, its top tread at eye level (installations.ts).
+ */
+const HALL: { plinth: string; front: string[]; top?: string[] }[] = [
+  // East Asia: Jōmon pots and the dogū, Chinese, Korean, Thai and Vietnamese stoneware, a coiled tea bowl
+  { plinth: 'wine-plinth-6', front: ['wc-kaen-doki-jomon-flame-pot', 'cma-jomon-deep-vessel', 'cma-vietnamese-covered-jar', 'hm-crackleware-jar'], top: ['wc-dogu-clay-figurine', 'hm-japanese-coiled-tea-bowl', 'hm-ceramic-kundika', 'hm-si-satchanalai-lidded-jar'] },
+  // glazes of America and Europe, and a painted Nasca vase
+  { plinth: 'wine-plinth-5', front: ['si-stoneware-jug-commeraw', 'si-jar-made-by-dave', 'hm-green-glaze-lugged-jar', 'hm-earthenware-pot-blue-speckle'], top: ['si-colonoware-pot', 'si-delft-ewer', 'cma-nasca-painted-vase', 'hm-green-glazed-pot', 'hm-pottery-mug'] },
+  // the ancient Mediterranean
+  { plinth: 'wine-plinth-4', front: ['sf-cosa-scroll-plaque', 'cma-selinus-terracotta-mask', 'sf-cosa-campana-plaque'], top: ['si-kylix', 'wc-msr-vase-aryballisque', 'wc-roman-pottery-r3950', 'wc-roman-pottery-r3997', 'cma-etruscan-maiden-antefix'] },
+  // great jars: three old kilns of Japan in front, a medieval European jar and a Nupe water jar behind
+  { plinth: 'wine-jar-plinth', front: ['cma-shigaraki-ash-glazed-storage-jar', 'cma-tamba-storage-jar', 'cma-echizen-storage-jar'], top: ['hm-medieval-storage-jar', 'cma-nupe-water-transport-jar'] },
+  // horses and riders, and the Near East
+  { plinth: 'wine-plinth-7', front: ['sf-haniwa-horse', 'sf-ypm-apkallu-plaque', 'hm-raqqa-ware-bowl'], top: ['hm-syro-hittite-horse-rider', 'sf-fitzwilliam-horse-rider', 'sf-cypriot-horse', 'sf-msu-terracotta-horse'] },
+  // prehistoric Europe
+  { plinth: 'wine-plinth-3', front: ['hm-bronze-age-cinerary-urn', 'wc-geto-dacian-biconical-vessel', 'hm-replica-beaker-pit-fired'], top: ['wc-neolithic-pottery', 'wc-neolithic-clay-idol', 'hm-tripartite-bowl-food-vessel', 'hm-incised-groove-food-vessel'] },
+  // figures and faces
+  { plinth: 'wine-plinth-2', front: ['cma-bobo-ram-mask', 'si-fugitives-story-figurine', 'cma-puget-terracotta-bozzetto-sauli'], top: ['wc-mahg-terracotta-man-holding-child', 'wc-mahg-terracotta-tambourine-player', 'cma-gigaku-mask-persian-boy', 'sf-sanni-mask', 'wc-mahg-standing-man-figurine', 'wc-bust-singing-woman'] },
+  // reliefs and shrines: Gandhara in stone, Tang and Gupta in terracotta, Pala in white clay, Sèvres porcelain
+  { plinth: 'wine-plinth-1', front: ['cma-gandhara-procession-relief', 'cma-tang-terracotta-dancer-brick', 'cma-gandhara-dancers-musicians-relief'], top: ['wc-sevres-pedestal-bowl', 'sf-gupta-relief-fragment', 'cma-pala-kaolin-khasarpana', 'cma-pala-kaolin-portable-temple', 'wc-iron-age-cup-lamp'] },
+]
+
+/** The tall pieces on plinths of their own: the two carved stone figures, and the stele by the E-west arch. */
+const PEDESTALS: Record<string, string> = { 'wine-pedestal-2': 'wc-mia-ganesha', 'wine-pedestal-1': 'wc-mia-uma-maheshvara', 'wine-stele-plinth': 'cma-ravana-shaking-kailasa-relief' }
+
+/**
+ * p08l "plinths and busts": sculpted heads in a terracotta finish at one end of four top treads, at eye level,
+ * turned a little towards the walk (fittings of the hall, not curated pieces: no label, credited on /credits).
+ */
+const HEADS: { slug: string; plinth: string; side: 1 | -1 }[] = [
+  { slug: 'ph-marble-bust-01', plinth: 'wine-plinth-6', side: 1 },
+  { slug: 'ph-horse-head', plinth: 'wine-plinth-5', side: -1 },
+  { slug: 'ph-lion-head', plinth: 'wine-plinth-3', side: 1 },
+  { slug: 'ph-bull-head', plinth: 'wine-plinth-1', side: -1 },
+]
+/** A head's centre from its tread's end; the end of the tread it keeps. */
+const HEAD_AT = 0.24
+const HEAD_ROOM = 0.46
+
 const HALL_SURFACES: SurfaceId[] = ['d-hallway-1', 'd-hallway-2', 'd-hallway-3', 'd-hallway-4', 'd-hallway-5', 'd-hallway-6']
-/** Plan angle (deg, 0 … 360) of a point: the hall runs from the D arch (224°) back to E-west (146°). */
-const planDeg = (x: number, z: number) => ((Math.atan2(z, x) / DEG) % 360 + 360) % 360
+
+/** Plan footprint of a scan as placed (its bounding box, m): [across, deep]. */
+const scanSize = (slug: string): [number, number] => {
+  const e = SOURCED_REGISTRY[slug]
+  return e ? [e.bbox[3] - e.bbox[0], e.bbox[5] - e.bbox[2]] : [0.3, 0.3]
+}
+
+/** Centres (x) of a row of scans across [a, b], with equal gaps between them and at both ends. */
+export function spreadRow(slugs: string[], a: number, b: number): number[] {
+  const w = slugs.map((s) => Math.max(...scanSize(s)))
+  const gap = (b - a - w.reduce((n, x) => n + x, 0)) / (slugs.length + 1)
+  let x = a + gap
+  return w.map((wi) => {
+    const c = x + wi / 2
+    x += wi + gap
+    return c
+  })
+}
 
 function wineHall(): SceneObjectConfig[] {
   const out: SceneObjectConfig[] = []
-  // the installations package's wine plinths, in walking order (decreasing plan angle): the
-  // stepped plinths W1–W6, the tall single pedestals (busts) and the low ledge (the relief)
-  const all = installations('wine-plinth', 'hallway-d').sort((a, b) => planDeg(b.position[0], b.position[2]) - planDeg(a.position[0], a.position[2]))
-  const plinths = all.filter((o) => num(o, 'width', 2.4) >= 1.2 && num(o, 'depth', 0.9) >= 0.6)
-  const pedestals = all.filter((o) => num(o, 'width', 2.4) < 1.2 && num(o, 'steps', 3) === 1)
-  const ledge = all.find((o) => num(o, 'width', 2.4) >= 1.2 && num(o, 'depth', 0.9) < 0.6)
-  // the two carved stone figures stand on the tall pedestals; the heads and figures stay together
-  // as one group on W5 (p08l "plinths and busts")
-  const TALL = ['wc-mia-ganesha', 'wc-mia-uma-maheshvara']
-  const onPedestal = new Map(TALL.slice(0, pedestals.length).map((slug, i) => [slug, pedestals[i]]))
-  for (const [slug, ped] of onPedestal) {
-    const e = WINE_SETS.flat().find((x) => x.slug === slug)!
-    out.push(sourced(`elsewhere-${slug}`, slug, toWorld(ped, 0, num(ped, 'height', 1.36), 0), ped.rotationDeg ?? 0, 'hallway-d', { title: e.title, text: e.text }))
+  const all = installations('wine-plinth', 'hallway-d')
+  const byId = (id: string) => all.find((o) => o.id === id)
+  const ledge = byId('wine-relief-ledge')
+  const label = (slug: string) => {
+    const e = SCANS.get(slug)!
+    return { title: e.title, text: e.text }
   }
-  WINE_SETS.forEach((full, wi) => {
-    const set = plinths.length ? full.filter((e) => !onPedestal.has(e.slug)) : full
-    const p = plinths[wi]
-    if (p) {
-      // the small pieces on the top tread at eye level, the taller ones on the front tread below,
-      // spread across the width
-      const n = set.length
-      set.forEach((e, k) => {
-        const h = SOURCED_REGISTRY[e.slug] ? SOURCED_REGISTRY[e.slug].bbox[4] - SOURCED_REGISTRY[e.slug].bbox[1] : 0.3
-        const tread = winePlinthTread(p, h > 0.36 ? 0 : 1)
-        const x = (k - (n - 1) / 2) * Math.min(0.62, (tread.width - 0.4) / Math.max(1, n - 1))
-        out.push(sourced(`elsewhere-${e.slug}`, e.slug, toWorld(p, x, tread.y, tread.z), (p.rotationDeg ?? 0) + (k % 2 ? -12 : 12), 'hallway-d', { title: e.title, text: e.text }))
+  for (const [pid, slug] of Object.entries(PEDESTALS)) {
+    const ped = byId(pid)
+    if (ped) out.push(sourced(`elsewhere-${slug}`, slug, toWorld(ped, 0, num(ped, 'height', 1.36), 0), ped.rotationDeg ?? 0, 'hallway-d', label(slug)))
+  }
+  HALL.forEach((row, wi) => {
+    const p = byId(row.plinth)
+    const slugs = [...row.front, ...(row.top ?? [])]
+    if (!p) {
+      // no plinth there: each piece gets a wine-lacquered stand of its own, in front of the wall
+      const sid = HALL_SURFACES[wi % HALL_SURFACES.length]
+      const s = SURFACES[sid]
+      const mid = (s.range[0] + s.range[1]) / 2
+      slugs.forEach((slug, k) => {
+        const sp = surfacePoint(sid, mid + (k - (slugs.length - 1) / 2) * 0.8, 0, 0.55)
+        const h = 1.1
+        out.push(stand(`elsewhere-stand-${wi + 1}-${k + 1}`, sp.position, sp.rotationY / DEG, [0.42, 0.42], h, 'hallway-d', k === 0 && wi === 0 ? 'vitrine' : 'plain'))
+        out.push(sourced(`elsewhere-${slug}`, slug, [sp.position[0], h, sp.position[2]], sp.rotationY / DEG, 'hallway-d', label(slug)))
       })
       return
     }
-    // no plinth there: each piece gets a wine-lacquered stand of its own, in front of the wall
-    const sid = HALL_SURFACES[wi]
-    const s = SURFACES[sid]
-    const mid = (s.range[0] + s.range[1]) / 2
-    set.forEach((e, k) => {
-      const along = mid + (k - (set.length - 1) / 2) * 0.8
-      const sp = surfacePoint(sid, along, 0, 0.55)
-      const h = 1.1
-      out.push(stand(`elsewhere-stand-${wi + 1}-${k + 1}`, sp.position, sp.rotationY / DEG, [0.42, 0.42], h, 'hallway-d', k === 0 && wi === 0 ? 'vitrine' : 'plain'))
-      out.push(sourced(`elsewhere-${e.slug}`, e.slug, [sp.position[0], h, sp.position[2]], sp.rotationY / DEG, 'hallway-d', { title: e.title, text: e.text }))
-    })
+    const steps = Math.max(1, Math.round(num(p, 'steps', 3)))
+    const W = num(p, 'width', 2.4)
+    const head = HEADS.find((h) => h.plinth === row.plinth && SOURCED_REGISTRY[h.slug])
+    const rows: [string[], number][] = [
+      [row.front, 0],
+      [row.top ?? [], steps - 1],
+    ]
+    // front pieces that rise to the top tread's height would hide what stands behind them
+    const tall: [number, number][] = []
+    for (const [list, k] of rows) {
+      if (!list.length) continue
+      const t = winePlinthTread(p, k)
+      // a top tread with a head keeps that end clear
+      const keep = !!head && k === steps - 1 && steps > 1
+      let a = keep && head.side < 0 ? -W / 2 + HEAD_ROOM : -W / 2 + 0.1
+      let b = keep && head.side > 0 ? W / 2 - HEAD_ROOM : W / 2 - 0.1
+      // …and the top row keeps to the widest stretch clear of the tall front pieces
+      if (k > 0 && tall.length) {
+        const cuts = [[a, a] as [number, number], ...tall.sort((m, n) => m[0] - n[0]), [b, b] as [number, number]]
+        let best: [number, number] = [a, b]
+        let len = -1
+        for (let i = 1; i < cuts.length; i++) {
+          const from = Math.max(a, cuts[i - 1][1])
+          const to = Math.min(b, cuts[i][0])
+          if (to - from > len) [best, len] = [[from, to], to - from]
+        }
+        ;[a, b] = best
+      }
+      spreadRow(list, a, b).forEach((x, i) => {
+        // (eye-level plinths only: on a low tiered one the taller pieces stand behind on purpose)
+        if (k === 0 && steps > 1 && num(p, 'height', 1.1) >= 1) {
+          const e = SOURCED_REGISTRY[list[i]]
+          const [w] = scanSize(list[i])
+          if (e && t.y + (e.bbox[4] - e.bbox[1]) > winePlinthTread(p, steps - 1).y - 0.05) tall.push([x - w / 2 - 0.06, x + w / 2 + 0.06])
+        }
+        const slug = list[i]
+        const [w, d] = scanSize(slug)
+        // round pieces turn a little, alternately, towards the walk; flat ones (reliefs, plaques, masks) face square
+        const turn = d < 0.6 * w ? 0 : i % 2 ? -12 : 12
+        out.push(sourced(`elsewhere-${slug}`, slug, toWorld(p, x, t.y, t.z), (p.rotationDeg ?? 0) + turn, 'hallway-d', label(slug)))
+      })
+    }
   })
-  // p08l "plinths and busts": sculpted heads in a terracotta finish at the ends of four plinths'
-  // top treads, at eye level, turned a little towards the walk (fittings of the hall, not curated
-  // pieces: no label, credited on /credits)
-  const HEADS = ['ph-marble-bust-01', 'ph-horse-head', 'ph-lion-head', 'ph-bull-head']
-  const headOn = [0, 1, 3, 5]
-  HEADS.forEach((slug, k) => {
-    const p = plinths[headOn[k]]
-    if (!p || !SOURCED_REGISTRY[slug]) return
+  HEADS.forEach((h, k) => {
+    const p = byId(h.plinth)
+    if (!p || !SOURCED_REGISTRY[h.slug]) return
     const t = winePlinthTread(p, 1)
-    const side = k % 2 ? -1 : 1
-    out.push(sourced(`wine-head-${k + 1}`, slug, toWorld(p, side * (t.width / 2 - 0.24), t.y, t.z), (p.rotationDeg ?? 0) - side * 18, 'hallway-d', { finish: 'terracotta' }))
+    out.push(sourced(`wine-head-${k + 1}`, h.slug, toWorld(p, h.side * (t.width / 2 - HEAD_AT), t.y, t.z), (p.rotationDeg ?? 0) - h.side * 18, 'hallway-d', { finish: 'terracotta' }))
   })
   // the relief at the hall's end: on its ledge if there is one, else on the lobe wall at eye level
   if (ledge) {

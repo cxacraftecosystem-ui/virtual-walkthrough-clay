@@ -76,7 +76,12 @@ describe('grand crafts: no misattribution (§4.1, §5.3)', () => {
       assert.ok(typeof o.props?.finish === 'string', `${o.id} has no finish`)
       // a slug-only object takes its credit from the registry at mount (models/SceneObjects.tsx)
       assert.ok((o.credit?.author && o.credit.license) || (e.credit.author && e.credit.license), `${o.id} carries no credit`)
-      if (o.interactive) assert.match(o.description ?? '', ELSEWHERE, `${o.id}: an exhibit scan must say what and where it is from`)
+      // a scan of a tradition's own work (`of`) stands only for a deep dive (named in its gallery), and says so
+      const of = CRAFTS.find((c) => c.slug === o.props?.of)
+      if (o.props?.of !== undefined) {
+        assert.ok(of && DEEP_DIVES.has(of.slug), `${o.id}: "${o.props.of}" is not a deep dive`)
+        assert.ok(o.interactive && (o.description ?? '').startsWith(of.name), `${o.id}: a tradition's scan must open its label with the tradition's name`)
+      } else if (o.interactive) assert.match(o.description ?? '', ELSEWHERE, `${o.id}: an exhibit scan must say what and where it is from`)
       else assert.ok(e.role === 'dressing' || e.role === 'tree' || e.role === 'rock' || /Study|stand|table|Bracket/i.test(o.title) || !o.description, `${o.id}: a scan shown without a label must be a generic form`)
     }
   })
@@ -105,7 +110,9 @@ describe('grand crafts: staging (§4.2)', () => {
     // its Bankura horse on the top step (team-pieces.test.ts); the front place that horse left stays free
     assert.equal(count(/^craft-bankura-herd-/), 6, 'six stand-in horses in The Herd')
     assert.equal(count(/^craft-molela-niche-/), 5, 'five niche plaques')
-    assert.equal(count(/^craft-longpi-island-/), 12, 'twelve pieces of black ware')
+    // twelve pieces of black ware: eleven studies and a real Longpi teapot, scanned, in the first kettle's place
+    assert.equal(count(/^craft-longpi-island-/), 11, 'eleven black ware studies')
+    assert.equal(count(/^longpi-teapot-scan$/), 1, 'the Longpi teapot')
     assert.equal(count(/-register-\d+$/), 24, 'twenty-four register pieces')
     assert.equal(count(/^craft-bishnupur-relief-/), 12, 'twelve relief panels')
     assert.equal(count(/-parikrama$/), 13, 'thirteen Parikrama niches')
@@ -113,6 +120,37 @@ describe('grand crafts: staging (§4.2)', () => {
     assert.equal(count(/^craft-ayyanar-guardian-/), 2, 'two guardians')
     assert.ok(count(/-redroom-/) >= 50, 'the Red Room survey')
     assert.ok(GRAND_CRAFTS_OBJECTS.length >= 200)
+  })
+
+  it('gives every scan on a Wine Hall tread its own room, within the tread', () => {
+    // each row (one plinth, one tread height): the pieces' plan extents, across the plinth, never touch
+    for (const p of SCENE_OBJECTS.filter((o) => o.kind === 'wine-plinth')) {
+      const r = ((p.rotationDeg ?? 0) * Math.PI) / 180
+      const W = Number(p.props?.width ?? 2.4)
+      const D = Number(p.props?.depth ?? 0.9)
+      const n = Math.max(1, Math.round(Number(p.props?.steps ?? 3)))
+      const treads = Array.from({ length: n }, (_, k) => (Number(p.props?.height ?? 1.1) * (k + 1)) / n)
+      const rows = new Map<string, [number, number, string][]>()
+      for (const o of SCENE_OBJECTS.filter((x) => x.kind === 'sourced-model' && x.zone === 'hallway-d')) {
+        const dx = o.position[0] - p.position[0]
+        const dz = o.position[2] - p.position[2]
+        const lx = dx * Math.cos(r) - dz * Math.sin(r)
+        const lz = dx * Math.sin(r) + dz * Math.cos(r)
+        if (Math.abs(lx) > W / 2 + 0.05 || Math.abs(lz) > D / 2 + 0.05) continue
+        // standing on one of this plinth's treads (a neighbour's piece may overhang its plan)
+        if (!treads.some((t) => Math.abs(p.position[1] + t - o.position[1]) < 0.01)) continue
+        const e = SOURCED_REGISTRY[String(o.props?.slug)]
+        const s = (o.height ?? 0) / (e.bbox[4] - e.bbox[1])
+        const w = Math.max(e.bbox[3] - e.bbox[0], e.bbox[5] - e.bbox[2]) * s
+        const key = o.position[1].toFixed(2)
+        rows.set(key, [...(rows.get(key) ?? []), [lx - w / 2, lx + w / 2, o.id]])
+      }
+      for (const [y, row] of rows) {
+        row.sort((a, b) => a[0] - b[0])
+        for (const [a, b, id] of row) assert.ok(a >= -W / 2 - 0.01 && b <= W / 2 + 0.01, `${id} overhangs ${p.id} (tread at ${y} m)`)
+        for (let i = 1; i < row.length; i++) assert.ok(row[i][0] - row[i - 1][1] >= 0.01, `${row[i - 1][2]} and ${row[i][2]} touch on ${p.id} (tread at ${y} m)`)
+      }
+    }
   })
 
   it('stands the guardians as 4.2 m horses outdoors', () => {

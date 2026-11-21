@@ -125,20 +125,7 @@ export function atAngle(surface: SurfaceId, aDeg: number): number {
 /** Middle of a surface run. */
 export const midAt = (surface: SurfaceId) => (SURFACES[surface].range[0] + SURFACES[surface].range[1]) / 2
 
-type Place = ArtworkConfig['placement']
-interface Opts {
-  maxWidth: number
-  maxHeight: number
-  frame: FrameConfig | FrameStyleId
-  hero?: boolean
-  label?: boolean
-  spotlight?: ArtworkConfig['spotlight']
-  alt: string
-  altHi: string
-  altBn: string
-}
-
-/** What every stand-in says about itself: made for the exhibition, in the manner of its tradition. */
+/** What every stand-in says about itself: made for the exhibition, in the manner of its tradition (the crafts' studies). */
 export const STUDY_NOTE: Record<TraditionKey, { en: string; hi: string; bn: string }> = {
   a: {
     en: 'A study made for this exhibition, in the manner of Bankura terracotta.',
@@ -157,29 +144,52 @@ export const STUDY_NOTE: Record<TraditionKey, { en: string; hi: string; bn: stri
   },
 }
 
-/** Compact constructor for a stand-in work of tradition `t`; titles are [en, hi, bn]. */
-function work(t: TraditionKey, id: string, title: [string, string, string], placement: Place, o: Opts): ArtworkConfig {
-  const tr = TRADITIONS[t]
-  const { alt, altHi, altBn, ...rest } = o
-  return {
-    id,
-    title: title[0],
-    tradition: tr.name,
-    region: tr.region,
-    image: `/artworks/${id}.jpg`,
-    placement,
-    description: STUDY_NOTE[t].en,
-    placeholder: true,
-    alt,
-    ...rest,
-    i18n: {
-      hi: { title: title[1], ...tr.i18n.hi, description: STUDY_NOTE[t].hi, alt: altHi },
-      bn: { title: title[2], ...tr.i18n.bn, description: STUDY_NOTE[t].bn, alt: altBn },
-    },
-  }
-}
-
 const DARK: FrameConfig = { style: 'dark-wood', matColor: '#e4dccf' }
+
+/** Gallery C's photograph: a Longpi kettle, photographed by Atcelsius (Wikimedia Commons). */
+const LONGPI_KETTLE: ArtworkConfig = {
+  id: 'clay-c-01',
+  title: 'Longpi Kettle',
+  tradition: TRADITIONS.c.name,
+  region: TRADITIONS.c.region,
+  material: 'Serpentine rock and clay; cane',
+  technique: 'Shaped by hand without a wheel, open-fired, polished with leaves',
+  image: '/artworks/clay-c-01-longpi-kettle.jpg',
+  placement: { surface: 'c-south-2', at: midAt('c-south-2'), centerHeight: 1.75 },
+  hero: true,
+  maxWidth: 1.7,
+  maxHeight: 2.1,
+  frame: DARK,
+  placeholder: false,
+  description:
+    'A kettle of Longpi pottery, the black ware of Longpi village in Ukhrul, Manipur, made by Tangkhul Naga potters. Ground black serpentine rock and weathered clay are worked into a stiff paste and shaped by hand, without a wheel; the pieces are fired in an open fire and rubbed with leaves while still hot, which gives them their dark sheen. The handle is wrapped cane.',
+  alt: 'A black clay kettle with a round lid and a cane-wrapped handle, photographed on a polished wooden table.',
+  metadata: {
+    Photograph: 'Atcelsius, via Wikimedia Commons',
+    'Image licence': 'CC BY-SA 4.0 (cropped from the original)',
+    Record: 'https://commons.wikimedia.org/wiki/File:Longpi_pottery_9.jpg',
+  },
+  i18n: {
+    hi: {
+      title: 'लोंगपी की केतली',
+      ...TRADITIONS.c.i18n.hi,
+      material: 'सर्पेन्टाइन चट्टान और मिट्टी; बेंत',
+      technique: 'बिना चाक के हाथ से गढ़ी, खुली आग में पकी, पत्तियों से चमकाई',
+      description:
+        'लोंगपी के मृद्भांडों की एक केतली: मणिपुर के उखरुल ज़िले के लोंगपी गाँव के काले बर्तन, जिन्हें तांगखुल नागा कुम्हार बनाते हैं। पिसी हुई काली सर्पेन्टाइन चट्टान और भुरभुरी मिट्टी को गूँधकर गाढ़ा लेप बनाया जाता है और बिना चाक के, हाथ से आकार दिया जाता है; बर्तन खुली आग में पकाए जाते हैं और गरम रहते ही पत्तियों से रगड़े जाते हैं, जिससे उनमें गहरी चमक आती है। हत्था बेंत से लिपटा है।',
+      alt: 'गोल ढक्कन और बेंत से लिपटे हत्थे वाली काली मिट्टी की केतली, चमकदार लकड़ी की मेज़ पर।',
+    },
+    bn: {
+      title: 'লংপির কেটলি',
+      ...TRADITIONS.c.i18n.bn,
+      material: 'সার্পেন্টাইন পাথর ও মাটি; বেত',
+      technique: 'চাক ছাড়া হাতে গড়া, খোলা আগুনে পোড়া, পাতা দিয়ে ঘষে চকচকে',
+      description:
+        'লংপি মৃৎপাত্রের একটি কেটলি: মণিপুরের উখরুল জেলার লংপি গ্রামের কালো পাত্র, যা গড়েন তাংখুল নাগা কুমোরেরা। গুঁড়ো কালো সার্পেন্টাইন পাথর আর ঝুরো মাটি মেখে ঘন মণ্ড তৈরি হয়, চাক ছাড়াই হাতে গড়া হয়; পাত্রগুলি খোলা আগুনে পোড়ানো হয় আর গরম থাকতেই পাতা দিয়ে ঘষা হয়, তাতেই আসে গাঢ় চকচকে ভাব। হাতলটি বেত জড়ানো।',
+      alt: 'গোল ঢাকনা আর বেত জড়ানো হাতলওয়ালা কালো মাটির কেটলি, চকচকে কাঠের টেবিলের ওপর।',
+    },
+  },
+}
 
 export const ARTWORKS: ArtworkConfig[] = [
   // ══ A — Bankura terracotta: the red wall carries its sconced podiums and the Herd alone (p02) ══
@@ -187,15 +197,8 @@ export const ARTWORKS: ArtworkConfig[] = [
   // ══ B — Molela votive plaques: the niche wall (grandObjects/crafts.ts), nothing hung ══
 
   // ══ C — Longpi black pottery: one large photograph on the charcoal wall, nothing small ═
-  work('c', 'clay-c-01', ['Kettle — Study', 'केतली — अध्ययन', 'কেটলি — চর্চা'], { surface: 'c-south-2', at: midAt('c-south-2'), centerHeight: 1.75 }, {
-    hero: true,
-    maxWidth: 1.7,
-    maxHeight: 2.1,
-    frame: DARK,
-    alt: 'A black, burnished clay kettle with a cane-wrapped handle, against a pale ground.',
-    altHi: 'बेंत से लिपटे हत्थे वाली काली, घिसकर चमकाई मिट्टी की केतली, हल्की पृष्ठभूमि पर।',
-    altBn: 'বেত জড়ানো হাতলওয়ালা একটি কালো, ঘষে-মাজা মাটির কেটলি, হালকা পটভূমিতে।',
-  }),
+  // a real Longpi kettle (Wikimedia Commons, CC BY-SA 4.0, cropped), no longer a study: its maker is not recorded
+  LONGPI_KETTLE,
 ]
 
 export function getArtwork(id: string) {

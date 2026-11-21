@@ -21,7 +21,9 @@
  * its own centre (up to `maxScale`) so the crown keeps its cover; only the wood is simplified.
  * `cap` overrides the role's LOD0 cap for one entry, `tex` its LOD0 texture size (px).
  *
- * Fails when the total is above 45 MB, or any single file is above 4 MB (trees 5 MB).
+ * Fails when the total is above 90 MB, or any single file is above 4 MB (trees 5 MB). (The total was 45 MB until
+ * Clay Elsewhere's second set, 2026-11: the scans stream with their zone and switch LOD by distance,
+ * models/sourcedModel.tsx, so it bounds the deployment, not what a visitor downloads at once.)
  *
  * Sources: `--src`, else SOURCED_SRC, else the build's staging folder. The originals are not
  * kept in the repository; the outputs and the registry are.
@@ -30,7 +32,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { Logger, NodeIO, getBounds } from '@gltf-transform/core'
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions'
-import { center, compactPrimitive, dedup, dequantize, meshopt, prune, simplify, simplifyPrimitive, textureCompress, weld } from '@gltf-transform/functions'
+import { center, compactPrimitive, dedup, dequantize, join, meshopt, prune, simplify, simplifyPrimitive, textureCompress, weld } from '@gltf-transform/functions'
 import draco3d from 'draco3d'
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer'
 import sharp from 'sharp'
@@ -53,7 +55,7 @@ const FORCE = args.includes('--force')
 /** LOD0 triangle caps per role (GRAND §5.1); LOD1 is a quarter of LOD0. */
 export const CAPS = { hero: 60000, display: 25000, dressing: 8000, tree: 30000, rock: 20000 }
 const TEX = { lod0: 1024, lod1: 256 }
-const MAX_TOTAL = 45e6
+const MAX_TOTAL = 90e6
 const MAX_FILE = (role) => (role === 'tree' ? 5e6 : 4e6)
 
 const LICENSE = { 'CC0-1.0': 'CC0', 'CC-BY-4.0': 'CC-BY-4.0' }
@@ -240,6 +242,13 @@ async function build(IO, e, lod) {
   wrap.setScale([s, s, s])
   // 4. base at y 0, centred on x / z
   await doc.transform(center({ pivot: 'below' }))
+  // 4b. a scan written with its own vertices for every triangle (per-face normals or colours) cannot be
+  // simplified: nothing welds. `drop` removes those attributes (models/GLTFModel.tsx recomputes missing
+  // normals at load) and its parts are joined, so the welder can join the triangles again
+  if (e.drop?.length) {
+    for (const m of root.listMeshes()) for (const p of m.listPrimitives()) for (const sem of e.drop) p.getAttribute(sem) && p.setAttribute(sem, null)
+    await doc.transform(dequantize(), join({ keepNamed: false }))
+  }
   // 5. clean-up, 6. simplify to the role cap
   await doc.transform(dequantize(), weld(), dedup(), prune())
   const before = triangles(doc)
@@ -257,6 +266,21 @@ async function build(IO, e, lod) {
   } else if (before > cap) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: cap / before, error: lod === 1 ? 0.05 : 0.02 }), prune())
   // a scan the simplifier could not bring under the cap (locked borders) gets a looser pass
   if (!e.leaves && triangles(doc) > cap * 1.05) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: cap / triangles(doc), error: 0.1, lockBorder: false }), prune())
+  // a scan textured in islands too small to collapse anything (every vertex on a seam) keeps its full LOD0; its
+  // far LOD1 is clustered by position alone (the texture smears at the seams, unseen at that distance)
+  if (lod === 1 && !e.leaves && triangles(doc) > cap * 1.05) {
+    const ratio = cap / triangles(doc)
+    for (const m of root.listMeshes())
+      for (const p of m.listPrimitives()) {
+        if (p.getMode() !== 4) continue
+        const pos = p.getAttribute('POSITION')
+        const idx = p.getIndices() ? Uint32Array.from(p.getIndices().getArray()) : Uint32Array.from({ length: pos.getCount() }, (_, i) => i)
+        const [out] = MeshoptSimplifier.simplifySloppy(idx, Float32Array.from(pos.getArray()), 3, null, Math.max(3, Math.floor((idx.length * ratio) / 3) * 3), 0.02)
+        p.setIndices(doc.createAccessor().setType('SCALAR').setArray(out).setBuffer(pos.getBuffer()))
+        compactPrimitive(p)
+      }
+    await doc.transform(prune())
+  }
   // 7. textures: colour at q 86, data maps (normal, ORM) at q 92
   const size = lod === 1 ? Math.min(TEX.lod1, e.tex ?? TEX.lod1) : (e.tex ?? TEX.lod0)
   if (root.listTextures().length) {
@@ -338,7 +362,10 @@ async function main() {
     const f0 = path.join(dir, `${e.slug}.glb`)
     const f1 = path.join(dir, `${e.slug}.lod1.glb`)
     const src = path.join(SRC, e.src)
-    const fresh = !FORCE && fs.existsSync(f0) && fs.existsSync(f1) && fs.existsSync(f0 + '.json') && fs.statSync(f0).mtimeMs >= Math.max(fs.statSync(src).mtimeMs, fs.statSync(SPEC).mtimeMs)
+    const built = fs.existsSync(f0) && fs.existsSync(f1) && fs.existsSync(f0 + '.json')
+    // the originals are not kept: a model already built whose original is no longer in the staging
+    // folder is reused as it is (a later batch of sources need not carry every earlier one)
+    const fresh = !FORCE && built && (!fs.existsSync(src) || fs.statSync(f0).mtimeMs >= Math.max(fs.statSync(src).mtimeMs, fs.statSync(SPEC).mtimeMs))
     let info
     if ((ONLY && !ONLY.includes(e.slug)) || fresh) {
       if (!fs.existsSync(f0 + '.json')) throw new Error(`${e.slug}: not built yet (run without --only)`)

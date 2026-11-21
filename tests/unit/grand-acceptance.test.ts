@@ -144,7 +144,8 @@ describe('grand acceptance: sourced models (§5)', () => {
       assert.ok(e.bbox[4] > e.bbox[1], `${slug}: empty bounding box`)
       assert.ok(e.tris > 0, `${slug}: no triangles`)
     }
-    assert.ok(total <= 45 * MB, `sourced models total ${(total / MB).toFixed(1)} MB (cap 45 MB)`)
+    // 90 MB since Clay Elsewhere's second set (the scans stream with their zone: scripts/optimize-sourced.mjs)
+    assert.ok(total <= 90 * MB, `sourced models total ${(total / MB).toFixed(1)} MB (cap 90 MB)`)
   })
 
   it('credits every sourced model, with an attribution line for CC BY', () => {
@@ -172,11 +173,13 @@ describe('grand acceptance: sourced models (§5)', () => {
     }
   })
 
-  it('stands every placed CC BY scan on a wine plinth, whose rail card carries its attribution', () => {
+  it('stands every placed CC BY scan on a wine plinth, whose rail card carries its attribution (or labels it itself)', () => {
     const plinths = SCENE_OBJECTS.filter((o) => o.kind === 'wine-plinth')
     const prop = (o: (typeof plinths)[number], k: string, d: number) => (typeof o.props?.[k] === 'number' ? (o.props[k] as number) : d)
     for (const o of SCENE_OBJECTS) {
       if (o.kind !== 'sourced-model' || o.credit?.license !== 'CC-BY-4.0') continue
+      // a scan of a tradition's own work stands among that tradition's pieces: its label (the info panel) carries the credit
+      if (o.props?.of && o.interactive && o.credit.author) continue
       const on = plinths.some((p) => {
         const r = ((p.rotationDeg ?? 0) * Math.PI) / 180
         const dx = o.position[0] - p.position[0]

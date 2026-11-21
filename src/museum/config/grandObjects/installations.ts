@@ -244,16 +244,25 @@ const DW = MUSEUM.hallwayWall
 const WINE = { depth: 0.9, width: 2.4, height: 1.3, steps: 2, railDepth: 0.1 }
 const WINE_LAMPS = KEY.lobeR - 0.22
 const WINE_R = WINE_LAMPS - 0.06 - (WINE.depth + WINE.railDepth * 2) / 2
-/** W1 … W6 along the hall, three either side of the hallway's stamp post (190°). */
+/**
+ * W1 … W6 along the hall, three either side of the hallway's stamp post (190°); W7, added with Clay Elsewhere's
+ * second set (the horses), on the wall between W3 and the post.
+ */
 const HALL_END = MUSEUM.drum.dNotchDeg
-const WINE_DEGS = [DW.fromDeg + 8, DW.fromDeg + 17.5, DW.fromDeg + 27, HALL_END - 22, HALL_END - 13, HALL_END - 5]
+const WINE_DEGS = [DW.fromDeg + 8, DW.fromDeg + 17.5, DW.fromDeg + 27, HALL_END - 22, HALL_END - 13, HALL_END - 5, DW.fromDeg + 36.5]
 /** Two tall pedestals for busts out from the hall's inner wall (clear of its drying shelves and lamps), and the end-wall relief ledge. */
 const BUST_DEGS = [DW.fromDeg + 12, DW.fromDeg + 34]
 const BUST = { w: 0.46, d: 0.46, h: 1.36 }
 const BUST_R = DW.r + DW.thickness / 2 + 1.15
 /** Glass on every set but W5 (the heads and figures, which stand open as a group, p08l). */
-const WINE_VITRINES = new Set([0, 1, 2, 3, 5])
+const WINE_VITRINES = new Set([0, 1, 2, 3, 5, 6])
 const RELIEF_DEG = DW.fromDeg + 3.5
+/** A low open plinth of two treads for five great storage jars, on the lobe wall between the stamp post and W4. */
+const JARS = { width: 1.8, depth: 0.9, height: 0.42, steps: 2, aDeg: HALL_END - 29.4 }
+const JARS_R = WINE_LAMPS - 0.06 - (JARS.depth + WINE.railDepth * 2) / 2
+/** A low plinth against the inner wall, before its lamp line, for a tall stone stele near the E-west arch. */
+const STELE = { width: 0.9, depth: 0.45, height: 0.3, aDeg: DW.fromDeg + 6 }
+const STELE_R = DW.r + DW.thickness / 2 + 0.2 + 0.06 + (STELE.depth + WINE.railDepth * 2) / 2
 
 const wineHall: SceneObjectConfig[] = [
   ...WINE_DEGS.map<SceneObjectConfig>((aDeg, i) => ({
@@ -292,6 +301,30 @@ const wineHall: SceneObjectConfig[] = [
     props: { steps: 1, width: 1.6, depth: 0.36, height: 0.9, vitrine: false },
     zone: 'hallway-d',
     alt: 'A low wine-red ledge against the end of the hall, made to carry a carved relief.',
+  },
+  {
+    id: 'wine-jar-plinth',
+    title: 'Jar plinth',
+    kind: 'wine-plinth',
+    position: at(JARS_R, JARS.aDeg),
+    rotationDeg: facingIn(JARS.aDeg),
+    footprint: [JARS.width, JARS.depth + WINE.railDepth * 2],
+    height: JARS.height,
+    props: { steps: JARS.steps, width: JARS.width, depth: JARS.depth, height: JARS.height, vitrine: false },
+    zone: 'hallway-d',
+    alt: 'A low, open wine-red plinth of two treads before the wall, carrying five large storage jars, with a brass label rail in front.',
+  },
+  {
+    id: 'wine-stele-plinth',
+    title: 'Stele plinth',
+    kind: 'wine-plinth',
+    position: at(STELE_R, STELE.aDeg),
+    rotationDeg: facingOut(STELE.aDeg),
+    footprint: [STELE.width, STELE.depth + WINE.railDepth * 2],
+    height: STELE.height,
+    props: { steps: 1, width: STELE.width, depth: STELE.depth, height: STELE.height, vitrine: false },
+    zone: 'hallway-d',
+    alt: 'A low wine-red plinth against the hall’s inner wall, carrying a tall carved stone relief.',
   },
 ]
 

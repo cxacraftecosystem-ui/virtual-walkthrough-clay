@@ -9,7 +9,7 @@
  *  - the court holds the pool, the lotus, the curb, the benches and the sundial — nothing else
  *    stands inside the curb;
  *  - the Sphere Well's stair runs between the sphere and the wall up to the lowest terrace;
- *  - the Wine Hall has its six plinths W1–W6, the Red Room its six-tier shelves round a two-tier
+ *  - the Wine Hall has its plinths W1–W7, the Red Room its six-tier shelves round a two-tier
  *    plinth under the oculus, and the Parikrama its planted courtyards and gardens.
  *
  * npm test
@@ -98,9 +98,9 @@ describe('grand installations: the Sphere Well (p07r)', () => {
 })
 
 describe('grand installations: Wine Hall, Red Room, Parikrama, Earth Room', () => {
-  it('lines the Wine Hall with W1–W6', () => {
+  it('lines the Wine Hall with W1–W7', () => {
     const w = GRAND_INSTALLATIONS_OBJECTS.filter((o) => /^wine-plinth-\d$/.test(o.id))
-    assert.equal(w.length, 6)
+    assert.equal(w.length, 7)
     for (const o of w) assert.equal(o.zone, 'hallway-d', o.id)
   })
 

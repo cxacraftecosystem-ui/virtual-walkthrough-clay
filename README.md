@@ -181,7 +181,7 @@ The starting tier comes from `detectInitialTier()`, and the pavilion steps down 
 | App | Next.js 16 (App Router, Route Handlers), React 19.3, zustand 5, OpenSeadragon 6 |
 | Data | `pg` against Supabase Postgres 17, or `node:sqlite` locally; AWS SDK v3 for S3 |
 | Capture | glTF Transform 4 and meshoptimizer in Web Workers, DZI tiling in the browser |
-| Models | procedural clay models in `src/museum/models`, and freely licensed scans from Poly Haven, Wikimedia Commons, the Smithsonian and ambientCG in `public/models/sourced`, credited on `/credits` |
+| Models | procedural clay models in `src/museum/models`, the workshop team's scans in `public/models/team`, and freely licensed scans from the Cleveland Museum of Art, the Hunt Museum, the Smithsonian, Wikimedia Commons, Sketchfab, Poly Haven and ambientCG in `public/models/sourced`, credited on `/credits` |
 | Tooling | Node.js 24, TypeScript 7 for `typecheck` and TypeScript 6 for ESLint and `next build`, ESLint 10, `node:test` via `tsx` |
 
 ## <img src="docs/readme-kit/assets/icons/rocket.svg" width="32" align="top" alt="">&nbsp; Quick start
@@ -331,8 +331,11 @@ flowchart LR
 </picture>
 
 Production is [clay-traditions.vercel.app](https://clay-traditions.vercel.app), deployed from `main` by
-`deploy.yml`. Every piece of the traditions is still a stand-in: titles name the form ("Kettle — Study"), never a tradition, and
-the twenty-one traditions' names, places and captions stay silent until the workshop confirms the list. The
+`deploy.yml`. The workshop team's sixteen pieces stand on the podiums with their captions, Gallery C shows a
+photographed Longpi kettle and a scanned Longpi teapot, and the Wine Hall holds 65 credited scans of clay from
+elsewhere. Every other piece of the traditions is still a stand-in: titles name the form ("Water Pot — Study"),
+never a tradition, and the twenty-one traditions' names, places and captions stay silent until the workshop
+confirms the list. The
 list of what is still to come is in [docs/CONTENT_STILL_NEEDED.md](docs/CONTENT_STILL_NEEDED.md).
 
 <picture>

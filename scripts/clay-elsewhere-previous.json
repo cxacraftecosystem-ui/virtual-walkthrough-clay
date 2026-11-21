@@ -1,0 +1,1239 @@
+{
+ "$comment": "The Wine Hall and the black ware island as bundled at f8184be (before Clay Elsewhere's second set): scripts/sync-clay-elsewhere.mjs replaces or deletes a stored object only while it still equals its version here.",
+ "objects": {
+  "craft-longpi-island-1": {
+   "id": "craft-longpi-island-1",
+   "title": "Kettle — Study",
+   "kind": "clay-vessel",
+   "position": [
+    -10.257000526584045,
+    0.42,
+    -9.38271947619533
+   ],
+   "rotationDeg": 34,
+   "height": 0.28,
+   "props": {
+    "form": "kettle",
+    "clay": "black",
+    "burnish": 0.85,
+    "decor": "none"
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "A study made for this exhibition, in the manner of Longpi black pottery.",
+   "zone": "ring-c",
+   "placeholder": true,
+   "i18n": {
+    "hi": {
+     "title": "केतली — अध्ययन",
+     "description": "इस प्रदर्शनी के लिए बनाया गया एक अध्ययन, लोंगपी के काले मृद्भांडों की शैली में।"
+    },
+    "bn": {
+     "title": "কেটলি — চর্চা",
+     "description": "এই প্রদর্শনীর জন্য তৈরি একটি চর্চা, লংপির কালো মৃৎপাত্রের ধরনে।"
+    }
+   }
+  },
+  "elsewhere-wc-mia-ganesha": {
+   "id": "elsewhere-wc-mia-ganesha",
+   "title": "Ganesha, in Stone",
+   "kind": "sourced-model",
+   "position": [
+    -17.752000000000002,
+    1.36,
+    2.1739929978463816e-15
+   ],
+   "rotationDeg": -90,
+   "height": 0.6,
+   "props": {
+    "slug": "wc-mia-ganesha",
+    "finish": "stone",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "From clay to stone: Ganesha, carved in volcanic stone, India, 10th–11th century (Minneapolis Institute of Art), shown beside modelled clay to compare the two ways of making a form. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Minneapolis Institute of Art",
+    "source": "https://commons.wikimedia.org/wiki/File:Ganesha,_10th_-_11th_C_CE_-_3D_model_by_Minneapolis_Institute_of_Art_-_Sketchfab.stl",
+    "license": "CC0",
+    "title": "Ganesha, 10th-11th c. CE (Minneapolis Institute of Art)",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+   },
+   "i18n": {
+    "hi": {
+     "title": "गणेश, पत्थर में",
+     "description": "मिट्टी से पत्थर तक: गणेश, ज्वालामुखीय पत्थर में तराशे, भारत, 10वीं–11वीं सदी (मिनियापोलिस इंस्टीट्यूट ऑफ़ आर्ट); गढ़ी हुई मिट्टी के पास, रूप बनाने के दो तरीक़ों की तुलना के लिए। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "গণেশ, পাথরে",
+     "description": "মাটি থেকে পাথরে: গণেশ, আগ্নেয় পাথরে খোদাই, ভারত, দশম–একাদশ শতক (মিনিয়াপোলিস ইনস্টিটিউট অফ আর্ট); গড়া মাটির পাশে, রূপ তৈরির দুই পথের তুলনায়। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-mia-uma-maheshvara": {
+   "id": "elsewhere-wc-mia-uma-maheshvara",
+   "title": "Uma-Maheshvara, in Stone",
+   "kind": "sourced-model",
+   "position": [
+    -16.45936778626961,
+    1.36,
+    6.650016246319275
+   ],
+   "rotationDeg": -67.99999999999999,
+   "height": 0.6,
+   "props": {
+    "slug": "wc-mia-uma-maheshvara",
+    "finish": "stone",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "From clay to stone: Uma-Maheshvara, carved in sandstone, India, 10th–11th century (Minneapolis Institute of Art). Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Minneapolis Institute of Art",
+    "source": "https://commons.wikimedia.org/wiki/File:Uma-Maheshvara,_10th_-_11th_C_CE_-_3D_model_by_Minneapolis_Institute_of_Art_-_Sketchfab.stl",
+    "license": "CC0",
+    "title": "Uma-Maheshvara, 10th-11th c. CE (Minneapolis Institute of Art)",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+   },
+   "i18n": {
+    "hi": {
+     "title": "उमा-महेश्वर, पत्थर में",
+     "description": "मिट्टी से पत्थर तक: उमा-महेश्वर, बलुआ पत्थर में तराशे, भारत, 10वीं–11वीं सदी (मिनियापोलिस इंस्टीट्यूट ऑफ़ आर्ट)। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "উমা-মহেশ্বর, পাথরে",
+     "description": "মাটি থেকে পাথরে: উমা-মহেশ্বর, বেলেপাথরে খোদাই, ভারত, দশম–একাদশ শতক (মিনিয়াপোলিস ইনস্টিটিউট অফ আর্ট)। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-kaen-doki-jomon-flame-pot": {
+   "id": "elsewhere-wc-kaen-doki-jomon-flame-pot",
+   "title": "Flame-rimmed Pot, Jōmon Japan",
+   "kind": "sourced-model",
+   "position": [
+    -16.27812499357746,
+    0.65,
+    -12.78287024472473
+   ],
+   "rotationDeg": 63,
+   "height": 0.4599,
+   "props": {
+    "slug": "wc-kaen-doki-jomon-flame-pot",
+    "finish": "buff",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A pot of the middle Jōmon period, about 5,000 years old, from Umataka, Nagaoka, Japan: built up in coils, its rim rising in thick loops of clay like flames. In a plain clay finish. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "九州国立博物館、大塚オーミ陶業株式会社、長岡市",
+    "source": "https://commons.wikimedia.org/wiki/File:Kaen_doki.stl",
+    "license": "CC0",
+    "title": "Kaen doki — Jomon flame-rimmed earthenware pot (Umataka, Nagaoka)",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+   },
+   "i18n": {
+    "hi": {
+     "title": "ज्वाला-किनारी घड़ा, जोमोन जापान",
+     "description": "मिट्टी, कहीं और। जापान के नागाओका के उमाताका से मध्य जोमोन काल का, लगभग 5,000 वर्ष पुराना घड़ा: कुंडलियों से गढ़ा गया, किनारा मिट्टी के मोटे घुमावों में लपटों-सा उठता है। सादी मिट्टी की सतह में। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "শিখা-কানার পাত্র, জোমোন জাপান",
+     "description": "মাটি, অন্যত্র। জাপানের নাগাওকার উমাতাকা থেকে মধ্য জোমোন যুগের, প্রায় ৫,০০০ বছরের পুরনো পাত্র: কুণ্ডলী জুড়ে গড়া, কানা উঠেছে মাটির মোটা পাকে শিখার মতো। সাদামাটা মাটির রঙে। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-dogu-clay-figurine": {
+   "id": "elsewhere-wc-dogu-clay-figurine",
+   "title": "Clay Figurine (Dogū), Japan",
+   "kind": "sourced-model",
+   "position": [
+    -16.237662033782197,
+    1.3,
+    -13.547894916800477
+   ],
+   "rotationDeg": 39,
+   "height": 0.19990000000000002,
+   "props": {
+    "slug": "wc-dogu-clay-figurine",
+    "finish": "buff",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A clay figurine of the Jōmon period, found at Umataka, Nagaoka, Japan. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "大塚木型製作所、長岡市",
+    "source": "https://commons.wikimedia.org/wiki/File:DoguMissUmataka.stl",
+    "license": "CC0",
+    "title": "Dogu clay figurine (Umataka, Nagaoka)",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+   },
+   "i18n": {
+    "hi": {
+     "title": "मिट्टी की मूर्तिका (दोगू), जापान",
+     "description": "मिट्टी, कहीं और। जापान के नागाओका के उमाताका में मिली जोमोन काल की मिट्टी की मूर्तिका। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "মাটির মূর্তি (দোগু), জাপান",
+     "description": "মাটি, অন্যত্র। জাপানের নাগাওকার উমাতাকায় পাওয়া জোমোন যুগের মাটির মূর্তি। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-si-colonoware-pot": {
+   "id": "elsewhere-si-colonoware-pot",
+   "title": "Colonoware Pot, South Carolina",
+   "kind": "sourced-model",
+   "position": [
+    -18.4441261797904,
+    1.3,
+    -10.359036367537787
+   ],
+   "rotationDeg": 71,
+   "height": 0.2399,
+   "props": {
+    "slug": "si-colonoware-pot",
+    "finish": "asis",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A hand-built, low-fired pot of the kind called colonoware, from the Cooper River, Charleston County, South Carolina, USA (National Museum of African American History and Culture). Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Smithsonian Institution — National Museum of African American History and Culture, 2017.108.1.1",
+    "source": "https://3d.si.edu/object/3d/79da3e3f-3ad7-41de-8956-e891d88a3c5f",
+    "license": "CC0",
+    "title": "Colonoware pot from Cooper River, Charleston County, SC",
+    "licenseUrl": "https://www.si.edu/openaccess"
+   },
+   "i18n": {
+    "hi": {
+     "title": "कोलोनोवेयर घड़ा, दक्षिण कैरोलिना",
+     "description": "मिट्टी, कहीं और। हाथ से गढ़ा, कम आँच पर पका, कोलोनोवेयर कहलाने वाली क़िस्म का घड़ा; कूपर नदी, चार्ल्सटन काउंटी, दक्षिण कैरोलिना, अमेरिका से। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "কলোনোওয়্যার পাত্র, দক্ষিণ ক্যারোলিনা",
+     "description": "মাটি, অন্যত্র। হাতে গড়া, কম আঁচে পোড়া, কলোনোওয়্যার নামের ধরনের পাত্র; কুপার নদী, চার্লসটন কাউন্টি, দক্ষিণ ক্যারোলিনা, আমেরিকা থেকে। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-si-stoneware-jug-commeraw": {
+   "id": "elsewhere-si-stoneware-jug-commeraw",
+   "title": "Stoneware Jug, New York",
+   "kind": "sourced-model",
+   "position": [
+    -17.739077288030217,
+    0.65,
+    -10.658712960263571
+   ],
+   "rotationDeg": 47,
+   "height": 0.39,
+   "props": {
+    "slug": "si-stoneware-jug-commeraw",
+    "finish": "asis",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A salt-glazed stoneware jug by Thomas Commeraw, a potter working in New York around 1800 (National Museum of African American History and Culture). Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Smithsonian Institution — National Museum of African American History and Culture, 2011.61",
+    "source": "https://3d.si.edu/object/3d/82adf5d6-5ec4-46cc-9e68-6a4d7c5ea824",
+    "license": "CC0",
+    "title": "Stoneware jug created by Thomas Commeraw",
+    "licenseUrl": "https://www.si.edu/openaccess"
+   },
+   "i18n": {
+    "hi": {
+     "title": "स्टोनवेयर सुराही, न्यूयॉर्क",
+     "description": "मिट्टी, कहीं और। लगभग 1800 के आसपास न्यूयॉर्क में काम करने वाले कुम्हार थॉमस कॉमेरॉ की नमक-ग्लेज़ वाली स्टोनवेयर सुराही। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "স্টোনওয়্যার জগ, নিউ ইয়র্ক",
+     "description": "মাটি, অন্যত্র। ১৮০০ নাগাদ নিউ ইয়র্কে কাজ করা কুমোর টমাস কমেরর নুন-গ্লেজের স্টোনওয়্যার জগ। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-si-delft-ewer": {
+   "id": "elsewhere-si-delft-ewer",
+   "title": "Tin-glazed Ewer, Delft",
+   "kind": "sourced-model",
+   "position": [
+    -17.805478966901934,
+    1.3,
+    -11.421923820408406
+   ],
+   "rotationDeg": 71,
+   "height": 0.23,
+   "props": {
+    "slug": "si-delft-ewer",
+    "finish": "asis",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. An ewer of tin-glazed earthenware, the white-and-blue ware of Delft in the Netherlands (Cooper Hewitt, Smithsonian Design Museum). Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Smithsonian Institution — Cooper Hewitt, Smithsonian Design Museum, 1986-61-53",
+    "source": "https://3d.si.edu/object/3d/349e8fa2-9461-4e33-bae9-5e9cdd3e72bb",
+    "license": "CC0",
+    "title": "Ewer (Delft tin-glazed earthenware)",
+    "licenseUrl": "https://www.si.edu/openaccess"
+   },
+   "i18n": {
+    "hi": {
+     "title": "टिन-ग्लेज़ वाली झारी, डेल्फ़्ट",
+     "description": "मिट्टी, कहीं और। टिन-ग्लेज़ वाले मिट्टी के बर्तन की झारी, नीदरलैंड के डेल्फ़्ट का सफ़ेद-नीला माल। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "টিন-গ্লেজের ঝারি, ডেলফট",
+     "description": "মাটি, অন্যত্র। টিন-গ্লেজের মাটির ঝারি, নেদারল্যান্ডসের ডেলফটের সাদা-নীল পাত্র। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-si-kylix": {
+   "id": "elsewhere-si-kylix",
+   "title": "Kylix, Ancient Greece",
+   "kind": "sourced-model",
+   "position": [
+    -19.953686736691523,
+    1.3,
+    -7.058775433032348
+   ],
+   "rotationDeg": 80,
+   "height": 0.075,
+   "props": {
+    "slug": "si-kylix",
+    "finish": "asis",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A kylix, the shallow two-handled drinking cup of ancient Greece (Cooper Hewitt, Smithsonian Design Museum). Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Smithsonian Institution — Cooper Hewitt, Smithsonian Design Museum",
+    "source": "https://3d.si.edu/object/3d/547c78d1-620b-40c4-982e-01928870fef4",
+    "license": "CC0",
+    "title": "Kylix (Greek drinking cup)",
+    "licenseUrl": "https://www.si.edu/openaccess"
+   },
+   "i18n": {
+    "hi": {
+     "title": "काइलिक्स, प्राचीन यूनान",
+     "description": "मिट्टी, कहीं और। काइलिक्स, प्राचीन यूनान का दो हत्थों वाला उथला पीने का प्याला। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "কাইলিক্স, প্রাচীন গ্রিস",
+     "description": "মাটি, অন্যত্র। কাইলিক্স, প্রাচীন গ্রিসের দুই হাতলওয়ালা অগভীর পানপাত্র। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-msr-vase-aryballisque": {
+   "id": "elsewhere-wc-msr-vase-aryballisque",
+   "title": "Aryballos-shaped Vase, Toulouse",
+   "kind": "sourced-model",
+   "position": [
+    -19.72143064877366,
+    1.3,
+    -7.633629422863756
+   ],
+   "rotationDeg": 56,
+   "height": 0.17,
+   "props": {
+    "slug": "wc-msr-vase-aryballisque",
+    "finish": "terracotta",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A small round-bodied flask of the ancient Mediterranean (Musée Saint-Raymond, Toulouse). In a terracotta finish. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Musée Saint-Raymond/IMA Solutions",
+    "source": "https://commons.wikimedia.org/wiki/File:MSR-Vase_aryballisque-26332.stl",
+    "license": "CC0",
+    "title": "Aryballos-shaped vase (Musee Saint-Raymond, Toulouse)",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+   },
+   "i18n": {
+    "hi": {
+     "title": "अरिबालोस-आकार का पात्र, तूलूज़",
+     "description": "मिट्टी, कहीं और। प्राचीन भूमध्यसागरीय क्षेत्र की गोल पेट वाली छोटी कुप्पी (म्यूज़े सें-रेमों, तूलूज़)। टेराकोटा सतह में। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "অ্যারিবালোস-আকারের পাত্র, তুলুজ",
+     "description": "মাটি, অন্যত্র। প্রাচীন ভূমধ্যসাগরীয় অঞ্চলের গোল পেটের ছোট কুপি (মিউজে স্যাঁ-রেমোঁ, তুলুজ)। টেরাকোটা রঙে। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-roman-pottery-r3950": {
+   "id": "elsewhere-wc-roman-pottery-r3950",
+   "title": "Roman Pottery, Apulum",
+   "kind": "sourced-model",
+   "position": [
+    -19.48917456085579,
+    1.3,
+    -8.208483412695164
+   ],
+   "rotationDeg": 80,
+   "height": 0.22,
+   "props": {
+    "slug": "wc-roman-pottery-r3950",
+    "finish": "red-slip",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. Roman pottery from the governor’s palace at Apulum, Roman Dacia, now Alba Iulia, Romania (Muzeul Național al Unirii Alba Iulia). In a red-slip finish. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Muzeul Național al Unirii Alba Iulia",
+    "source": "https://commons.wikimedia.org/wiki/File:Roman_pottery_R3950,_Apulum_-_633b0b2dd6bd43679b4bcd1da26a87ef.stl",
+    "license": "CC-BY-4.0",
+    "title": "Roman pottery R3950, Apulum (Muzeul National al Unirii Alba Iulia)",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0"
+   },
+   "i18n": {
+    "hi": {
+     "title": "रोमन मृद्भांड, अपुलम",
+     "description": "मिट्टी, कहीं और। रोमन डेशिया के अपुलम (आज का आल्बा यूलिया, रोमानिया) के राज्यपाल-महल से रोमन मृद्भांड। लाल स्लिप सतह में। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "রোমান মৃৎপাত্র, অ্যাপুলাম",
+     "description": "মাটি, অন্যত্র। রোমান ডেসিয়ার অ্যাপুলাম (আজকের আলবা ইউলিয়া, রোমানিয়া) গভর্নরের প্রাসাদ থেকে রোমান মৃৎপাত্র। লাল স্লিপ রঙে। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-roman-pottery-r3997": {
+   "id": "elsewhere-wc-roman-pottery-r3997",
+   "title": "Roman Jug, Apulum",
+   "kind": "sourced-model",
+   "position": [
+    -19.256918472937926,
+    1.3,
+    -8.783337402526572
+   ],
+   "rotationDeg": 56,
+   "height": 0.25,
+   "props": {
+    "slug": "wc-roman-pottery-r3997",
+    "finish": "red-slip",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A Roman vessel from the same palace at Apulum (Muzeul Național al Unirii Alba Iulia). In a red-slip finish. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Muzeul Național al Unirii Alba Iulia",
+    "source": "https://commons.wikimedia.org/wiki/File:Roman_pottery_R3997,_Apulum_-_f525c51b3d9e4a268954d57bfd310b89.stl",
+    "license": "CC-BY-4.0",
+    "title": "Roman pottery R3997, Apulum (Muzeul National al Unirii Alba Iulia)",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0"
+   },
+   "i18n": {
+    "hi": {
+     "title": "रोमन सुराही, अपुलम",
+     "description": "मिट्टी, कहीं और। अपुलम के उसी महल से एक रोमन पात्र। लाल स्लिप सतह में। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "রোমান জগ, অ্যাপুলাম",
+     "description": "মাটি, অন্যত্র। অ্যাপুলামের সেই প্রাসাদ থেকেই একটি রোমান পাত্র। লাল স্লিপ রঙে। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-geto-dacian-biconical-vessel": {
+   "id": "elsewhere-wc-geto-dacian-biconical-vessel",
+   "title": "Biconical Vessel, Chirnogi",
+   "kind": "sourced-model",
+   "position": [
+    -20.911829383544564,
+    1.3,
+    3.1923058803194646
+   ],
+   "rotationDeg": 109,
+   "height": 0.3,
+   "props": {
+    "slug": "wc-geto-dacian-biconical-vessel",
+    "finish": "buff",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A Geto-Dacian vessel with a sharply turned shoulder, found at Chirnogi, Romania (Institutul Național al Patrimoniului). Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Institutul Național al Patrimoniului",
+    "source": "https://commons.wikimedia.org/wiki/File:Ulcior_krater_get-dacic_-_7ec7b567aa824d1da331bf466c3f1783.stl",
+    "license": "CC-BY-4.0",
+    "title": "Geto-Dacian biconical vessel, Chirnogi (Institutul National al Patrimoniului)",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0"
+   },
+   "i18n": {
+    "hi": {
+     "title": "द्विशंकु पात्र, किर्नोगी",
+     "description": "मिट्टी, कहीं और। तीखे मुड़े कंधे वाला गेटो-डेशियन पात्र, किर्नोगी, रोमानिया में मिला। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "দ্বিশঙ্কু পাত্র, কির্নোগি",
+     "description": "মাটি, অন্যত্র। তীক্ষ্ণ বাঁকা কাঁধের গেটো-ডেসিয়ান পাত্র, রোমানিয়ার কির্নোগিতে পাওয়া। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-neolithic-pottery": {
+   "id": "elsewhere-wc-neolithic-pottery",
+   "title": "Neolithic Vessel",
+   "kind": "sourced-model",
+   "position": [
+    -20.987388376455755,
+    1.3,
+    2.576927266301845
+   ],
+   "rotationDeg": 85,
+   "height": 0.2,
+   "props": {
+    "slug": "wc-neolithic-pottery",
+    "finish": "buff",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A pottery vessel of the Neolithic, scanned by Călin Șuteu. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Calin Suteu",
+    "source": "https://commons.wikimedia.org/wiki/File:Neolithic_pottery_test_AR_-_9da85158685146f18850569c7a6cd433.stl",
+    "license": "CC-BY-4.0",
+    "title": "Neolithic pottery vessel (scan by Calin Suteu)",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0"
+   },
+   "i18n": {
+    "hi": {
+     "title": "नवपाषाण काल का पात्र",
+     "description": "मिट्टी, कहीं और। नवपाषाण काल का मिट्टी का पात्र; स्कैन: कालिन शुतेउ। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "নবপ্রস্তর যুগের পাত্র",
+     "description": "মাটি, অন্যত্র। নবপ্রস্তর যুগের মাটির পাত্র; স্ক্যান: কালিন শুতেউ। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-neolithic-clay-idol": {
+   "id": "elsewhere-wc-neolithic-clay-idol",
+   "title": "Neolithic Clay Idol",
+   "kind": "sourced-model",
+   "position": [
+    -21.062947369366945,
+    1.3,
+    1.9615486522842254
+   ],
+   "rotationDeg": 109,
+   "height": 0.15,
+   "props": {
+    "slug": "wc-neolithic-clay-idol",
+    "finish": "buff",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A small clay figure of the Neolithic, scanned by Călin Șuteu. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Calin Suteu",
+    "source": "https://commons.wikimedia.org/wiki/File:Neolithic_clay_idol_-_28eb511681854c45b6f83aefad40d1a1.stl",
+    "license": "CC-BY-4.0",
+    "title": "Neolithic clay idol (scan by Calin Suteu)",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0"
+   },
+   "i18n": {
+    "hi": {
+     "title": "नवपाषाण काल की मिट्टी की मूर्ति",
+     "description": "मिट्टी, कहीं और। नवपाषाण काल की छोटी मिट्टी की आकृति; स्कैन: कालिन शुतेउ। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "নবপ্রস্তর যুগের মাটির মূর্তি",
+     "description": "মাটি, অন্যত্র। নবপ্রস্তর যুগের ছোট মাটির মূর্তি; স্ক্যান: কালিন শুতেউ। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-mahg-terracotta-man-holding-child": {
+   "id": "elsewhere-wc-mahg-terracotta-man-holding-child",
+   "title": "Man Holding a Child, Terracotta",
+   "kind": "sourced-model",
+   "position": [
+    -19.99022794908402,
+    1.3,
+    6.964324198632637
+   ],
+   "rotationDeg": 118.5,
+   "height": 0.22,
+   "props": {
+    "slug": "wc-mahg-terracotta-man-holding-child",
+    "finish": "terracotta",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A terracotta figurine of a man holding a child (Musée d’art et d’histoire, Geneva). Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Rama",
+    "source": "https://commons.wikimedia.org/wiki/File:Man_holding_a_child-MAHG_P_0296-High_poly-001.stl",
+    "license": "PD",
+    "title": "Man holding a child, terracotta figurine (MAHG P 0296, Geneva)",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/Commons:Licensing"
+   },
+   "i18n": {
+    "hi": {
+     "title": "बच्चे को थामे आदमी, टेराकोटा",
+     "description": "मिट्टी, कहीं और। बच्चे को थामे आदमी की टेराकोटा मूर्तिका (म्यूज़े द’आर ए द’इस्तुआर, जिनेवा)। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "শিশু কোলে পুরুষ, টেরাকোটা",
+     "description": "মাটি, অন্যত্র। শিশু কোলে এক পুরুষের টেরাকোটা মূর্তি (মিউজে দার এ দিস্তোয়ার, জেনেভা)। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-mahg-terracotta-tambourine-player": {
+   "id": "elsewhere-wc-mahg-terracotta-tambourine-player",
+   "title": "Tambourine Player, Terracotta",
+   "kind": "sourced-model",
+   "position": [
+    -20.13223562143598,
+    1.3,
+    6.48491433119854
+   ],
+   "rotationDeg": 94.5,
+   "height": 0.2,
+   "props": {
+    "slug": "wc-mahg-terracotta-tambourine-player",
+    "finish": "terracotta",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A terracotta figurine of a tambourine player (Musée d’art et d’histoire, Geneva). Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Rama",
+    "source": "https://commons.wikimedia.org/wiki/File:Tambourine_player-MAHG_P_0407-High_poly-001.stl",
+    "license": "PD",
+    "title": "Tambourine player, terracotta figurine (MAHG P 0407, Geneva)",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/Commons:Licensing"
+   },
+   "i18n": {
+    "hi": {
+     "title": "डफ़ बजाने वाली, टेराकोटा",
+     "description": "मिट्टी, कहीं और। डफ़ बजाती आकृति की टेराकोटा मूर्तिका (म्यूज़े द’आर ए द’इस्तुआर, जिनेवा)। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "খঞ্জনি বাদক, টেরাকোটা",
+     "description": "মাটি, অন্যত্র। খঞ্জনি বাজানো এক মূর্তির টেরাকোটা প্রতিমা (মিউজে দার এ দিস্তোয়ার, জেনেভা)। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-mahg-standing-man-figurine": {
+   "id": "elsewhere-wc-mahg-standing-man-figurine",
+   "title": "Standing Man, Figurine",
+   "kind": "sourced-model",
+   "position": [
+    -20.274243293787944,
+    1.3,
+    6.005504463764444
+   ],
+   "rotationDeg": 118.5,
+   "height": 0.2,
+   "props": {
+    "slug": "wc-mahg-standing-man-figurine",
+    "finish": "terracotta",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Clay elsewhere. A small figure of a standing man (Musée d’art et d’histoire, Geneva). In a terracotta finish. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Rama",
+    "source": "https://commons.wikimedia.org/wiki/File:Standing_man_figurine-MAHG_23458-High_poly-001.stl",
+    "license": "PD",
+    "title": "Standing man figurine (MAHG 23458, Geneva)",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/Commons:Licensing"
+   },
+   "i18n": {
+    "hi": {
+     "title": "खड़ा आदमी, मूर्तिका",
+     "description": "मिट्टी, कहीं और। खड़े आदमी की छोटी आकृति (म्यूज़े द’आर ए द’इस्तुआर, जिनेवा)। टेराकोटा सतह में। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "দাঁড়ানো পুরুষ, মূর্তি",
+     "description": "মাটি, অন্যত্র। দাঁড়ানো এক পুরুষের ছোট মূর্তি (মিউজে দার এ দিস্তোয়ার, জেনেভা)। টেরাকোটা রঙে। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-bust-singing-woman": {
+   "id": "elsewhere-wc-bust-singing-woman",
+   "title": "Bust of a Singing Woman",
+   "kind": "sourced-model",
+   "position": [
+    -20.416250966139906,
+    1.3,
+    5.526094596330347
+   ],
+   "rotationDeg": 94.5,
+   "height": 0.1499,
+   "props": {
+    "slug": "wc-bust-singing-woman",
+    "finish": "terracotta",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Carved in ivory, not modelled in clay: a bust of a singing woman, 18th century (Hunt Museum, Limerick). The scan is shown in a plain finish, beside the clay heads. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Limerick3D",
+    "source": "https://commons.wikimedia.org/wiki/File:Bust_Of_A_Singing_Woman_-_3D_model_by_Limerick3D_-_Sketchfab.stl",
+    "license": "CC0",
+    "title": "Bust of a Singing Woman (Hunt Museum, Limerick)",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+   },
+   "i18n": {
+    "hi": {
+     "title": "गाती स्त्री का आवक्ष",
+     "description": "मिट्टी में गढ़ा नहीं, हाथीदाँत में तराशा: गाती स्त्री का आवक्ष, 18वीं सदी (हंट म्यूज़ियम, लिमरिक)। स्कैन सादी सतह में, मिट्टी के सिरों के पास। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "গায়িকা নারীর আবক্ষ মূর্তি",
+     "description": "মাটিতে গড়া নয়, হাতির দাঁতে খোদাই: গায়িকা নারীর আবক্ষ মূর্তি, অষ্টাদশ শতক (হান্ট মিউজিয়াম, লিমেরিক)। স্ক্যান সাদামাটা রঙে, মাটির মাথাগুলির পাশে। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-si-fugitives-story-figurine": {
+   "id": "elsewhere-si-fugitives-story-figurine",
+   "title": "The Fugitive’s Story, Plaster Group",
+   "kind": "sourced-model",
+   "position": [
+    -20.12678975780118,
+    0.65,
+    4.918877823779486
+   ],
+   "rotationDeg": 118.5,
+   "height": 0.5495,
+   "props": {
+    "slug": "si-fugitives-story-figurine",
+    "finish": "asis",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Cast in plaster: “The Fugitive’s Story”, a sculpture group by John Rogers, United States, 1869 (National Museum of African American History and Culture). Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Smithsonian Institution — National Museum of African American History and Culture",
+    "source": "https://3d.si.edu/object/3d/28663e98-595d-4994-bede-bd623252c82f",
+    "license": "CC0",
+    "title": "The Fugitive's Story (John Rogers group figurine)",
+    "licenseUrl": "https://www.si.edu/openaccess"
+   },
+   "i18n": {
+    "hi": {
+     "title": "द फ़्यूजिटिव्स स्टोरी, प्लास्टर समूह",
+     "description": "प्लास्टर में ढला: “द फ़्यूजिटिव्स स्टोरी”, जॉन रॉजर्स का मूर्ति-समूह, अमेरिका, 1869। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "দ্য ফিউজিটিভস স্টোরি, প্লাস্টার দল",
+     "description": "প্লাস্টারে ঢালা: “দ্য ফিউজিটিভস স্টোরি”, জন রজার্সের ভাস্কর্য-দল, আমেরিকা, ১৮৬৯। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-sevres-pedestal-bowl": {
+   "id": "elsewhere-wc-sevres-pedestal-bowl",
+   "title": "Porcelain Fruit Bowl, Sèvres",
+   "kind": "sourced-model",
+   "position": [
+    -18.86910505349127,
+    1.3,
+    9.547984053207783
+   ],
+   "rotationDeg": 127.99999999999999,
+   "height": 0.18,
+   "props": {
+    "slug": "wc-sevres-pedestal-bowl",
+    "finish": "plaster",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "Where clay becomes porcelain: a pedestal fruit bowl made at Sèvres, France, in 1844, from a refined white body fired hard (Institutul Național al Patrimoniului). Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Institutul Național al Patrimoniului",
+    "source": "https://commons.wikimedia.org/wiki/File:Porcelain_Fruit_Bowl_-_d4e87b065d4242cc822f13f1cbdcc1b6.stl",
+    "license": "CC-BY-4.0",
+    "title": "Pedestal fruit bowl, Sevres porcelain 1844 (Institutul National al Patrimoniului)",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0"
+   },
+   "i18n": {
+    "hi": {
+     "title": "चीनी मिट्टी का फलदान, सेव्र",
+     "description": "जहाँ मिट्टी चीनी मिट्टी बनती है: 1844 में फ़्रांस के सेव्र में बना पायेदार फलदान, शुद्ध सफ़ेद मिट्टी से, तेज़ आँच पर पका। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "চিনামাটির ফলদানি, সেভ্র",
+     "description": "যেখানে মাটি চিনামাটি হয়: ১৮৪৪ সালে ফ্রান্সের সেভ্রে তৈরি পায়াওয়ালা ফলদানি, পরিশোধিত সাদা মাটি থেকে, কড়া আঁচে পোড়া। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "elsewhere-wc-iron-age-cup-lamp": {
+   "id": "elsewhere-wc-iron-age-cup-lamp",
+   "title": "Cup or Lamp, Iron Age Ireland",
+   "kind": "sourced-model",
+   "position": [
+    -19.140895164500503,
+    1.3,
+    8.9907317445023
+   ],
+   "rotationDeg": 103.99999999999999,
+   "height": 0.06,
+   "props": {
+    "slug": "wc-iron-age-cup-lamp",
+    "finish": "stone",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "In stone, not clay: an Iron Age cup or lamp (Hunt Museum, Limerick), set beside the clay vessels for comparison. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Unknown authorUnknown author",
+    "source": "https://commons.wikimedia.org/wiki/File:Iron_Age_stone_cup_or_lamp_3d_model.stl",
+    "license": "CC0",
+    "title": "Iron Age stone cup or lamp (Hunt Museum, Limerick)",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+   },
+   "i18n": {
+    "hi": {
+     "title": "प्याला या दीया, लौह युग आयरलैंड",
+     "description": "मिट्टी नहीं, पत्थर में: लौह युग का एक प्याला या दीया (हंट म्यूज़ियम, लिमरिक), तुलना के लिए मिट्टी के पात्रों के पास रखा। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "পেয়ালা বা প্রদীপ, লৌহযুগের আয়ারল্যান্ড",
+     "description": "মাটি নয়, পাথরে: লৌহযুগের একটি পেয়ালা বা প্রদীপ (হান্ট মিউজিয়াম, লিমেরিক), তুলনার জন্য মাটির পাত্রের পাশে রাখা। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "wine-head-1": {
+   "id": "wine-head-1",
+   "title": "Marble Bust 01",
+   "kind": "sourced-model",
+   "position": [
+    -15.828603779599804,
+    1.3,
+    -14.053039791747509
+   ],
+   "rotationDeg": 33,
+   "height": 0.42,
+   "props": {
+    "slug": "ph-marble-bust-01",
+    "finish": "terracotta",
+    "lod": true
+   },
+   "interactive": false,
+   "inspectable": false,
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Rico Cilliers",
+    "source": "https://polyhaven.com/a/marble_bust_01",
+    "license": "CC0",
+    "title": "Marble Bust 01",
+    "licenseUrl": "https://polyhaven.com/license"
+   },
+   "i18n": {
+    "hi": {
+     "title": "Marble Bust 01"
+    },
+    "bn": {
+     "title": "Marble Bust 01"
+    }
+   }
+  },
+  "wine-head-2": {
+   "id": "wine-head-2",
+   "title": "Horse Head",
+   "kind": "sourced-model",
+   "position": [
+    -18.619239125259817,
+    1.3,
+    -10.067599485299068
+   ],
+   "rotationDeg": 77,
+   "height": 0.36,
+   "props": {
+    "slug": "ph-horse-head",
+    "finish": "terracotta",
+    "lod": true
+   },
+   "interactive": false,
+   "inspectable": false,
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Tina",
+    "source": "https://polyhaven.com/a/horse_head",
+    "license": "CC0",
+    "title": "Horse Head",
+    "licenseUrl": "https://polyhaven.com/license"
+   },
+   "i18n": {
+    "hi": {
+     "title": "Horse Head"
+    },
+    "bn": {
+     "title": "Horse Head"
+    }
+   }
+  },
+  "wine-head-3": {
+   "id": "wine-head-3",
+   "title": "Lion Head",
+   "kind": "sourced-model",
+   "position": [
+    -21.104382946124698,
+    1.3,
+    1.624082960726176
+   ],
+   "rotationDeg": 79,
+   "height": 0.33949999999999997,
+   "props": {
+    "slug": "ph-lion-head",
+    "finish": "terracotta",
+    "lod": true
+   },
+   "interactive": false,
+   "inspectable": false,
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Tina",
+    "source": "https://polyhaven.com/a/lion_head",
+    "license": "CC0",
+    "title": "Lion Head",
+    "licenseUrl": "https://polyhaven.com/license"
+   },
+   "i18n": {
+    "hi": {
+     "title": "Lion Head"
+    },
+    "bn": {
+     "title": "Lion Head"
+    }
+   }
+  },
+  "wine-head-4": {
+   "id": "wine-head-4",
+   "title": "Bull Head",
+   "kind": "sourced-model",
+   "position": [
+    -18.584163808078372,
+    1.3,
+    10.132200183302242
+   ],
+   "rotationDeg": 134,
+   "height": 0.34,
+   "props": {
+    "slug": "ph-bull-head",
+    "finish": "terracotta",
+    "lod": true
+   },
+   "interactive": false,
+   "inspectable": false,
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Tina",
+    "source": "https://polyhaven.com/a/bull_head",
+    "license": "CC0",
+    "title": "Bull Head",
+    "licenseUrl": "https://polyhaven.com/license"
+   },
+   "i18n": {
+    "hi": {
+     "title": "Bull Head"
+    },
+    "bn": {
+     "title": "Bull Head"
+    }
+   }
+  },
+  "elsewhere-si-gathering-of-buddhas": {
+   "id": "elsewhere-si-gathering-of-buddhas",
+   "title": "Gathering of Buddhas, Relief",
+   "kind": "sourced-model",
+   "position": [
+    -18.309619659382424,
+    0.9,
+    10.785190212914962
+   ],
+   "rotationDeg": 120.49999999999999,
+   "height": 0.4475,
+   "props": {
+    "slug": "si-gathering-of-buddhas",
+    "finish": "asis",
+    "lod": true
+   },
+   "interactive": true,
+   "inspectable": true,
+   "description": "In stone: a carved relief of a gathering of Buddhas and Bodhisattvas (National Museum of Asian Art, Smithsonian, F1921.1), at the end of the hall. Shown from a 3D scan.",
+   "zone": "hallway-d",
+   "credit": {
+    "author": "Smithsonian Institution — National Museum of Asian Art (Freer), F1921.1",
+    "source": "https://3d.si.edu/object/3d/476ad7f6-6add-448d-af7f-9f2ca9ba9cb6",
+    "license": "CC0",
+    "title": "Gathering of Buddhas and Bodhisattvas (relief)",
+    "licenseUrl": "https://www.si.edu/openaccess"
+   },
+   "i18n": {
+    "hi": {
+     "title": "बुद्धों की सभा, उभरा फलक",
+     "description": "पत्थर में: बुद्धों और बोधिसत्वों की सभा का तराशा हुआ उभरा फलक (नेशनल म्यूज़ियम ऑफ़ एशियन आर्ट, स्मिथसोनियन), कक्ष के छोर पर। 3D स्कैन से।"
+    },
+    "bn": {
+     "title": "বুদ্ধদের সমাবেশ, রিলিফ",
+     "description": "পাথরে: বুদ্ধ ও বোধিসত্ত্বদের সমাবেশের খোদাই করা রিলিফ (ন্যাশনাল মিউজিয়াম অফ এশিয়ান আর্ট, স্মিথসোনিয়ান), কক্ষের শেষ প্রান্তে। 3D স্ক্যান থেকে।"
+    }
+   }
+  },
+  "wine-plinth-1": {
+   "id": "wine-plinth-1",
+   "title": "Plinth W1",
+   "kind": "wine-plinth",
+   "position": [
+    -18.802771448578575,
+    0,
+    9.170724390827498
+   ],
+   "rotationDeg": 115.99999999999999,
+   "footprint": [
+    2.4,
+    1.1
+   ],
+   "height": 1.3,
+   "props": {
+    "steps": 2,
+    "width": 2.4,
+    "depth": 0.9,
+    "height": 1.3,
+    "vitrine": true
+   },
+   "zone": "hallway-d",
+   "alt": "A stepped plinth in deep wine-red lacquer under a glass hood, with a brass label rail in front."
+  },
+  "wine-plinth-2": {
+   "id": "wine-plinth-2",
+   "title": "Plinth W2",
+   "kind": "wine-plinth",
+   "position": [
+    -20.0585088534426,
+    0,
+    5.941601011206061
+   ],
+   "rotationDeg": 106.5,
+   "footprint": [
+    2.4,
+    1.1
+   ],
+   "height": 1.3,
+   "props": {
+    "steps": 2,
+    "width": 2.4,
+    "depth": 0.9,
+    "height": 1.3,
+    "vitrine": true
+   },
+   "zone": "hallway-d",
+   "alt": "A stepped plinth in deep wine-red lacquer under a glass hood, with a brass label rail in front."
+  },
+  "wine-plinth-3": {
+   "id": "wine-plinth-3",
+   "title": "Plinth W3",
+   "kind": "wine-plinth",
+   "position": [
+    -20.764065492336456,
+    0,
+    2.549506664035687
+   ],
+   "rotationDeg": 97,
+   "footprint": [
+    2.4,
+    1.1
+   ],
+   "height": 1.3,
+   "props": {
+    "steps": 2,
+    "width": 2.4,
+    "depth": 0.9,
+    "height": 1.3,
+    "vitrine": true
+   },
+   "zone": "hallway-d",
+   "alt": "A stepped plinth in deep wine-red lacquer under a glass hood, with a brass label rail in front."
+  },
+  "wine-plinth-4": {
+   "id": "wine-plinth-4",
+   "title": "Plinth W4",
+   "kind": "wine-plinth",
+   "position": [
+    -19.396686237537196,
+    0,
+    -7.83676993426088
+   ],
+   "rotationDeg": 68,
+   "footprint": [
+    2.4,
+    1.1
+   ],
+   "height": 1.3,
+   "props": {
+    "steps": 2,
+    "width": 2.4,
+    "depth": 0.9,
+    "height": 1.3,
+    "vitrine": true
+   },
+   "zone": "hallway-d",
+   "alt": "A stepped plinth in deep wine-red lacquer under a glass hood, with a brass label rail in front."
+  },
+  "wine-plinth-5": {
+   "id": "wine-plinth-5",
+   "title": "Plinth W5",
+   "kind": "wine-plinth",
+   "position": [
+    -17.93193993068819,
+    0,
+    -10.774596527118334
+   ],
+   "rotationDeg": 59,
+   "footprint": [
+    2.4,
+    1.1
+   ],
+   "height": 1.3,
+   "props": {
+    "steps": 2,
+    "width": 2.4,
+    "depth": 0.9,
+    "height": 1.3,
+    "vitrine": false
+   },
+   "zone": "hallway-d",
+   "alt": "An open stepped plinth in deep wine-red lacquer, with a brass label rail in front."
+  },
+  "wine-plinth-6": {
+   "id": "wine-plinth-6",
+   "title": "Plinth W6",
+   "kind": "wine-plinth",
+   "position": [
+    -16.25789351367983,
+    0,
+    -13.165382580762603
+   ],
+   "rotationDeg": 51,
+   "footprint": [
+    2.4,
+    1.1
+   ],
+   "height": 1.3,
+   "props": {
+    "steps": 2,
+    "width": 2.4,
+    "depth": 0.9,
+    "height": 1.3,
+    "vitrine": true
+   },
+   "zone": "hallway-d",
+   "alt": "A stepped plinth in deep wine-red lacquer under a glass hood, with a brass label rail in front."
+  },
+  "wine-pedestal-1": {
+   "id": "wine-pedestal-1",
+   "title": "Pedestal",
+   "kind": "wine-plinth",
+   "position": [
+    -16.45936778626961,
+    0,
+    6.650016246319275
+   ],
+   "rotationDeg": -67.99999999999999,
+   "footprint": [
+    0.46,
+    0.66
+   ],
+   "height": 1.36,
+   "props": {
+    "steps": 1,
+    "width": 0.46,
+    "depth": 0.46,
+    "height": 1.36,
+    "vitrine": false
+   },
+   "zone": "hallway-d",
+   "alt": "A tall, slender wine-red pedestal, open, with a carved stone figure standing on it."
+  },
+  "wine-pedestal-2": {
+   "id": "wine-pedestal-2",
+   "title": "Pedestal",
+   "kind": "wine-plinth",
+   "position": [
+    -17.752000000000002,
+    0,
+    2.1739929978463816e-15
+   ],
+   "rotationDeg": -90,
+   "footprint": [
+    0.46,
+    0.66
+   ],
+   "height": 1.36,
+   "props": {
+    "steps": 1,
+    "width": 0.46,
+    "depth": 0.46,
+    "height": 1.36,
+    "vitrine": false
+   },
+   "zone": "hallway-d",
+   "alt": "A tall, slender wine-red pedestal, open, with a carved stone figure standing on it."
+  },
+  "wine-relief-ledge": {
+   "id": "wine-relief-ledge",
+   "title": "Relief ledge",
+   "kind": "wine-plinth",
+   "position": [
+    -18.257921909755932,
+    0,
+    10.75473791113732
+   ],
+   "rotationDeg": 120.49999999999999,
+   "footprint": [
+    1.6,
+    0.56
+   ],
+   "height": 0.9,
+   "props": {
+    "steps": 1,
+    "width": 1.6,
+    "depth": 0.36,
+    "height": 0.9,
+    "vitrine": false
+   },
+   "zone": "hallway-d",
+   "alt": "A low wine-red ledge against the end of the hall, made to carry a carved relief."
+  }
+ }
+}

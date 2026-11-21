@@ -38,10 +38,10 @@ The admin's **Checklist** page lists, per item, what is still missing and export
 
 | What | Where in the pavilion | What is shown meanwhile |
 |---|---|---|
-| Makers, places, materials and dates of the workshop team's 16 pieces (`team-*`: their 3D models are in, their details are not) | the podium row, A → B → C, and the Herd's front step | the pieces themselves, described by what can be seen |
-| The Herd: seven more Bankura horses (the two at the front are the team's) | Gallery A, on the three-step plinth | modelled horses |
+| Makers, places, materials and dates of the workshop team's 16 pieces (`team-*`: their 3D models and the workshop's captions are in; Blossom Bowl and Harvest Guardian had no caption, so theirs were written "in the manner of" and want checking) | the podium row, A → B → C, the Herd, and the life-size Bankura horse beside it | the pieces with their captions |
+| The Herd: six more Bankura horses (the team's Bankura horse stands on the top step, its horse figurine on the front step) | Gallery A, on the three-step plinth | modelled horses |
 | Plaques for the five niches of the white wall, and a plaque in progress for the maker's table | Gallery B | modelled plaques |
-| Black ware for the island | Gallery C | modelled pots |
+| Black ware for the island (one is in: a Longpi teapot, from a 3D scan by Sparsh Batra, Sketchfab, CC BY 4.0) | Gallery C | eleven modelled pots beside the teapot |
 | Pieces for the upper register (24 on brackets) and the 12 relief panels | over A, B and C, seen from the balcony | modelled pieces and panels |
 | Two guardian horses | Entrance Forecourt | modelled Ayyanar-style horses |
 | The niche figure | Oculus Court, F's court face | a modelled figure |
@@ -51,7 +51,11 @@ The admin's **Checklist** page lists, per item, what is still missing and export
 | The survey: pieces for the five regional bays and the Andro coil pot cut open | The Red Room | modelled pieces |
 | Everyday ware for the round table | The Earth Room | modelled pots |
 | Pieces by potters, with makers and links | The Haat | modelled pieces, no links |
-| Photographs and details of the hung works (`public/artworks/clay-*.jpg`; one hangs now, `clay-c-01` on Gallery C's curved wall) | Gallery C | a generated study |
+| Optional: the workshop's own photograph for Gallery C's curved wall (`clay-c-01`) | Gallery C | a photograph of a Longpi kettle by Atcelsius (Wikimedia Commons, CC BY-SA 4.0, cropped), credited in its label; its maker is not recorded |
+
+Nothing in the list above is filled from elsewhere: no openly licensed scan of these traditions exists for most of
+them, and a scan of another culture's piece would mislabel a tradition's place. Such scans stand, credited to their
+museums, in the Wine Hall's *Clay Elsewhere* (`config/grandObjects/crafts.ts`), which needs nothing more.
 
 ## Text, films, makers and partners
 

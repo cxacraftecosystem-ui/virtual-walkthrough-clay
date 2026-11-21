@@ -57,7 +57,6 @@ export const SEED_ARTISAN_LINKS: Record<string, Record<string, string>> = {
     'clay-a-02': 'clay-maker-placeholder-a',
     'clay-b-01': 'clay-maker-placeholder-b',
     'clay-b-02': 'clay-maker-placeholder-b',
-    'clay-c-01': 'clay-maker-placeholder-c',
   },
 }
 

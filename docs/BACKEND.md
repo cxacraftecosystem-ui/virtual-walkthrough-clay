@@ -316,6 +316,7 @@ Details: [infra/deploy-vercel.md](../infra/deploy-vercel.md) → *The second app
 |---|---|
 | Vercel | set the env vars from `infra/deploy-vercel.md` with the rules above. Uploads go browser → S3 with presigned URLs. |
 | GitHub Actions | `deploy.yml` on every push to `main`: typecheck, lint and unit tests, `npm run db:migrate -- --schema-only` with the `DATABASE_URL` secret, `vercel pull`, `vercel build --prod` and `vercel deploy --prebuilt --prod`, then a smoke test that `/api/health` reports `"db":"postgres"` and `/` and `/gallery` answer 200, against the `SITE_URL` repository variable (it falls back to the hand block address when unset). Pull requests get a preview deploy on the same database. Pushes that change only Markdown, `docs/` or the README check do not deploy, and `ignoreCommand` in `vercel.json` keeps Vercel's own Git integration from building. Secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `DATABASE_URL`. |
+| Repository link | deployments come from Actions as prebuilt CLI uploads, so the Vercel project shows no connected repository; to connect one without a second build see [infra/deploy-vercel.md](../infra/deploy-vercel.md) → *The repository link* |
 | One Node process | `npm run build && npm start` with `DATABASE_URL` (or SQLite on a persistent disk) and optionally `S3_BUCKET`, behind HTTPS (the session cookie is `Secure` in production; `COOKIE_SECURE=0` only for plain-HTTP tests). |
 
 | Resource | Value |

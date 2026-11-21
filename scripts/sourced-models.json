@@ -640,6 +640,425 @@
    "instances": 60,
    "tex": 512,
    "leafAlpha": "polyhaven/tree_small_02/tree_small_02_leaves_alpha_1k.png"
+  },
+  {
+   "slug": "hm-medieval-storage-jar",
+   "src": "zenodo/hm-medieval-storage-jar/medieval_pottery_storage_jar.metalrough.glb",
+   "role": "display",
+   "targetHeight": 0.636,
+   "finish": "asis",
+   "drop": [
+    "NORMAL"
+   ],
+   "instances": 1,
+   "budget": 200000,
+   "capNote": "textured in islands too small for the simplifier (every vertex on a seam): LOD0 kept whole, LOD1 clustered by position"
+  },
+  {
+   "slug": "hm-si-satchanalai-lidded-jar",
+   "src": "zenodo/hm-si-satchanalai-lidded-jar/si_satchanalai_ware_jar_with_lid.glb",
+   "role": "display",
+   "targetHeight": 0.175,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-crackleware-jar",
+   "src": "zenodo/hm-crackleware-jar/cracklewar_jar.glb",
+   "role": "display",
+   "targetHeight": 0.106,
+   "finish": "asis",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-green-glazed-pot",
+   "src": "zenodo/hm-green-glazed-pot/green_glazed_pot.glb",
+   "role": "display",
+   "targetHeight": 0.13,
+   "finish": "asis",
+   "cap": 20000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-green-glaze-lugged-jar",
+   "src": "zenodo/hm-green-glaze-lugged-jar/pottery_jar.glb",
+   "role": "display",
+   "targetHeight": 0.2,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-earthenware-pot-blue-speckle",
+   "src": "zenodo/hm-earthenware-pot-blue-speckle/earthenware_pot.glb",
+   "role": "display",
+   "targetHeight": 0.172,
+   "finish": "asis",
+   "tex": 512,
+   "drop": [
+    "NORMAL"
+   ],
+   "instances": 1
+  },
+  {
+   "slug": "hm-ceramic-kundika",
+   "src": "zenodo/hm-ceramic-kundika/ceramic_kundika_or_ritual_ewer.glb",
+   "role": "display",
+   "targetHeight": 0.262,
+   "finish": "asis",
+   "tex": 512,
+   "drop": [
+    "NORMAL"
+   ],
+   "instances": 1
+  },
+  {
+   "slug": "hm-pottery-mug",
+   "src": "zenodo/hm-pottery-mug/pottery_vessel_or_mug.glb",
+   "role": "display",
+   "targetHeight": 0.19,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-raqqa-ware-bowl",
+   "src": "zenodo/hm-raqqa-ware-bowl/raqqa-ware_style_bowl.glb",
+   "role": "display",
+   "targetHeight": 0.089,
+   "finish": "asis",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-replica-beaker-pit-fired",
+   "src": "zenodo/hm-replica-beaker-pit-fired/replica_beaker_pot_-_fired.glb",
+   "role": "display",
+   "targetHeight": 0.18,
+   "finish": "asis",
+   "cap": 20000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-japanese-coiled-tea-bowl",
+   "src": "zenodo/hm-japanese-coiled-tea-bowl/japanese_ceramic_coiled_tea_bowl.glb",
+   "role": "display",
+   "targetHeight": 0.071,
+   "finish": "asis",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-tripartite-bowl-food-vessel",
+   "src": "zenodo/hm-tripartite-bowl-food-vessel/tripartite_bowl_food_vessel.metalrough.glb",
+   "role": "display",
+   "targetHeight": 0.154,
+   "finish": "asis",
+   "cap": 20000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-incised-groove-food-vessel",
+   "src": "zenodo/hm-incised-groove-food-vessel/incised-groove_vase_food_vessel.metalrough.glb",
+   "role": "display",
+   "targetHeight": 0.13,
+   "finish": "asis",
+   "cap": 20000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-bronze-age-cinerary-urn",
+   "src": "zenodo/hm-bronze-age-cinerary-urn/cinerary_urn.glb",
+   "role": "display",
+   "targetHeight": 0.323,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "si-jar-made-by-dave",
+   "src": "smithsonian/si-jar-made-by-dave/nmah-1996-0344-01-master_model-150k-4096_std.glb",
+   "role": "display",
+   "targetHeight": 0.525,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "cma-nupe-water-transport-jar",
+   "src": "cleveland/cma-nupe-water-transport-jar/1995.210.glb",
+   "role": "display",
+   "targetHeight": 0.369,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-jomon-deep-vessel",
+   "src": "cleveland/cma-jomon-deep-vessel/1998.32.glb",
+   "role": "display",
+   "targetHeight": 0.447,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-shigaraki-ash-glazed-storage-jar",
+   "src": "cleveland/cma-shigaraki-ash-glazed-storage-jar/1973.18.glb",
+   "role": "display",
+   "targetHeight": 0.457,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-tamba-storage-jar",
+   "src": "cleveland/cma-tamba-storage-jar/2002.66.glb",
+   "role": "display",
+   "targetHeight": 0.45,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-echizen-storage-jar",
+   "src": "cleveland/cma-echizen-storage-jar/1989.70.glb",
+   "role": "display",
+   "targetHeight": 0.498,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-vietnamese-covered-jar",
+   "src": "cleveland/cma-vietnamese-covered-jar/1998.285.glb",
+   "role": "display",
+   "targetHeight": 0.23,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-nasca-painted-vase",
+   "src": "cleveland/cma-nasca-painted-vase/1930.728.glb",
+   "role": "display",
+   "targetHeight": 0.194,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "hm-syro-hittite-horse-rider",
+   "src": "zenodo/hm-syro-hittite-horse-rider/syro_hittite_figurine_of_a_horse_and_rider.glb",
+   "role": "display",
+   "targetHeight": 0.077,
+   "finish": "asis",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-gandhara-procession-relief",
+   "src": "cleveland/cma-gandhara-procession-relief/1930.328.3.glb",
+   "role": "hero",
+   "targetWidth": 0.53,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "cma-gandhara-dancers-musicians-relief",
+   "src": "cleveland/cma-gandhara-dancers-musicians-relief/1930.328.1.glb",
+   "role": "hero",
+   "targetWidth": 0.445,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "cma-ravana-shaking-kailasa-relief",
+   "src": "cleveland/cma-ravana-shaking-kailasa-relief/1971.173.glb",
+   "role": "hero",
+   "targetHeight": 1.39,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "cma-tang-terracotta-dancer-brick",
+   "src": "cleveland/cma-tang-terracotta-dancer-brick/1921.263.glb",
+   "role": "hero",
+   "targetHeight": 0.58,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "cma-pala-kaolin-khasarpana",
+   "src": "cleveland/cma-pala-kaolin-khasarpana/1991.155.glb",
+   "role": "display",
+   "targetHeight": 0.077,
+   "finish": "asis",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-pala-kaolin-portable-temple",
+   "src": "cleveland/cma-pala-kaolin-portable-temple/1971.167.glb",
+   "role": "display",
+   "targetHeight": 0.28,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-etruscan-maiden-antefix",
+   "src": "cleveland/cma-etruscan-maiden-antefix/2024.56.glb",
+   "role": "display",
+   "targetHeight": 0.219,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-gigaku-mask-persian-boy",
+   "src": "cleveland/cma-gigaku-mask-persian-boy/1949.158.glb",
+   "role": "display",
+   "targetHeight": 0.28,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-bobo-ram-mask",
+   "src": "cleveland/cma-bobo-ram-mask/2016.56.glb",
+   "role": "display",
+   "targetHeight": 0.36,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-selinus-terracotta-mask",
+   "src": "cleveland/cma-selinus-terracotta-mask/1943.451.glb",
+   "role": "display",
+   "targetHeight": 0.108,
+   "finish": "asis",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "cma-puget-terracotta-bozzetto-sauli",
+   "src": "cleveland/cma-puget-terracotta-bozzetto-sauli/1964.36.glb",
+   "role": "display",
+   "targetHeight": 0.697,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "sf-longpi-teapot",
+   "src": "sketchfab/sf-longpi-teapot/sf-longpi-teapot.glb",
+   "role": "display",
+   "targetHeight": 0.26,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "sf-gupta-relief-fragment",
+   "src": "sketchfab/sf-gupta-relief-fragment/sf-gupta-relief-fragment.glb",
+   "role": "hero",
+   "targetHeight": 0.25,
+   "finish": "asis",
+   "drop": [
+    "NORMAL",
+    "COLOR_0"
+   ],
+   "instances": 1,
+   "budget": 210000,
+   "capNote": "textured in islands too small for the simplifier (every vertex on a seam): LOD0 kept whole, LOD1 clustered by position"
+  },
+  {
+   "slug": "sf-haniwa-horse",
+   "src": "sketchfab/sf-haniwa-horse/sf-haniwa-horse.glb",
+   "role": "display",
+   "targetHeight": 0.73,
+   "finish": "asis",
+   "instances": 1
+  },
+  {
+   "slug": "sf-fitzwilliam-horse-rider",
+   "src": "sketchfab/sf-fitzwilliam-horse-rider/sf-fitzwilliam-horse-rider.glb",
+   "role": "display",
+   "targetHeight": 0.13,
+   "finish": "asis",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "sf-cypriot-horse",
+   "src": "sketchfab/sf-cypriot-horse/sf-cypriot-horse.glb",
+   "role": "display",
+   "targetHeight": 0.139,
+   "finish": "asis",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "sf-msu-terracotta-horse",
+   "src": "sketchfab/sf-msu-terracotta-horse/sf-msu-terracotta-horse.glb",
+   "role": "display",
+   "targetHeight": 0.103,
+   "finish": "asis",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "sf-ypm-apkallu-plaque",
+   "src": "sketchfab/sf-ypm-apkallu-plaque/sf-ypm-apkallu-plaque.glb",
+   "role": "display",
+   "targetHeight": 0.16,
+   "finish": "asis",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "sf-cosa-scroll-plaque",
+   "src": "sketchfab/sf-cosa-scroll-plaque/sf-cosa-scroll-plaque.glb",
+   "role": "display",
+   "targetHeight": 0.109,
+   "finish": "terracotta",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "sf-cosa-campana-plaque",
+   "src": "sketchfab/sf-cosa-campana-plaque/sf-cosa-campana-plaque.glb",
+   "role": "display",
+   "targetHeight": 0.099,
+   "finish": "terracotta",
+   "cap": 15000,
+   "tex": 512,
+   "instances": 1
+  },
+  {
+   "slug": "sf-sanni-mask",
+   "src": "sketchfab/sf-sanni-mask/sf-sanni-mask.glb",
+   "role": "display",
+   "targetHeight": 0.28,
+   "finish": "asis",
+   "tex": 512,
+   "instances": 1
   }
  ]
 }

@@ -1574,6 +1574,1018 @@ export const SOURCED_REGISTRY: Record<string, SourcedEntry> = {
       "licenseUrl": "https://polyhaven.com/license",
       "attribution": "Tree Small 02 by Rico Cilliers — Poly Haven (CC0)"
     }
+  },
+  "hm-medieval-storage-jar": {
+    "url": "/models/sourced/hm-medieval-storage-jar/hm-medieval-storage-jar.glb",
+    "lod1": "/models/sourced/hm-medieval-storage-jar/hm-medieval-storage-jar.lod1.glb",
+    "bbox": [
+      -0.236,
+      0,
+      -0.2348,
+      0.236,
+      0.636,
+      0.2348
+    ],
+    "tris": 194592,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Medieval Pottery Storage Jar (HCM 271)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18947384",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Medieval Pottery Storage Jar (HCM 271) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-si-satchanalai-lidded-jar": {
+    "url": "/models/sourced/hm-si-satchanalai-lidded-jar/hm-si-satchanalai-lidded-jar.glb",
+    "lod1": "/models/sourced/hm-si-satchanalai-lidded-jar/hm-si-satchanalai-lidded-jar.lod1.glb",
+    "bbox": [
+      -0.055,
+      0,
+      -0.0554,
+      0.055,
+      0.175,
+      0.0554
+    ],
+    "tris": 24988,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Si Satchanalai ware jar with lid (DG 058)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18946802",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Si Satchanalai ware jar with lid (DG 058) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-crackleware-jar": {
+    "url": "/models/sourced/hm-crackleware-jar/hm-crackleware-jar.glb",
+    "lod1": "/models/sourced/hm-crackleware-jar/hm-crackleware-jar.lod1.glb",
+    "bbox": [
+      -0.0582,
+      0,
+      -0.0579,
+      0.0582,
+      0.1059,
+      0.058
+    ],
+    "tris": 14956,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Crackleware Jar (DG 062)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18948612",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Crackleware Jar (DG 062) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-green-glazed-pot": {
+    "url": "/models/sourced/hm-green-glazed-pot/hm-green-glazed-pot.glb",
+    "lod1": "/models/sourced/hm-green-glazed-pot/hm-green-glazed-pot.lod1.glb",
+    "bbox": [
+      -0.0604,
+      0,
+      -0.0616,
+      0.0604,
+      0.13,
+      0.0616
+    ],
+    "tris": 19999,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Green glazed pot (CG 027)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18947948",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Green glazed pot (CG 027) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-green-glaze-lugged-jar": {
+    "url": "/models/sourced/hm-green-glaze-lugged-jar/hm-green-glaze-lugged-jar.glb",
+    "lod1": "/models/sourced/hm-green-glaze-lugged-jar/hm-green-glaze-lugged-jar.lod1.glb",
+    "bbox": [
+      -0.1027,
+      0,
+      -0.1027,
+      0.1027,
+      0.2,
+      0.1027
+    ],
+    "tris": 24993,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Pottery Jar (HCM 264)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18947037",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Pottery Jar (HCM 264) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-earthenware-pot-blue-speckle": {
+    "url": "/models/sourced/hm-earthenware-pot-blue-speckle/hm-earthenware-pot-blue-speckle.glb",
+    "lod1": "/models/sourced/hm-earthenware-pot-blue-speckle/hm-earthenware-pot-blue-speckle.lod1.glb",
+    "bbox": [
+      -0.0826,
+      0,
+      -0.0838,
+      0.0826,
+      0.172,
+      0.0838
+    ],
+    "tris": 24986,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Earthenware Pot (MG 136)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18948379",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Earthenware Pot (MG 136) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-ceramic-kundika": {
+    "url": "/models/sourced/hm-ceramic-kundika/hm-ceramic-kundika.glb",
+    "lod1": "/models/sourced/hm-ceramic-kundika/hm-ceramic-kundika.lod1.glb",
+    "bbox": [
+      -0.0677,
+      0,
+      -0.0701,
+      0.0677,
+      0.262,
+      0.0701
+    ],
+    "tris": 25000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Ceramic Kundika (or ritual ewer) (MG 138)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18948907",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Ceramic Kundika (or ritual ewer) (MG 138) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-pottery-mug": {
+    "url": "/models/sourced/hm-pottery-mug/hm-pottery-mug.glb",
+    "lod1": "/models/sourced/hm-pottery-mug/hm-pottery-mug.lod1.glb",
+    "bbox": [
+      -0.0481,
+      0,
+      -0.0454,
+      0.0481,
+      0.19,
+      0.0453
+    ],
+    "tris": 24986,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Pottery Vessel or Mug (HCM 254)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18947009",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Pottery Vessel or Mug (HCM 254) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-raqqa-ware-bowl": {
+    "url": "/models/sourced/hm-raqqa-ware-bowl/hm-raqqa-ware-bowl.glb",
+    "lod1": "/models/sourced/hm-raqqa-ware-bowl/hm-raqqa-ware-bowl.lod1.glb",
+    "bbox": [
+      -0.0873,
+      0.0001,
+      -0.0881,
+      0.0874,
+      0.089,
+      0.0882
+    ],
+    "tris": 14916,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Raqqa-ware Style Bowl (MG 130)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18946970",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Raqqa-ware Style Bowl (MG 130) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-replica-beaker-pit-fired": {
+    "url": "/models/sourced/hm-replica-beaker-pit-fired/hm-replica-beaker-pit-fired.glb",
+    "lod1": "/models/sourced/hm-replica-beaker-pit-fired/hm-replica-beaker-pit-fired.lod1.glb",
+    "bbox": [
+      -0.064,
+      0,
+      -0.065,
+      0.064,
+      0.1798,
+      0.065
+    ],
+    "tris": 20253,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Replica Beaker Pot-Fired",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18946920",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Replica Beaker Pot-Fired — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-japanese-coiled-tea-bowl": {
+    "url": "/models/sourced/hm-japanese-coiled-tea-bowl/hm-japanese-coiled-tea-bowl.glb",
+    "lod1": "/models/sourced/hm-japanese-coiled-tea-bowl/hm-japanese-coiled-tea-bowl.lod1.glb",
+    "bbox": [
+      -0.0404,
+      0,
+      -0.0396,
+      0.0404,
+      0.0709,
+      0.0394
+    ],
+    "tris": 14980,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Japanese Ceramic Coiled Tea Bowl (DG 059)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18947632",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Japanese Ceramic Coiled Tea Bowl (DG 059) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-tripartite-bowl-food-vessel": {
+    "url": "/models/sourced/hm-tripartite-bowl-food-vessel/hm-tripartite-bowl-food-vessel.glb",
+    "lod1": "/models/sourced/hm-tripartite-bowl-food-vessel/hm-tripartite-bowl-food-vessel.lod1.glb",
+    "bbox": [
+      -0.0781,
+      0,
+      -0.0778,
+      0.078,
+      0.1537,
+      0.078
+    ],
+    "tris": 20832,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Tripartite Bowl Food Vessel (HCA 608)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18946587",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Tripartite Bowl Food Vessel (HCA 608) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-incised-groove-food-vessel": {
+    "url": "/models/sourced/hm-incised-groove-food-vessel/hm-incised-groove-food-vessel.glb",
+    "lod1": "/models/sourced/hm-incised-groove-food-vessel/hm-incised-groove-food-vessel.lod1.glb",
+    "bbox": [
+      -0.0764,
+      0.0001,
+      -0.0765,
+      0.0766,
+      0.1297,
+      0.0763
+    ],
+    "tris": 19991,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Incised-groove Vase 'Food Vessel' (HCA 609)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18947815",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Incised-groove Vase 'Food Vessel' (HCA 609) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "hm-bronze-age-cinerary-urn": {
+    "url": "/models/sourced/hm-bronze-age-cinerary-urn/hm-bronze-age-cinerary-urn.glb",
+    "lod1": "/models/sourced/hm-bronze-age-cinerary-urn/hm-bronze-age-cinerary-urn.lod1.glb",
+    "bbox": [
+      -0.1755,
+      0.0002,
+      -0.1753,
+      0.1755,
+      0.3229,
+      0.1754
+    ],
+    "tris": 24794,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Cinerary Urn (HCA 610)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18948784",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Cinerary Urn (HCA 610) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "si-jar-made-by-dave": {
+    "url": "/models/sourced/si-jar-made-by-dave/si-jar-made-by-dave.glb",
+    "lod1": "/models/sourced/si-jar-made-by-dave/si-jar-made-by-dave.lod1.glb",
+    "bbox": [
+      -0.2302,
+      0,
+      -0.2294,
+      0.2301,
+      0.5248,
+      0.2294
+    ],
+    "tris": 25000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Jar Made by \"Dave\" (NMAH 1996.0344.01)",
+      "author": "Smithsonian Institution (NMAH)",
+      "source": "https://3d-api.si.edu/voyager/3d_package:fc2bca6b-1f44-4d2c-a1b9-713a33ee0596",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Jar Made by \"Dave\" (NMAH 1996.0344.01) — National Museum of American History, Smithsonian, via Smithsonian 3D (CC0)"
+    }
+  },
+  "cma-nupe-water-transport-jar": {
+    "url": "/models/sourced/cma-nupe-water-transport-jar/cma-nupe-water-transport-jar.glb",
+    "lod1": "/models/sourced/cma-nupe-water-transport-jar/cma-nupe-water-transport-jar.lod1.glb",
+    "bbox": [
+      -0.1777,
+      0,
+      -0.1789,
+      0.1777,
+      0.369,
+      0.1789
+    ],
+    "tris": 24998,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Water Transport Jar (1995.210)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1995.210",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Water Transport Jar (1995.210) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-jomon-deep-vessel": {
+    "url": "/models/sourced/cma-jomon-deep-vessel/cma-jomon-deep-vessel.glb",
+    "lod1": "/models/sourced/cma-jomon-deep-vessel/cma-jomon-deep-vessel.lod1.glb",
+    "bbox": [
+      -0.1709,
+      0.0001,
+      -0.174,
+      0.1709,
+      0.4469,
+      0.1742
+    ],
+    "tris": 25000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Deep Vessel (1998.32)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1998.32",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Deep Vessel (1998.32) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-shigaraki-ash-glazed-storage-jar": {
+    "url": "/models/sourced/cma-shigaraki-ash-glazed-storage-jar/cma-shigaraki-ash-glazed-storage-jar.glb",
+    "lod1": "/models/sourced/cma-shigaraki-ash-glazed-storage-jar/cma-shigaraki-ash-glazed-storage-jar.lod1.glb",
+    "bbox": [
+      -0.2064,
+      0,
+      -0.2018,
+      0.2064,
+      0.457,
+      0.2018
+    ],
+    "tris": 25000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Storage Jar (Shigaraki ware) (1973.18)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1973.18",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Storage Jar (Shigaraki ware) (1973.18) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-tamba-storage-jar": {
+    "url": "/models/sourced/cma-tamba-storage-jar/cma-tamba-storage-jar.glb",
+    "lod1": "/models/sourced/cma-tamba-storage-jar/cma-tamba-storage-jar.lod1.glb",
+    "bbox": [
+      -0.1938,
+      0,
+      -0.1957,
+      0.1938,
+      0.45,
+      0.1957
+    ],
+    "tris": 24999,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Storage Jar: Tamba Ware (2002.66)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/2002.66",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Storage Jar: Tamba Ware (2002.66) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-echizen-storage-jar": {
+    "url": "/models/sourced/cma-echizen-storage-jar/cma-echizen-storage-jar.glb",
+    "lod1": "/models/sourced/cma-echizen-storage-jar/cma-echizen-storage-jar.lod1.glb",
+    "bbox": [
+      -0.2329,
+      0,
+      -0.2378,
+      0.2329,
+      0.4979,
+      0.2377
+    ],
+    "tris": 24996,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Storage Jar, Echizen Ware (1989.70)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1989.70",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Storage Jar, Echizen Ware (1989.70) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-vietnamese-covered-jar": {
+    "url": "/models/sourced/cma-vietnamese-covered-jar/cma-vietnamese-covered-jar.glb",
+    "lod1": "/models/sourced/cma-vietnamese-covered-jar/cma-vietnamese-covered-jar.lod1.glb",
+    "bbox": [
+      -0.1111,
+      0,
+      -0.1102,
+      0.1111,
+      0.23,
+      0.1102
+    ],
+    "tris": 25002,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Covered Jar (1998.285)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1998.285",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Covered Jar (1998.285) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-nasca-painted-vase": {
+    "url": "/models/sourced/cma-nasca-painted-vase/cma-nasca-painted-vase.glb",
+    "lod1": "/models/sourced/cma-nasca-painted-vase/cma-nasca-painted-vase.lod1.glb",
+    "bbox": [
+      -0.0708,
+      0,
+      -0.0703,
+      0.0708,
+      0.194,
+      0.0703
+    ],
+    "tris": 25000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Vase with Trophy-heads and Warriors (1930.728)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1930.728",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Vase with Trophy-heads and Warriors (1930.728) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "hm-syro-hittite-horse-rider": {
+    "url": "/models/sourced/hm-syro-hittite-horse-rider/hm-syro-hittite-horse-rider.glb",
+    "lod1": "/models/sourced/hm-syro-hittite-horse-rider/hm-syro-hittite-horse-rider.lod1.glb",
+    "bbox": [
+      -0.028,
+      0,
+      -0.0176,
+      0.028,
+      0.077,
+      0.0176
+    ],
+    "tris": 14985,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Syro Hittite Figurine of a Horse and Rider (MG 139/001)",
+      "author": "The Hunt Museum",
+      "source": "https://zenodo.org/records/18946635",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Syro Hittite Figurine of a Horse and Rider (MG 139/001) — The Hunt Museum, Limerick, Ireland, via Zenodo (CC BY 4.0)"
+    }
+  },
+  "cma-gandhara-procession-relief": {
+    "url": "/models/sourced/cma-gandhara-procession-relief/cma-gandhara-procession-relief.glb",
+    "lod1": "/models/sourced/cma-gandhara-procession-relief/cma-gandhara-procession-relief.lod1.glb",
+    "bbox": [
+      -0.265,
+      0.0001,
+      -0.0308,
+      0.265,
+      0.1795,
+      0.0307
+    ],
+    "tris": 59995,
+    "finish": "asis",
+    "role": "hero",
+    "credit": {
+      "title": "Procession of Non-Buddhists (1930.328.3)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1930.328.3",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Procession of Non-Buddhists (1930.328.3) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-gandhara-dancers-musicians-relief": {
+    "url": "/models/sourced/cma-gandhara-dancers-musicians-relief/cma-gandhara-dancers-musicians-relief.glb",
+    "lod1": "/models/sourced/cma-gandhara-dancers-musicians-relief/cma-gandhara-dancers-musicians-relief.lod1.glb",
+    "bbox": [
+      -0.2225,
+      0.0001,
+      -0.0327,
+      0.2224,
+      0.1791,
+      0.0327
+    ],
+    "tris": 60000,
+    "finish": "asis",
+    "role": "hero",
+    "credit": {
+      "title": "Dancers and Musicians from Phrygia (1930.328.1)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1930.328.1",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Dancers and Musicians from Phrygia (1930.328.1) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-ravana-shaking-kailasa-relief": {
+    "url": "/models/sourced/cma-ravana-shaking-kailasa-relief/cma-ravana-shaking-kailasa-relief.glb",
+    "lod1": "/models/sourced/cma-ravana-shaking-kailasa-relief/cma-ravana-shaking-kailasa-relief.lod1.glb",
+    "bbox": [
+      -0.3714,
+      0,
+      -0.2016,
+      0.3714,
+      1.39,
+      0.2016
+    ],
+    "tris": 18015,
+    "finish": "asis",
+    "role": "hero",
+    "credit": {
+      "title": "Ravana Shaking Mount Kailasa (1971.173)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1971.173",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Ravana Shaking Mount Kailasa (1971.173) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-tang-terracotta-dancer-brick": {
+    "url": "/models/sourced/cma-tang-terracotta-dancer-brick/cma-tang-terracotta-dancer-brick.glb",
+    "lod1": "/models/sourced/cma-tang-terracotta-dancer-brick/cma-tang-terracotta-dancer-brick.lod1.glb",
+    "bbox": [
+      -0.2349,
+      0,
+      -0.0539,
+      0.235,
+      0.5799,
+      0.0538
+    ],
+    "tris": 60000,
+    "finish": "asis",
+    "role": "hero",
+    "credit": {
+      "title": "Architectural Brick with Dancer in Relief (1921.263)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1921.263",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Architectural Brick with Dancer in Relief (1921.263) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-pala-kaolin-khasarpana": {
+    "url": "/models/sourced/cma-pala-kaolin-khasarpana/cma-pala-kaolin-khasarpana.glb",
+    "lod1": "/models/sourced/cma-pala-kaolin-khasarpana/cma-pala-kaolin-khasarpana.lod1.glb",
+    "bbox": [
+      -0.0282,
+      0,
+      -0.0178,
+      0.0282,
+      0.077,
+      0.0182
+    ],
+    "tris": 14998,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Bodhisattva of Compassion as Lokeshvara the Sky Flyer (Khasarpana) (1991.155)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1991.155",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Bodhisattva of Compassion as Lokeshvara the Sky Flyer (Khasarpana) (1991.155) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-pala-kaolin-portable-temple": {
+    "url": "/models/sourced/cma-pala-kaolin-portable-temple/cma-pala-kaolin-portable-temple.glb",
+    "lod1": "/models/sourced/cma-pala-kaolin-portable-temple/cma-pala-kaolin-portable-temple.lod1.glb",
+    "bbox": [
+      -0.0466,
+      0,
+      -0.0473,
+      0.0466,
+      0.28,
+      0.0472
+    ],
+    "tris": 25000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Portable Buddhist Temple (1971.167)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1971.167",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Portable Buddhist Temple (1971.167) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-etruscan-maiden-antefix": {
+    "url": "/models/sourced/cma-etruscan-maiden-antefix/cma-etruscan-maiden-antefix.glb",
+    "lod1": "/models/sourced/cma-etruscan-maiden-antefix/cma-etruscan-maiden-antefix.lod1.glb",
+    "bbox": [
+      -0.0981,
+      0,
+      -0.0831,
+      0.0981,
+      0.219,
+      0.0831
+    ],
+    "tris": 24998,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Antefix in the Form of a Maiden (2024.56)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/2024.56",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Antefix in the Form of a Maiden (2024.56) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-gigaku-mask-persian-boy": {
+    "url": "/models/sourced/cma-gigaku-mask-persian-boy/cma-gigaku-mask-persian-boy.glb",
+    "lod1": "/models/sourced/cma-gigaku-mask-persian-boy/cma-gigaku-mask-persian-boy.lod1.glb",
+    "bbox": [
+      -0.1127,
+      0,
+      -0.128,
+      0.1127,
+      0.28,
+      0.128
+    ],
+    "tris": 25000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Gigaku Mask of Young Persian Boy (Taikōji) (1949.158)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1949.158",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Gigaku Mask of Young Persian Boy (Taikōji) (1949.158) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-bobo-ram-mask": {
+    "url": "/models/sourced/cma-bobo-ram-mask/cma-bobo-ram-mask.glb",
+    "lod1": "/models/sourced/cma-bobo-ram-mask/cma-bobo-ram-mask.lod1.glb",
+    "bbox": [
+      -0.1871,
+      0,
+      -0.2366,
+      0.1871,
+      0.36,
+      0.2366
+    ],
+    "tris": 25000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Ram Mask (Bolo) (2016.56)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/2016.56",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Ram Mask (Bolo) (2016.56) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-selinus-terracotta-mask": {
+    "url": "/models/sourced/cma-selinus-terracotta-mask/cma-selinus-terracotta-mask.glb",
+    "lod1": "/models/sourced/cma-selinus-terracotta-mask/cma-selinus-terracotta-mask.lod1.glb",
+    "bbox": [
+      -0.0435,
+      0,
+      -0.0358,
+      0.0434,
+      0.108,
+      0.0358
+    ],
+    "tris": 15000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Mask (1943.451)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1943.451",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Mask (1943.451) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "cma-puget-terracotta-bozzetto-sauli": {
+    "url": "/models/sourced/cma-puget-terracotta-bozzetto-sauli/cma-puget-terracotta-bozzetto-sauli.glb",
+    "lod1": "/models/sourced/cma-puget-terracotta-bozzetto-sauli/cma-puget-terracotta-bozzetto-sauli.lod1.glb",
+    "bbox": [
+      -0.1734,
+      0,
+      -0.1522,
+      0.1734,
+      0.6967,
+      0.1518
+    ],
+    "tris": 25000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Study for The Blessed Alessandro Sauli (1964.36)",
+      "author": "Cleveland Museum of Art",
+      "source": "https://clevelandart.org/art/1964.36",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "attribution": "Study for The Blessed Alessandro Sauli (1964.36) — Cleveland Museum of Art (CC0)"
+    }
+  },
+  "sf-longpi-teapot": {
+    "url": "/models/sourced/sf-longpi-teapot/sf-longpi-teapot.glb",
+    "lod1": "/models/sourced/sf-longpi-teapot/sf-longpi-teapot.lod1.glb",
+    "bbox": [
+      -0.0884,
+      0,
+      -0.1043,
+      0.0884,
+      0.2599,
+      0.1043
+    ],
+    "tris": 24993,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Longpi Traditional Teapot",
+      "author": "Sparsh Batra",
+      "source": "https://sketchfab.com/3d-models/longpi-traditional-teapot-c27fef06a5b54c928d3e9f53a9977edd",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Longpi Traditional Teapot — Sparsh Batra, via Sketchfab (CC BY 4.0)"
+    }
+  },
+  "sf-gupta-relief-fragment": {
+    "url": "/models/sourced/sf-gupta-relief-fragment/sf-gupta-relief-fragment.glb",
+    "lod1": "/models/sourced/sf-gupta-relief-fragment/sf-gupta-relief-fragment.lod1.glb",
+    "bbox": [
+      -0.1459,
+      0,
+      -0.0512,
+      0.1459,
+      0.2499,
+      0.0512
+    ],
+    "tris": 206144,
+    "finish": "asis",
+    "role": "hero",
+    "credit": {
+      "title": "Relief Fragment, Gupta period (Indiana University Art Museum)",
+      "author": "cachgill",
+      "source": "https://sketchfab.com/3d-models/relief-fragment-fbb04573c0c246af921402a5642bf5b2",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Relief Fragment, Gupta period (Indiana University Art Museum) — cachgill, via Sketchfab (CC BY 4.0)"
+    }
+  },
+  "sf-haniwa-horse": {
+    "url": "/models/sourced/sf-haniwa-horse/sf-haniwa-horse.glb",
+    "lod1": "/models/sourced/sf-haniwa-horse/sf-haniwa-horse.lod1.glb",
+    "bbox": [
+      -0.3783,
+      0.0002,
+      -0.1327,
+      0.3795,
+      0.7294,
+      0.1325
+    ],
+    "tris": 24989,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "形象埴輪（馬）Horse-shaped haniwa, Narizuka-Ishibashi site, Ōta (2024009)",
+      "author": "Gunma Archaeological Research Center (群馬県埋蔵文化財調査センター)",
+      "source": "https://sketchfab.com/3d-models/2024009-7c1664c2503f44f4b150577eef5c8699",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "形象埴輪（馬）Horse-shaped haniwa, Narizuka-Ishibashi site, Ōta (2024009) — Gunma Archaeological Research Center (群馬県埋蔵文化財調査センター), via Sketchfab (CC BY 4.0)"
+    }
+  },
+  "sf-fitzwilliam-horse-rider": {
+    "url": "/models/sourced/sf-fitzwilliam-horse-rider/sf-fitzwilliam-horse-rider.glb",
+    "lod1": "/models/sourced/sf-fitzwilliam-horse-rider/sf-fitzwilliam-horse-rider.lod1.glb",
+    "bbox": [
+      -0.0562,
+      0,
+      -0.0274,
+      0.0562,
+      0.13,
+      0.0274
+    ],
+    "tris": 15000,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Syrian Horse with Rider Figurine",
+      "author": "Fitzwilliam Museum",
+      "source": "https://sketchfab.com/3d-models/syrian-horse-with-rider-figurine-b1d12332c7324bbc91c6ec3d1e2adb21",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Syrian Horse with Rider Figurine — Fitzwilliam Museum, via Sketchfab (CC BY 4.0)"
+    }
+  },
+  "sf-cypriot-horse": {
+    "url": "/models/sourced/sf-cypriot-horse/sf-cypriot-horse.glb",
+    "lod1": "/models/sourced/sf-cypriot-horse/sf-cypriot-horse.lod1.glb",
+    "bbox": [
+      -0.0563,
+      0,
+      -0.0243,
+      0.0566,
+      0.1389,
+      0.0242
+    ],
+    "tris": 15321,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Cypriot horse (W229a)",
+      "author": "The Egypt Centre",
+      "source": "https://sketchfab.com/3d-models/cypriot-horse-w229a-b432b65dd0824c9e9e53b8f2ec942751",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Cypriot horse (W229a) — The Egypt Centre, via Sketchfab (CC BY 4.0)"
+    }
+  },
+  "sf-msu-terracotta-horse": {
+    "url": "/models/sourced/sf-msu-terracotta-horse/sf-msu-terracotta-horse.glb",
+    "lod1": "/models/sourced/sf-msu-terracotta-horse/sf-msu-terracotta-horse.lod1.glb",
+    "bbox": [
+      -0.0665,
+      0.0001,
+      -0.0267,
+      0.0667,
+      0.103,
+      0.0265
+    ],
+    "tris": 14988,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Terracotta Horse (70.49)",
+      "author": "MSU Broad Art Museum",
+      "source": "https://sketchfab.com/3d-models/terracotta-horse-d9707618a2af40aa8ff7cd408b93d6b6",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Terracotta Horse (70.49) — MSU Broad Art Museum, via Sketchfab (CC BY 4.0)"
+    }
+  },
+  "sf-ypm-apkallu-plaque": {
+    "url": "/models/sourced/sf-ypm-apkallu-plaque/sf-ypm-apkallu-plaque.glb",
+    "lod1": "/models/sourced/sf-ypm-apkallu-plaque/sf-ypm-apkallu-plaque.lod1.glb",
+    "bbox": [
+      -0.0358,
+      0.0001,
+      -0.0168,
+      0.0357,
+      0.16,
+      0.0168
+    ],
+    "tris": 14978,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Plaque figurine with a fish-apkallu (YPM BC.038026, YBC 10168)",
+      "author": "Yale Peabody Museum",
+      "source": "https://sketchfab.com/3d-models/ypm-bc038026-ybc-10168-6a13311f91954c0bbe7c17636c8f0b32",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Plaque figurine with a fish-apkallu (YPM BC.038026, YBC 10168) — Yale Peabody Museum, via Sketchfab (CC BY 4.0)"
+    }
+  },
+  "sf-cosa-scroll-plaque": {
+    "url": "/models/sourced/sf-cosa-scroll-plaque/sf-cosa-scroll-plaque.glb",
+    "lod1": "/models/sourced/sf-cosa-scroll-plaque/sf-cosa-scroll-plaque.lod1.glb",
+    "bbox": [
+      -0.0785,
+      0,
+      -0.0222,
+      0.0784,
+      0.109,
+      0.0221
+    ],
+    "tris": 14981,
+    "finish": "terracotta",
+    "role": "display",
+    "credit": {
+      "title": "Terracotta Plaque - Cosa Excavations C19.125",
+      "author": "Matthew Hunter",
+      "source": "https://sketchfab.com/3d-models/terracotta-plaque-cosa-excavations-c19125-a01333a5a87f4e95aa698fb2450d3694",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Terracotta Plaque - Cosa Excavations C19.125 — Matthew Hunter, via Sketchfab (CC BY 4.0)"
+    }
+  },
+  "sf-cosa-campana-plaque": {
+    "url": "/models/sourced/sf-cosa-campana-plaque/sf-cosa-campana-plaque.glb",
+    "lod1": "/models/sourced/sf-cosa-campana-plaque/sf-cosa-campana-plaque.lod1.glb",
+    "bbox": [
+      -0.0609,
+      0.0001,
+      -0.0188,
+      0.0608,
+      0.0989,
+      0.0191
+    ],
+    "tris": 14993,
+    "finish": "terracotta",
+    "role": "display",
+    "credit": {
+      "title": "Campana plaque - Cosa Excavations C17.126",
+      "author": "Matthew Hunter",
+      "source": "https://sketchfab.com/3d-models/campana-plaque-cosa-excavations-c17126-45310474030c4d45a86a6c618cc876d1",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Campana plaque - Cosa Excavations C17.126 — Matthew Hunter, via Sketchfab (CC BY 4.0)"
+    }
+  },
+  "sf-sanni-mask": {
+    "url": "/models/sourced/sf-sanni-mask/sf-sanni-mask.glb",
+    "lod1": "/models/sourced/sf-sanni-mask/sf-sanni-mask.lod1.glb",
+    "bbox": [
+      -0.1016,
+      0.0002,
+      -0.0519,
+      0.1018,
+      0.28,
+      0.0522
+    ],
+    "tris": 24867,
+    "finish": "asis",
+    "role": "display",
+    "credit": {
+      "title": "Sri Lankan Mask",
+      "author": "Redpath Museum",
+      "source": "https://sketchfab.com/3d-models/sri-lankan-mask-57ab6eeacc604ef6a4f2412f1bf3c00e",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "attribution": "Sri Lankan Mask — Redpath Museum, via Sketchfab (CC BY 4.0)"
+    }
   }
 }
 

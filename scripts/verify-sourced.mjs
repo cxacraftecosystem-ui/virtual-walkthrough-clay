@@ -6,7 +6,7 @@
  *   - both LODs exist, decode (meshopt) and hold triangles;
  *   - LOD0 is within its role's cap (scripts/optimize-sourced.mjs CAPS), LOD1 is lighter than LOD0;
  *   - the bounding box in the registry matches the file's (±2 cm);
- *   - the file sizes hold (4 MB, trees 5 MB; 45 MB in all);
+ *   - the file sizes hold (4 MB, trees 5 MB; 90 MB in all);
  *   - every model has a complete credit with a CC0, CC BY 4.0 or public-domain licence, CC BY
  *     with an attribution line;
  *   - CREDITS.json lists every slug, and no excluded model (§5.3) is in the registry;
@@ -95,7 +95,7 @@ for (const dir of fs.readdirSync(OUT, { withFileTypes: true }))
   if (dir.isDirectory())
     for (const f of fs.readdirSync(path.join(OUT, dir.name)))
       if (f.endsWith('.glb') && !seen.has(path.resolve(OUT, dir.name, f))) fail.push(`orphaned file ${dir.name}/${f}`)
-if (total > 45 * MB) fail.push(`total ${(total / MB).toFixed(1)} MB over 45 MB`)
+if (total > 90 * MB) fail.push(`total ${(total / MB).toFixed(1)} MB over 90 MB`)
 
 const n = Object.keys(SOURCED_REGISTRY).length
 console.log(`${n} sourced models, ${(total / MB).toFixed(1)} MB`)

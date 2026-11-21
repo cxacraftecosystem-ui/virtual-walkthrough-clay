@@ -119,10 +119,10 @@ flowchart TB
 | The Earth Room | `annex` | annex G, 30 ft clear: eroded clay formations, curved shelves of everyday pots and a round table under a round roof light |
 | Entry Ways | `entry-e` | the ambulatory either side of the annex mouth, the E arches and the corridor between H and F: the title wall, the 25 m lippan relief of mud and mirror, the strata |
 | Oculus Court | `inner` | the pool and the red lotus under the 10 m oculus, the brass floor ring, the niche figure on F's court face |
-| Gallery A | `ring-a` | Bankura terracotta: four podiums against the red wall with the workshop's figures, and The Herd, nine horses on a three-step plinth (the two at the front from the workshop) |
+| Gallery A | `ring-a` | Bankura terracotta: four podiums against the red wall with the workshop's figures, and The Herd on a three-step plinth: the workshop's Bankura horse (1.6 m) on the top step, its horse figurine on the front step and six modelled horses between; the same Bankura horse life-size (2.2 m) on a floor plinth beside it |
 | Gallery B | `ring-b` | Molela plaques: six podiums with the workshop's plaques, tile and bowl on slotted stands, plaques in the five niches of the white wall, a maker's table with a plaque in progress |
-| Gallery C | `ring-c` | Longpi pottery: four podiums with the workshop's black elephant and Ganeshas, the black ware island under one cool beam, works on the curved wall |
-| Wine Hall | `hallway-d` | *Clay Elsewhere*: credited scans of clay from other places and times on the wine plinths, a relief on the end wall |
+| Gallery C | `ring-c` | Longpi pottery: four podiums with the workshop's black elephant and Ganeshas; the black ware island under one cool beam, with a scanned Longpi teapot among its studies; a photograph of a Longpi kettle on the curved wall |
+| Wine Hall | `hallway-d` | *Clay Elsewhere*: 65 credited museum scans of clay (and, for comparison, stone, wood, ivory and plaster) from other places and times, on seven stepped plinths W1–W7 grouped by theme (East Asia, glazes of America and Europe, the ancient Mediterranean, horses and riders, prehistoric Europe, figures and faces, reliefs and shrines), a low plinth of great storage jars, two pedestals and a stele plinth, and a relief on the end wall |
 | Parikrama Walk, west and east | `parikrama-west`, `parikrama-east` | the serpentine walk between red walls, sunken gardens and courtyards, one tradition's piece in each niche |
 | Clay Atlas | `atlas` | the map of India, the constellation of tradition vessels, the partners' panel |
 | Agni Theatre | `theatre` | the kiln film on a curved screen under a brick vault; a Kumartuli figure in progress and five Majuli masks in the lobby |
@@ -178,7 +178,9 @@ Every record and every piece is a placeholder until the workshop confirms it. Vi
 title ("Coil-built Pot, Cut Open — Study") and the region bay headers; names, places and captions appear only
 with `?review` (this site only) or once `CRAFTS_CONFIRMED` in `content/review.ts` is set. Map pins are never drawn
 for these records. Scans of objects from elsewhere (the Wine Hall) carry their own museum's credit and are never
-given an Indian tradition's name.
+given an Indian tradition's name. The one exception is a scan of a tradition's own work: the Longpi teapot on Gallery
+C's island (`props.of: 'longpi'`) is named as Longpi pottery, which Gallery C names already, and its label
+carries the scan's credit.
 
 Where the pieces stand is set in `config/grandObjects/crafts.ts`: the guardian horses on the forecourt, the
 Herd and the islands of A, B and C, 24 pieces and 12 Bishnupur-style relief panels in the upper register, the
@@ -264,8 +266,20 @@ pieces, islands and furniture live in `config/grandObjects/` and `config/spectac
 To show a scan instead, set the object's `model` to a GLB; the procedural `kind` stays as the loading and error
 fallback. Scans from a phone go through the admin's *3D scan import*: see [CONTENT_CAPTURE.md](CONTENT_CAPTURE.md).
 Freely licensed models from elsewhere go through `node scripts/optimize-sourced.mjs`, which writes LOD0 and LOD1
-GLBs into `public/models/sourced`, `CREDITS.json` and `config/sourcedRegistry.generated.ts`, and fails above 45 MB
-in all or 4 MB a file (5 MB for trees); `scripts/verify-sourced.mjs` checks the budgets.
+GLBs into `public/models/sourced`, `CREDITS.json` and `config/sourcedRegistry.generated.ts`, and fails above 90 MB
+in all or 4 MB a file (5 MB for trees); `scripts/verify-sourced.mjs` checks the budgets. Each entry of
+`scripts/sourced-models.json` names its original under a staging folder (`--src`), by source: `wikimedia/`,
+`smithsonian/`, `cleveland/`, `zenodo/` (the Hunt Museum's scans), `sketchfab/`, `polyhaven/`; the folder's
+`MANIFEST.json` gives each one's licence, author and source. The originals are not kept: a model already built
+is reused when its original is absent. `drop` (attributes removed before welding) rescues a scan written with
+its own vertices for every triangle; `budget` with a `capNote` declares a scan the simplifier cannot reduce.
+Sketchfab downloads need an account's API token (`SKETCHFAB_API_TOKEN` in `.env.local`, never committed);
+only CC0, CC BY 4.0 and public-domain models are accepted.
+
+The scans reach a live museum through `scripts/sync-clay-elsewhere.mjs` (the Wine Hall's plinths and scans and
+the teapot; it retires the kettle study the teapot replaced), and Gallery C's photograph through
+`scripts/sync-artwork-photos.mjs`. Both change only what is still exactly as it was bundled before, with
+stamps, and run again as no-ops.
 
 ### Deep zoom
 
@@ -405,7 +419,7 @@ The drawings are concept sketches without a dimension grid. What they leave open
 | Podiums | 12 in × 12 in × 4 ft, as drawn, 14 on one circle; formation gates of eroded clay separate the galleries |
 | Mood boards | each one is a room: the eroded formations, the lotus under the oculus, the round red room of shelves, the spiral round a sphere, the wine-red hallway, the white niche wall, the planted walks |
 | Palette | terracotta, rose clay and ochre from the inspiration page, with oxblood walls, lime bands and warm-to-neutral pools of light |
-| Content | the podium row holds the workshop team's own pieces, described by what can be seen; every other piece and caption is a stand-in until the workshop confirms it; nothing is passed off as a documented object |
+| Content | the podium row holds the workshop team's own pieces, with the workshop's captions; Gallery C's photograph and the island's teapot are real Longpi pieces from open sources, credited; the Wine Hall's scans are documented objects from other places, credited to their museums; every other piece is a stand-in until the workshop confirms it, and nothing is passed off as a documented object |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="readme-kit/assets/footer-dark.svg">
