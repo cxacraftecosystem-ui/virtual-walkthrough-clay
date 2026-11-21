@@ -18,7 +18,7 @@ guide is for the code and the bundled defaults in `src/museum/config`.
 | [Project structure](#project-structure) | where each part of the scene lives |
 | [Content](#content) | hung works, podium pieces, surfaces and scans |
 | [Automatic frames](#automatic-frames) | how a frame is sized from the image |
-| [Light and graphics](#light-and-graphics) | time of day, weather, diyas, path tracing, tiers |
+| [Light and graphics](#light-and-graphics) | time of day, weather, diyas, path tracing, tiers, start-up, the pieces' light |
 | [Rides, moments and the passport](#rides-moments-and-the-passport) | perches, the kiln film, cues, stamps |
 | [Live tours, presence, VR and AR](#live-tours-presence-vr-and-ar) | the social and immersive layer |
 | [Validation scripts](#validation-scripts) | screenshots, interaction, load profile, visual regression |
@@ -323,6 +323,11 @@ breaking the scene. Frame styles in `config/frames.ts`: `frameless`, `textile-pa
 | Adaptive quality | `config/quality.ts`, `src/App.tsx` | `detectInitialTier()` picks the start; the tier never changes during a visit (a change rebuilds the canvas and recompiles every shader): below about 32 fps the resolution drops (to 0.75) and the spectacle's costly extras switch off, and the next visit starts a tier lower |
 | Start-up | `effects/Precompile.tsx` | the door opens once the shaders seen from the forecourt are compiled and first-drawn; the rest of the museum is prepared afterwards, a zone at a time between frames; anything mounted later is held off the frame until its shader is compiled (`LateCompile`), and scans stream in two at a time, nearest first (`models/sourcedModel.tsx`) |
 | Lights and shaders | `navigation/zoneCulling.tsx` `Unculled` | every lit shader is built for the scene's light count: lights are never culled with a zone (a light that came into view recompiled every material) |
+| A light for every piece | `models/GLTFModel.tsx` `keyLight`, `architecture/Pavilion.tsx`, `lighting/atmosphere/inject.ts` (`USE_ATMOS_KEY`) | every podium and every exhibited piece carries its own key light, aimed from in front and above and computed in its own shader (a material clone per piece), so a piece is never dark when the shared cones are elsewhere and no light count changes. `config/accents.ts` `PIECE_GAIN` sets the pooled cones' strength on the pieces |
+| Pooled cones | `lighting/atmosphere/AccentField.tsx`, `lighting/SpotPool.tsx` | the cones go to the nearest pieces in view, with a smooth penalty for what is behind the visitor and a hold for cones already lit, and every change cross-fades: turning the head no longer swaps them back and forth (the pieces at the edge of the view pulsed) |
+| Sky | `lighting/nightSky.ts` `patchSkyAntialias` | cloud octaves finer than about two pixels fade out by their screen-space derivative, and a star is never drawn smaller than a pixel, so the sky does not sparkle as the view turns (flickering sky pixels in a still view: 0.13 % → 0.03 %) |
+| Screen spill | `media/VideoScreen.tsx`, `media/screenColour.worker.ts` | on High and up a film tints the room with its picture's colour; `createImageBitmap` scales the frame to 16 × 9 and a worker averages it, because reading a playing video on the main thread waits for the GPU, 30 to 60 ms a sample |
+| Reliefs | `utils/geometryGroups.ts` | `ExtrudeGeometry` draws each shape's cap and side as calls of their own; the map relief and the carved blocks are gathered into one call per material (the map relief was some 600 calls) |
 
 | Tier | Shadows | Composer | Spot pool | Texture size | Pool mirror | Floor reflections |
 |---|---|---|---:|---:|:---:|:---:|

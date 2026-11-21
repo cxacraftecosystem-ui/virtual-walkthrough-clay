@@ -28,6 +28,7 @@ import { INDIA_BOUNDS, indiaRings } from '../exhibits/indiaGeometry'
 import { registerSpot } from '../lighting/SpotPool'
 import { TRACK_COLOR } from '../lighting/TrackLight'
 import { ensureWallFonts } from '../materials/wallGraphics'
+import { oneGroupPerMaterial } from '../utils/geometryGroups'
 import { useAsyncTexture } from '../utils/useAsyncTexture'
 import { box, Builder, Parts, rbox, useBuilt } from './kit'
 import { tinted, useModelMaterials } from './modelMaterials'
@@ -334,33 +335,10 @@ function reliefGeometry(L: MapLayout) {
     for (const h of holes) shape.holes.push(new THREE.Path(h.map(([lon, lat]) => new THREE.Vector2(...project(L, lon, lat)))))
     shapes.push(shape)
   }
-  const g = new THREE.ExtrudeGeometry(shapes, { depth: RELIEF_H, bevelEnabled: false, curveSegments: 1 })
-  oneGroupPerMaterial(g)
+  // one draw call per material, not a cap and a side per island (some 600)
+  const g = oneGroupPerMaterial(new THREE.ExtrudeGeometry(shapes, { depth: RELIEF_H, bevelEnabled: false, curveSegments: 1 }))
   reliefCache.set(key, g)
   return g
-}
-
-/**
- * ExtrudeGeometry gives every shape its own cap and side groups: one draw call each, some 600 for
- * the mainland and the islands. Gather them into one group per material through an index buffer —
- * the vertices (the outline, the projection) are untouched, only the order they are drawn in changes.
- */
-function oneGroupPerMaterial(g: THREE.BufferGeometry) {
-  if (g.index || g.groups.length <= 2) return
-  const byMaterial = new Map<number, number[]>()
-  for (const group of g.groups) {
-    const mi = group.materialIndex ?? 0
-    const ids = byMaterial.get(mi) ?? []
-    for (let i = group.start; i < group.start + group.count; i++) ids.push(i)
-    byMaterial.set(mi, ids)
-  }
-  const index: number[] = []
-  g.clearGroups()
-  for (const [mi, ids] of [...byMaterial].sort((x, y) => x[0] - y[0])) {
-    g.addGroup(index.length, ids.length, mi)
-    for (const i of ids) index.push(i)
-  }
-  g.setIndex(index)
 }
 
 /* ------------------------------------------------------------------ */

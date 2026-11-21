@@ -17,7 +17,7 @@ import { visitor } from '../state/visitor'
 import { perchZone } from '../navigation/perch'
 import { QUALITY_PRESETS, withDevOverrides } from '../config/quality'
 import { useMuseum } from '../state/store'
-import { patchNightSky } from './nightSky'
+import { patchNightSky, patchSkyAntialias } from './nightSky'
 import { sunState } from './timeOfDayState'
 import { MOON } from './atmosphere/dayCurve'
 import { ATMOS } from './atmosphere/inject'
@@ -104,7 +104,10 @@ function useSky() {
     u.cloudScale.value = s.clouds.scale
     u.cloudSpeed.value = s.clouds.speed
     u.sunPosition.value.copy(sunDirection())
-    if (!gpuSky) patchNightSky(mat)
+    if (!gpuSky) {
+      patchNightSky(mat)
+      patchSkyAntialias(mat)
+    }
     sky.frustumCulled = false
     sky.renderOrder = -10
     return sky
